@@ -1,0 +1,32 @@
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+build/
+
+# Swift Package Manager
+.build/
+Packages/
+.swiftpm/
+
+# Firebase
+firebase/functions/node_modules/
+firebase/functions/lib/
+firebase/.firebase/
+
+# Secrets
+GoogleService-Info.plist
+.env
+.env.local
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Misc
+*.log

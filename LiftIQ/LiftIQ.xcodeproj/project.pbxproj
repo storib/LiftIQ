@@ -1,0 +1,1104 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04EEB988ABE794F6FA54DA9B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D0A795D08254815C4A6916 /* LoadingView.swift */; };
+		064FA7DEB76B64AFED51E1D0 /* Double+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304780F3675E3BC6A553B215 /* Double+Extensions.swift */; };
+		06D7BD8DA9A0F727DED5288B /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69C818DD299F972B877B29E /* User.swift */; };
+		079799C8F6D13F1AF8E40627 /* WorkoutPlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11AE0F881620220A58454B5B /* WorkoutPlanDetailView.swift */; };
+		0B2372EB501396756E6D6157 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5B244AA15F9EBF05899A0B /* SignInView.swift */; };
+		0B7AA01D8A578E1764B648EF /* WorkoutSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887B4C439C1BD0080CB4928A /* WorkoutSession.swift */; };
+		0BDFD00DB51DB1E06865234F /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB024AB47D9CF72FF23FB072 /* Haptics.swift */; };
+		0CF1D5A463991FAF8BCEAF4C /* ExerciseSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5F6DA39FA9755846CB05B4 /* ExerciseSearchView.swift */; };
+		134FB4AB47824A920C1C4A3A /* ExerciseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */; };
+		14BB18F83099A3315534540B /* WorkoutPlanRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71270732FA1FEBE369D30B3 /* WorkoutPlanRepository.swift */; };
+		1918591E3EFEB201D292D48A /* ProgressionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7451F27AA7383E1D6F6AB319 /* ProgressionService.swift */; };
+		1E20977C76CED720B510BB80 /* SessionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6D5806492114799373D2B7 /* SessionStatus.swift */; };
+		20B4DCA295D332C170A9F2CA /* MovementPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040FCA118249E4A50587761A /* MovementPattern.swift */; };
+		217EA1405CABF5D178CD0701 /* WorkoutDayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38007758FDDE81B717260FC0 /* WorkoutDayDetailView.swift */; };
+		22A089B97ADCF26595942DF4 /* Goal.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF17088170F9D1FAC8467968 /* Goal.swift */; };
+		28170E5536C774CD6F11AFA1 /* View+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE33A986D22E8BD63878B1B /* View+Extensions.swift */; };
+		28D8C0ACDE3CFEF7183F2F66 /* BodyMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F6B16BCBE881C0E76BD5ED9 /* BodyMeasurement.swift */; };
+		2D737E3F8B6A56AF402FF71A /* SetType.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7C69EE26498FE58A713710 /* SetType.swift */; };
+		32EFA9958BD643F8727BB84F /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36940A00370528B0CA5FCFC /* WorkoutTemplate.swift */; };
+		38A8280A954949D6F92257CB /* BodyMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EC70C6C110448CC9BE9F4E /* BodyMetricsView.swift */; };
+		396E3380FDBBF4C92F0A2B86 /* WorkoutPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3AA00D2CF298C42EA9AC7 /* WorkoutPlan.swift */; };
+		3A36CCB2BC2DC32DF2DE1E6C /* WorkoutSessionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32933FADAFE72D81E81E048A /* WorkoutSessionRepository.swift */; };
+		3C446C9FDB00C37C5B1FAC70 /* YouTubePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FE93EC0608669383B8C6358 /* YouTubePlayerView.swift */; };
+		3E0DD3EC403587B8D3DB41FD /* SignUpViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17BC13A69177C73A1F3A97A /* SignUpViewModel.swift */; };
+		41BEC68B51571E1B5A9C95B9 /* ProgressDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE0487AF69A4DA30250706D /* ProgressDashboardView.swift */; };
+		44BB332D8434D0030365EAC8 /* GroupType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31501F8B320E526FB3F99080 /* GroupType.swift */; };
+		450B1EC93293CD123D7F61AE /* SignInViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */; };
+		48180E07478F94750287C778 /* ProgressRecordRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5D6F092764E6DF2C205FE /* ProgressRecordRepository.swift */; };
+		492E0C79E2E8D74C0B80A227 /* ExerciseGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49941799A7BE10390B77E3F1 /* ExerciseGroup.swift */; };
+		4F96A0DAA20FA0C9E6A8F84A /* UserRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DAE2D532917E3FA759CFB25 /* UserRepository.swift */; };
+		541704184E4957776B4340BF /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC3C07CA8A4B0CEF03B2AD90 /* Constants.swift */; };
+		55170B8F06D8ED324AFE4D3E /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84E8BAB63F18E0631F463B7F /* Formatters.swift */; };
+		59874E9AD0FFCB18DD3917AF /* WorkoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 357673A38056905C25E9FD3E /* WorkoutService.swift */; };
+		59E9B28DF8867F77385AA3D6 /* TemplateBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1553C7D248DE5493CA5048 /* TemplateBrowserView.swift */; };
+		5C221F412A5C88652EC81633 /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 2E19ECD0D0247D63CE7B1E4C /* Algorithms */; };
+		5E3257A83978E1E9E5E42A82 /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328338124C6DB8B6C37E2676 /* PreviewData.swift */; };
+		5FE0CE1EB196036B023EA9A7 /* EquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2937040EDB90A1574D503DFF /* EquipmentView.swift */; };
+		60FDEB8EF11881C61596A868 /* Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B990E75935B6488FB4B6B6A0 /* Date+Extensions.swift */; };
+		64CA9AE71D43FC400C4B43CC /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = C8D93A7A9168C1F059311E01 /* FirebaseFunctions */; };
+		684D95D721CF7D18525E7542 /* ExperienceLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90EFF33B57A8E697C1BE5CCD /* ExperienceLevel.swift */; };
+		6F9CD0F9358E8262648586FA /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 174A5F33B9718E52FBFDD653 /* FirebaseAuth */; };
+		70DC4FC58784B0D26B6C96C3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 0DB8B74B0399C621022F0D09 /* FirebaseMessaging */; };
+		760ADF288722798166833644 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718FE96393B32F4CCF38CA13 /* ProfileView.swift */; };
+		79F0F803C8B58CDD94548585 /* Epley.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6912B9ED87127594DDADBC51 /* Epley.swift */; };
+		7FA65BDD9DF70CCF55BC7C20 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4958070EC6D6287CDAE3A84D /* MainTabView.swift */; };
+		80981136311E32C1F0D14450 /* TemplateType.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72D582089ADDEF5B2D00146 /* TemplateType.swift */; };
+		81A218D3408C5E456B451721 /* WorkoutPlanListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045DC1C513EA6E98101D8004 /* WorkoutPlanListView.swift */; };
+		8504473E23460715A5F7EC88 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED01BB87C9043D9518812616 /* ContentView.swift */; };
+		8572C85197487CD43288BB96 /* UnitSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA0B4B74A4E5F957DB42398D /* UnitSystem.swift */; };
+		8B7D323A333789A6374705FF /* PersonalRecordRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AEC9A89784E0884D0D3B3CE /* PersonalRecordRepository.swift */; };
+		8F776B89B35CE50C8E95E2BD /* ExperienceLevelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCE5C9FCB7DFE0EE087A564 /* ExperienceLevelView.swift */; };
+		911B3B831E6F5F94411D8C54 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E938A2B86F7F81BA274741C1 /* FirebaseFirestore */; };
+		989EE37D9B6C4C12413982BF /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A7036C394D2FD6A75D02A5 /* AuthService.swift */; };
+		A0C0BDF3F60E4BB3340D9D81 /* ProgressRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = E153F2A93D1319576F4F805C /* ProgressRecord.swift */; };
+		A3F36E71F90B67734511A26C /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE7750F35E46F614AFABFA6 /* AIService.swift */; };
+		A4EE18E8D153080C0EF7FD9A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B7E4564602811599567CC35F /* Assets.xcassets */; };
+		A87D455DD011F1DED2990431 /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC9BE28F185EABB9A5E4FA5 /* OnboardingViewModel.swift */; };
+		AC33CF4157C3D33932C132AD /* BodyMeasurementRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D9736354B0933BBD76AB38 /* BodyMeasurementRepository.swift */; };
+		AC65AE26B99F4F304512DF22 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21C97EAD56CDB9D5F0EFAF0 /* OnboardingContainerView.swift */; };
+		AFEF61327600D5D77CAA0900 /* ExerciseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95F615A0B29142EEB22869AD /* ExerciseRepository.swift */; };
+		B4CB21A5723C7645ED86DB6F /* ProgressionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC26FD6065A526663C86080B /* ProgressionServiceTests.swift */; };
+		B586F500AD923315D9B6E42C /* LiftIQApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C4EE8799CD8C8349AD453A1 /* LiftIQApp.swift */; };
+		B5E415FBFC7FD002308FBB03 /* PersonalRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF71BCDB13EDC2CC55E5A385 /* PersonalRecord.swift */; };
+		BBE5F3507F9AA8EE6F4CE487 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D078599944DDC696093B9573 /* Color+Theme.swift */; };
+		C18CDEF678680988DFABC0AA /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */; };
+		C8FF1350A4E3E04CBE82CEB6 /* Equipment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3494E9E70D3F92F8787CA5F9 /* Equipment.swift */; };
+		C9268C3E784A4320A64D1F9A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD90F6B420857ED77DFB275D /* DashboardView.swift */; };
+		C9700F677F412BDFD306AB0A /* UnitConversionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F32504DF5ECDD0A3BFC790A /* UnitConversionService.swift */; };
+		CF9316AF89E45AC2F0015708 /* GoalSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74FD12969711B9BEC7BE1BAF /* GoalSelectionView.swift */; };
+		D22BD5E619292CB7F0536B36 /* OnboardingSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E377EF98BB5CBE51CAB521B5 /* OnboardingSummaryView.swift */; };
+		D7188D19DF08F331E8712C6A /* LiftIQUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808F12E6E0C2CF6B383300C9 /* LiftIQUITests.swift */; };
+		D8C56CB069C112E4F4395C57 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AABE3EC1CFE271282D51A5D /* SignUpView.swift */; };
+		D9F783BA08309579772DCE78 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE8C5598AE3EA5AC0F08E5C /* DashboardViewModel.swift */; };
+		DF32A32ABEA7A34ADBF7AB69 /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D31C5E4B2953DD8BB06A8E2 /* ForgotPasswordView.swift */; };
+		DF7DF43B095D35765273768F /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28DB683111DDF572B81BA7F2 /* ScheduleView.swift */; };
+		E127A6C181DA1F0294B6710C /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F553DB4B2EBB2FC5D0901F3 /* WelcomeView.swift */; };
+		E35CAAEBEBA9D51939509DBB /* InjuryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FBB2D5F9E276A73774E9E1 /* InjuryView.swift */; };
+		EDF7751B59074E0E1D02BC58 /* MuscleGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F1AECA4C518F460EED8BB7 /* MuscleGroup.swift */; };
+		EE36F588A34F1C591905B260 /* ProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433B1E9C2E813BD1C5B4EFF0 /* ProgressService.swift */; };
+		F625CA7C67C72F91D18841EC /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0209D3B496F703764406C9D1 /* Exercise.swift */; };
+		F62772BA13A83F9CD70D5ADB /* WorkoutPlanListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F062ABE21B69910D49784D /* WorkoutPlanListViewModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		756CB0E2D0C76EA9B12D9142 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AED64D5F6F81C5B4364B0AAF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 24F58CCDD0A2E2AF859DEB23;
+			remoteInfo = LiftIQ;
+		};
+		CFCC3758D887E093FB5C058B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AED64D5F6F81C5B4364B0AAF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 24F58CCDD0A2E2AF859DEB23;
+			remoteInfo = LiftIQ;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		00A7036C394D2FD6A75D02A5 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		0209D3B496F703764406C9D1 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
+		03D9736354B0933BBD76AB38 /* BodyMeasurementRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyMeasurementRepository.swift; sourceTree = "<group>"; };
+		040FCA118249E4A50587761A /* MovementPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovementPattern.swift; sourceTree = "<group>"; };
+		045DC1C513EA6E98101D8004 /* WorkoutPlanListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanListView.swift; sourceTree = "<group>"; };
+		0AE0487AF69A4DA30250706D /* ProgressDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressDashboardView.swift; sourceTree = "<group>"; };
+		0DE7750F35E46F614AFABFA6 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		0FE93EC0608669383B8C6358 /* YouTubePlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubePlayerView.swift; sourceTree = "<group>"; };
+		10F1AECA4C518F460EED8BB7 /* MuscleGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleGroup.swift; sourceTree = "<group>"; };
+		11AE0F881620220A58454B5B /* WorkoutPlanDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanDetailView.swift; sourceTree = "<group>"; };
+		1B5B244AA15F9EBF05899A0B /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		1DAE2D532917E3FA759CFB25 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
+		24E2D296BB2DB448ED354F2C /* LiftIQUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiftIQUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		28DB683111DDF572B81BA7F2 /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
+		28F062ABE21B69910D49784D /* WorkoutPlanListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanListViewModel.swift; sourceTree = "<group>"; };
+		2937040EDB90A1574D503DFF /* EquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentView.swift; sourceTree = "<group>"; };
+		2BC3AA00D2CF298C42EA9AC7 /* WorkoutPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlan.swift; sourceTree = "<group>"; };
+		304780F3675E3BC6A553B215 /* Double+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Double+Extensions.swift"; sourceTree = "<group>"; };
+		31501F8B320E526FB3F99080 /* GroupType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupType.swift; sourceTree = "<group>"; };
+		328338124C6DB8B6C37E2676 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
+		32933FADAFE72D81E81E048A /* WorkoutSessionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionRepository.swift; sourceTree = "<group>"; };
+		3494E9E70D3F92F8787CA5F9 /* Equipment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Equipment.swift; sourceTree = "<group>"; };
+		357673A38056905C25E9FD3E /* WorkoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutService.swift; sourceTree = "<group>"; };
+		38007758FDDE81B717260FC0 /* WorkoutDayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDayDetailView.swift; sourceTree = "<group>"; };
+		3AEC9A89784E0884D0D3B3CE /* PersonalRecordRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecordRepository.swift; sourceTree = "<group>"; };
+		433B1E9C2E813BD1C5B4EFF0 /* ProgressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressService.swift; sourceTree = "<group>"; };
+		4958070EC6D6287CDAE3A84D /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		49941799A7BE10390B77E3F1 /* ExerciseGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGroup.swift; sourceTree = "<group>"; };
+		49E5D6F092764E6DF2C205FE /* ProgressRecordRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRecordRepository.swift; sourceTree = "<group>"; };
+		4C1553C7D248DE5493CA5048 /* TemplateBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateBrowserView.swift; sourceTree = "<group>"; };
+		4F32504DF5ECDD0A3BFC790A /* UnitConversionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConversionService.swift; sourceTree = "<group>"; };
+		4F6B16BCBE881C0E76BD5ED9 /* BodyMeasurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyMeasurement.swift; sourceTree = "<group>"; };
+		5AABE3EC1CFE271282D51A5D /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		5CCE5C9FCB7DFE0EE087A564 /* ExperienceLevelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperienceLevelView.swift; sourceTree = "<group>"; };
+		5D31C5E4B2953DD8BB06A8E2 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
+		67EC70C6C110448CC9BE9F4E /* BodyMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyMetricsView.swift; sourceTree = "<group>"; };
+		6912B9ED87127594DDADBC51 /* Epley.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Epley.swift; sourceTree = "<group>"; };
+		718FE96393B32F4CCF38CA13 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		7451F27AA7383E1D6F6AB319 /* ProgressionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionService.swift; sourceTree = "<group>"; };
+		74FD12969711B9BEC7BE1BAF /* GoalSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalSelectionView.swift; sourceTree = "<group>"; };
+		808F12E6E0C2CF6B383300C9 /* LiftIQUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftIQUITests.swift; sourceTree = "<group>"; };
+		84E8BAB63F18E0631F463B7F /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
+		887B4C439C1BD0080CB4928A /* WorkoutSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSession.swift; sourceTree = "<group>"; };
+		8C5F6DA39FA9755846CB05B4 /* ExerciseSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSearchView.swift; sourceTree = "<group>"; };
+		90EFF33B57A8E697C1BE5CCD /* ExperienceLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperienceLevel.swift; sourceTree = "<group>"; };
+		92C4EB601E96E66BAB990ECB /* LiftIQTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiftIQTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		95F615A0B29142EEB22869AD /* ExerciseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRepository.swift; sourceTree = "<group>"; };
+		95FBB2D5F9E276A73774E9E1 /* InjuryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjuryView.swift; sourceTree = "<group>"; };
+		9BE8C5598AE3EA5AC0F08E5C /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
+		9C4EE8799CD8C8349AD453A1 /* LiftIQApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftIQApp.swift; sourceTree = "<group>"; };
+		9F553DB4B2EBB2FC5D0901F3 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		A21C97EAD56CDB9D5F0EFAF0 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
+		AB7C69EE26498FE58A713710 /* SetType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetType.swift; sourceTree = "<group>"; };
+		AC26FD6065A526663C86080B /* ProgressionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionServiceTests.swift; sourceTree = "<group>"; };
+		B1D571A9322E66DFF919F6EE /* LiftIQ.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiftIQ.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B71270732FA1FEBE369D30B3 /* WorkoutPlanRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanRepository.swift; sourceTree = "<group>"; };
+		B7E4564602811599567CC35F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B990E75935B6488FB4B6B6A0 /* Date+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extensions.swift"; sourceTree = "<group>"; };
+		BCC9BE28F185EABB9A5E4FA5 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
+		C17BC13A69177C73A1F3A97A /* SignUpViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpViewModel.swift; sourceTree = "<group>"; };
+		C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
+		C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInViewModel.swift; sourceTree = "<group>"; };
+		D078599944DDC696093B9573 /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
+		D69C818DD299F972B877B29E /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		DB024AB47D9CF72FF23FB072 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		E153F2A93D1319576F4F805C /* ProgressRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRecord.swift; sourceTree = "<group>"; };
+		E377EF98BB5CBE51CAB521B5 /* OnboardingSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSummaryView.swift; sourceTree = "<group>"; };
+		E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseService.swift; sourceTree = "<group>"; };
+		E6D0A795D08254815C4A6916 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
+		E72D582089ADDEF5B2D00146 /* TemplateType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateType.swift; sourceTree = "<group>"; };
+		EA0B4B74A4E5F957DB42398D /* UnitSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitSystem.swift; sourceTree = "<group>"; };
+		EC3C07CA8A4B0CEF03B2AD90 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		ED01BB87C9043D9518812616 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EF17088170F9D1FAC8467968 /* Goal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Goal.swift; sourceTree = "<group>"; };
+		EF71BCDB13EDC2CC55E5A385 /* PersonalRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecord.swift; sourceTree = "<group>"; };
+		F36940A00370528B0CA5FCFC /* WorkoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplate.swift; sourceTree = "<group>"; };
+		FA6D5806492114799373D2B7 /* SessionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStatus.swift; sourceTree = "<group>"; };
+		FBE33A986D22E8BD63878B1B /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Extensions.swift"; sourceTree = "<group>"; };
+		FD90F6B420857ED77DFB275D /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6F1AEFAC7904DF80B37D4E46 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6F9CD0F9358E8262648586FA /* FirebaseAuth in Frameworks */,
+				911B3B831E6F5F94411D8C54 /* FirebaseFirestore in Frameworks */,
+				64CA9AE71D43FC400C4B43CC /* FirebaseFunctions in Frameworks */,
+				70DC4FC58784B0D26B6C96C3 /* FirebaseMessaging in Frameworks */,
+				5C221F412A5C88652EC81633 /* Algorithms in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		11481B0C19F1CA8BA5A4504F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B7E4564602811599567CC35F /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		2F734CC69B6C15305ADDF0EF /* App */ = {
+			isa = PBXGroup;
+			children = (
+				C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */,
+				ED01BB87C9043D9518812616 /* ContentView.swift */,
+				9C4EE8799CD8C8349AD453A1 /* LiftIQApp.swift */,
+				4958070EC6D6287CDAE3A84D /* MainTabView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		369069D10E0CA56337602F57 /* Workout */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Workout;
+			sourceTree = "<group>";
+		};
+		384BB5D3DCA049200E0E67DB = {
+			isa = PBXGroup;
+			children = (
+				A41B9B2A2BEC09E7E06795D3 /* LiftIQ */,
+				B6AA7BAF94BA31E34A15775D /* LiftIQTests */,
+				B6A765BCDFBAED50A0254ED5 /* LiftIQUITests */,
+				A6DDAFBB49D2F107897D5936 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		38E2EEBC1BF6FA00426209D5 /* Progress */ = {
+			isa = PBXGroup;
+			children = (
+				0AE0487AF69A4DA30250706D /* ProgressDashboardView.swift */,
+			);
+			path = Progress;
+			sourceTree = "<group>";
+		};
+		54DB024770AF056A4FAA7F5C /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				E81E5321378ECF30064655DE /* Auth */,
+				977215FCB36D47B6D95F6891 /* Dashboard */,
+				C15504253C24C0B279501BB7 /* Onboarding */,
+				6781450626E10DCDE04BA5A5 /* Profile */,
+				7748FF2237B8B23B445697C4 /* Programs */,
+				B5E2B3B75886E6C225335DFD /* Progress */,
+				369069D10E0CA56337602F57 /* Workout */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		64026A3C977EBDAEA14915F6 /* Charts */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Charts;
+			sourceTree = "<group>";
+		};
+		6781450626E10DCDE04BA5A5 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		7646A1CA083CFABCA131EBBE /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				EC3C07CA8A4B0CEF03B2AD90 /* Constants.swift */,
+				6912B9ED87127594DDADBC51 /* Epley.swift */,
+				84E8BAB63F18E0631F463B7F /* Formatters.swift */,
+				DB024AB47D9CF72FF23FB072 /* Haptics.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		7748FF2237B8B23B445697C4 /* Programs */ = {
+			isa = PBXGroup;
+			children = (
+				28F062ABE21B69910D49784D /* WorkoutPlanListViewModel.swift */,
+			);
+			path = Programs;
+			sourceTree = "<group>";
+		};
+		817F23C6D2FEA499F61D3FBF /* Workout */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Workout;
+			sourceTree = "<group>";
+		};
+		8501EDF4B9AE140194EBF6BE /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				718FE96393B32F4CCF38CA13 /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		892E61D95F6B2A71BA22AE69 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				D078599944DDC696093B9573 /* Color+Theme.swift */,
+				B990E75935B6488FB4B6B6A0 /* Date+Extensions.swift */,
+				304780F3675E3BC6A553B215 /* Double+Extensions.swift */,
+				FBE33A986D22E8BD63878B1B /* View+Extensions.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		8C82B781BDAE9F8CF1627E22 /* Enums */ = {
+			isa = PBXGroup;
+			children = (
+				3494E9E70D3F92F8787CA5F9 /* Equipment.swift */,
+				90EFF33B57A8E697C1BE5CCD /* ExperienceLevel.swift */,
+				EF17088170F9D1FAC8467968 /* Goal.swift */,
+				31501F8B320E526FB3F99080 /* GroupType.swift */,
+				040FCA118249E4A50587761A /* MovementPattern.swift */,
+				10F1AECA4C518F460EED8BB7 /* MuscleGroup.swift */,
+				FA6D5806492114799373D2B7 /* SessionStatus.swift */,
+				AB7C69EE26498FE58A713710 /* SetType.swift */,
+				E72D582089ADDEF5B2D00146 /* TemplateType.swift */,
+				EA0B4B74A4E5F957DB42398D /* UnitSystem.swift */,
+			);
+			path = Enums;
+			sourceTree = "<group>";
+		};
+		973D4A32CE3084271EFFA7FF /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				67EC70C6C110448CC9BE9F4E /* BodyMetricsView.swift */,
+				2937040EDB90A1574D503DFF /* EquipmentView.swift */,
+				5CCE5C9FCB7DFE0EE087A564 /* ExperienceLevelView.swift */,
+				74FD12969711B9BEC7BE1BAF /* GoalSelectionView.swift */,
+				95FBB2D5F9E276A73774E9E1 /* InjuryView.swift */,
+				A21C97EAD56CDB9D5F0EFAF0 /* OnboardingContainerView.swift */,
+				E377EF98BB5CBE51CAB521B5 /* OnboardingSummaryView.swift */,
+				28DB683111DDF572B81BA7F2 /* ScheduleView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		977215FCB36D47B6D95F6891 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				9BE8C5598AE3EA5AC0F08E5C /* DashboardViewModel.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		9C09F220FF971AD259285773 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				4F6B16BCBE881C0E76BD5ED9 /* BodyMeasurement.swift */,
+				0209D3B496F703764406C9D1 /* Exercise.swift */,
+				49941799A7BE10390B77E3F1 /* ExerciseGroup.swift */,
+				EF71BCDB13EDC2CC55E5A385 /* PersonalRecord.swift */,
+				E153F2A93D1319576F4F805C /* ProgressRecord.swift */,
+				D69C818DD299F972B877B29E /* User.swift */,
+				2BC3AA00D2CF298C42EA9AC7 /* WorkoutPlan.swift */,
+				887B4C439C1BD0080CB4928A /* WorkoutSession.swift */,
+				F36940A00370528B0CA5FCFC /* WorkoutTemplate.swift */,
+				8C82B781BDAE9F8CF1627E22 /* Enums */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A41B9B2A2BEC09E7E06795D3 /* LiftIQ */ = {
+			isa = PBXGroup;
+			children = (
+				2F734CC69B6C15305ADDF0EF /* App */,
+				892E61D95F6B2A71BA22AE69 /* Extensions */,
+				9C09F220FF971AD259285773 /* Models */,
+				ED117AC96E48173C43051294 /* Preview Content */,
+				DD8899E8E8CA715873F0FC0E /* Repositories */,
+				11481B0C19F1CA8BA5A4504F /* Resources */,
+				F313938CD7DACFEE95D6E838 /* Services */,
+				7646A1CA083CFABCA131EBBE /* Utilities */,
+				54DB024770AF056A4FAA7F5C /* ViewModels */,
+				CDBB389AC7228943BA0A1B97 /* Views */,
+			);
+			path = LiftIQ;
+			sourceTree = "<group>";
+		};
+		A68FF8B7C70A5C8CBECA333A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				8C5F6DA39FA9755846CB05B4 /* ExerciseSearchView.swift */,
+				E6D0A795D08254815C4A6916 /* LoadingView.swift */,
+				0FE93EC0608669383B8C6358 /* YouTubePlayerView.swift */,
+				64026A3C977EBDAEA14915F6 /* Charts */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A6DDAFBB49D2F107897D5936 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B1D571A9322E66DFF919F6EE /* LiftIQ.app */,
+				92C4EB601E96E66BAB990ECB /* LiftIQTests.xctest */,
+				24E2D296BB2DB448ED354F2C /* LiftIQUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A94738FE706E4FE42745D442 /* Programs */ = {
+			isa = PBXGroup;
+			children = (
+				4C1553C7D248DE5493CA5048 /* TemplateBrowserView.swift */,
+				38007758FDDE81B717260FC0 /* WorkoutDayDetailView.swift */,
+				11AE0F881620220A58454B5B /* WorkoutPlanDetailView.swift */,
+				045DC1C513EA6E98101D8004 /* WorkoutPlanListView.swift */,
+			);
+			path = Programs;
+			sourceTree = "<group>";
+		};
+		B5E2B3B75886E6C225335DFD /* Progress */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Progress;
+			sourceTree = "<group>";
+		};
+		B6A765BCDFBAED50A0254ED5 /* LiftIQUITests */ = {
+			isa = PBXGroup;
+			children = (
+				808F12E6E0C2CF6B383300C9 /* LiftIQUITests.swift */,
+			);
+			path = LiftIQUITests;
+			sourceTree = "<group>";
+		};
+		B6AA7BAF94BA31E34A15775D /* LiftIQTests */ = {
+			isa = PBXGroup;
+			children = (
+				AC26FD6065A526663C86080B /* ProgressionServiceTests.swift */,
+			);
+			path = LiftIQTests;
+			sourceTree = "<group>";
+		};
+		C15504253C24C0B279501BB7 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				BCC9BE28F185EABB9A5E4FA5 /* OnboardingViewModel.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		CDBB389AC7228943BA0A1B97 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D11B7EF162ECCB97543F65FE /* Auth */,
+				CFA34889356F1A84CC87E3AC /* Dashboard */,
+				973D4A32CE3084271EFFA7FF /* Onboarding */,
+				8501EDF4B9AE140194EBF6BE /* Profile */,
+				A94738FE706E4FE42745D442 /* Programs */,
+				38E2EEBC1BF6FA00426209D5 /* Progress */,
+				A68FF8B7C70A5C8CBECA333A /* Shared */,
+				817F23C6D2FEA499F61D3FBF /* Workout */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		CFA34889356F1A84CC87E3AC /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				FD90F6B420857ED77DFB275D /* DashboardView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		D11B7EF162ECCB97543F65FE /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				5D31C5E4B2953DD8BB06A8E2 /* ForgotPasswordView.swift */,
+				1B5B244AA15F9EBF05899A0B /* SignInView.swift */,
+				5AABE3EC1CFE271282D51A5D /* SignUpView.swift */,
+				9F553DB4B2EBB2FC5D0901F3 /* WelcomeView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		DD8899E8E8CA715873F0FC0E /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				03D9736354B0933BBD76AB38 /* BodyMeasurementRepository.swift */,
+				95F615A0B29142EEB22869AD /* ExerciseRepository.swift */,
+				3AEC9A89784E0884D0D3B3CE /* PersonalRecordRepository.swift */,
+				49E5D6F092764E6DF2C205FE /* ProgressRecordRepository.swift */,
+				1DAE2D532917E3FA759CFB25 /* UserRepository.swift */,
+				B71270732FA1FEBE369D30B3 /* WorkoutPlanRepository.swift */,
+				32933FADAFE72D81E81E048A /* WorkoutSessionRepository.swift */,
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		E81E5321378ECF30064655DE /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */,
+				C17BC13A69177C73A1F3A97A /* SignUpViewModel.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		ED117AC96E48173C43051294 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				328338124C6DB8B6C37E2676 /* PreviewData.swift */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		F313938CD7DACFEE95D6E838 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				0DE7750F35E46F614AFABFA6 /* AIService.swift */,
+				00A7036C394D2FD6A75D02A5 /* AuthService.swift */,
+				E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */,
+				7451F27AA7383E1D6F6AB319 /* ProgressionService.swift */,
+				433B1E9C2E813BD1C5B4EFF0 /* ProgressService.swift */,
+				4F32504DF5ECDD0A3BFC790A /* UnitConversionService.swift */,
+				357673A38056905C25E9FD3E /* WorkoutService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		24F58CCDD0A2E2AF859DEB23 /* LiftIQ */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 04A6AFFCEAD3235D70D69680 /* Build configuration list for PBXNativeTarget "LiftIQ" */;
+			buildPhases = (
+				243AF85DFF8D87E66819143D /* Sources */,
+				F0ACE758919B9ED843BF06CD /* Resources */,
+				6F1AEFAC7904DF80B37D4E46 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LiftIQ;
+			packageProductDependencies = (
+				174A5F33B9718E52FBFDD653 /* FirebaseAuth */,
+				E938A2B86F7F81BA274741C1 /* FirebaseFirestore */,
+				C8D93A7A9168C1F059311E01 /* FirebaseFunctions */,
+				0DB8B74B0399C621022F0D09 /* FirebaseMessaging */,
+				2E19ECD0D0247D63CE7B1E4C /* Algorithms */,
+			);
+			productName = LiftIQ;
+			productReference = B1D571A9322E66DFF919F6EE /* LiftIQ.app */;
+			productType = "com.apple.product-type.application";
+		};
+		900777259F81D4507825A447 /* LiftIQUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A7CFEE0A2D465F39079BB72E /* Build configuration list for PBXNativeTarget "LiftIQUITests" */;
+			buildPhases = (
+				BB9B54192A783F4DE3A7FD6C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				14D071E01E29716D0FC34875 /* PBXTargetDependency */,
+			);
+			name = LiftIQUITests;
+			packageProductDependencies = (
+			);
+			productName = LiftIQUITests;
+			productReference = 24E2D296BB2DB448ED354F2C /* LiftIQUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F89A5704A07AFC366FAD5014 /* LiftIQTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D42B86468076D444A4EB77EE /* Build configuration list for PBXNativeTarget "LiftIQTests" */;
+			buildPhases = (
+				4F898BE0348F09E3BA7510C5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8CEF04D7B0F941E485126D74 /* PBXTargetDependency */,
+			);
+			name = LiftIQTests;
+			packageProductDependencies = (
+			);
+			productName = LiftIQTests;
+			productReference = 92C4EB601E96E66BAB990ECB /* LiftIQTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AED64D5F6F81C5B4364B0AAF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					24F58CCDD0A2E2AF859DEB23 = {
+						ProvisioningStyle = Automatic;
+					};
+					900777259F81D4507825A447 = {
+						TestTargetID = 24F58CCDD0A2E2AF859DEB23;
+					};
+				};
+			};
+			buildConfigurationList = 202457A6B99F2C0C23510589 /* Build configuration list for PBXProject "LiftIQ" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 384BB5D3DCA049200E0E67DB;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				04D262D9275A599C60D6E6BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				81F31F4C2352B379C0310AB2 /* XCRemoteSwiftPackageReference "swift-algorithms" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A6DDAFBB49D2F107897D5936 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				24F58CCDD0A2E2AF859DEB23 /* LiftIQ */,
+				F89A5704A07AFC366FAD5014 /* LiftIQTests */,
+				900777259F81D4507825A447 /* LiftIQUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F0ACE758919B9ED843BF06CD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A4EE18E8D153080C0EF7FD9A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		243AF85DFF8D87E66819143D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A3F36E71F90B67734511A26C /* AIService.swift in Sources */,
+				C18CDEF678680988DFABC0AA /* AppDependencies.swift in Sources */,
+				989EE37D9B6C4C12413982BF /* AuthService.swift in Sources */,
+				28D8C0ACDE3CFEF7183F2F66 /* BodyMeasurement.swift in Sources */,
+				AC33CF4157C3D33932C132AD /* BodyMeasurementRepository.swift in Sources */,
+				38A8280A954949D6F92257CB /* BodyMetricsView.swift in Sources */,
+				BBE5F3507F9AA8EE6F4CE487 /* Color+Theme.swift in Sources */,
+				541704184E4957776B4340BF /* Constants.swift in Sources */,
+				8504473E23460715A5F7EC88 /* ContentView.swift in Sources */,
+				C9268C3E784A4320A64D1F9A /* DashboardView.swift in Sources */,
+				D9F783BA08309579772DCE78 /* DashboardViewModel.swift in Sources */,
+				60FDEB8EF11881C61596A868 /* Date+Extensions.swift in Sources */,
+				064FA7DEB76B64AFED51E1D0 /* Double+Extensions.swift in Sources */,
+				79F0F803C8B58CDD94548585 /* Epley.swift in Sources */,
+				C8FF1350A4E3E04CBE82CEB6 /* Equipment.swift in Sources */,
+				5FE0CE1EB196036B023EA9A7 /* EquipmentView.swift in Sources */,
+				F625CA7C67C72F91D18841EC /* Exercise.swift in Sources */,
+				492E0C79E2E8D74C0B80A227 /* ExerciseGroup.swift in Sources */,
+				AFEF61327600D5D77CAA0900 /* ExerciseRepository.swift in Sources */,
+				0CF1D5A463991FAF8BCEAF4C /* ExerciseSearchView.swift in Sources */,
+				134FB4AB47824A920C1C4A3A /* ExerciseService.swift in Sources */,
+				684D95D721CF7D18525E7542 /* ExperienceLevel.swift in Sources */,
+				8F776B89B35CE50C8E95E2BD /* ExperienceLevelView.swift in Sources */,
+				DF32A32ABEA7A34ADBF7AB69 /* ForgotPasswordView.swift in Sources */,
+				55170B8F06D8ED324AFE4D3E /* Formatters.swift in Sources */,
+				22A089B97ADCF26595942DF4 /* Goal.swift in Sources */,
+				CF9316AF89E45AC2F0015708 /* GoalSelectionView.swift in Sources */,
+				44BB332D8434D0030365EAC8 /* GroupType.swift in Sources */,
+				0BDFD00DB51DB1E06865234F /* Haptics.swift in Sources */,
+				E35CAAEBEBA9D51939509DBB /* InjuryView.swift in Sources */,
+				B586F500AD923315D9B6E42C /* LiftIQApp.swift in Sources */,
+				04EEB988ABE794F6FA54DA9B /* LoadingView.swift in Sources */,
+				7FA65BDD9DF70CCF55BC7C20 /* MainTabView.swift in Sources */,
+				20B4DCA295D332C170A9F2CA /* MovementPattern.swift in Sources */,
+				EDF7751B59074E0E1D02BC58 /* MuscleGroup.swift in Sources */,
+				AC65AE26B99F4F304512DF22 /* OnboardingContainerView.swift in Sources */,
+				D22BD5E619292CB7F0536B36 /* OnboardingSummaryView.swift in Sources */,
+				A87D455DD011F1DED2990431 /* OnboardingViewModel.swift in Sources */,
+				B5E415FBFC7FD002308FBB03 /* PersonalRecord.swift in Sources */,
+				8B7D323A333789A6374705FF /* PersonalRecordRepository.swift in Sources */,
+				5E3257A83978E1E9E5E42A82 /* PreviewData.swift in Sources */,
+				760ADF288722798166833644 /* ProfileView.swift in Sources */,
+				41BEC68B51571E1B5A9C95B9 /* ProgressDashboardView.swift in Sources */,
+				A0C0BDF3F60E4BB3340D9D81 /* ProgressRecord.swift in Sources */,
+				48180E07478F94750287C778 /* ProgressRecordRepository.swift in Sources */,
+				EE36F588A34F1C591905B260 /* ProgressService.swift in Sources */,
+				1918591E3EFEB201D292D48A /* ProgressionService.swift in Sources */,
+				DF7DF43B095D35765273768F /* ScheduleView.swift in Sources */,
+				1E20977C76CED720B510BB80 /* SessionStatus.swift in Sources */,
+				2D737E3F8B6A56AF402FF71A /* SetType.swift in Sources */,
+				0B2372EB501396756E6D6157 /* SignInView.swift in Sources */,
+				450B1EC93293CD123D7F61AE /* SignInViewModel.swift in Sources */,
+				D8C56CB069C112E4F4395C57 /* SignUpView.swift in Sources */,
+				3E0DD3EC403587B8D3DB41FD /* SignUpViewModel.swift in Sources */,
+				59E9B28DF8867F77385AA3D6 /* TemplateBrowserView.swift in Sources */,
+				80981136311E32C1F0D14450 /* TemplateType.swift in Sources */,
+				C9700F677F412BDFD306AB0A /* UnitConversionService.swift in Sources */,
+				8572C85197487CD43288BB96 /* UnitSystem.swift in Sources */,
+				06D7BD8DA9A0F727DED5288B /* User.swift in Sources */,
+				4F96A0DAA20FA0C9E6A8F84A /* UserRepository.swift in Sources */,
+				28170E5536C774CD6F11AFA1 /* View+Extensions.swift in Sources */,
+				E127A6C181DA1F0294B6710C /* WelcomeView.swift in Sources */,
+				217EA1405CABF5D178CD0701 /* WorkoutDayDetailView.swift in Sources */,
+				396E3380FDBBF4C92F0A2B86 /* WorkoutPlan.swift in Sources */,
+				079799C8F6D13F1AF8E40627 /* WorkoutPlanDetailView.swift in Sources */,
+				81A218D3408C5E456B451721 /* WorkoutPlanListView.swift in Sources */,
+				F62772BA13A83F9CD70D5ADB /* WorkoutPlanListViewModel.swift in Sources */,
+				14BB18F83099A3315534540B /* WorkoutPlanRepository.swift in Sources */,
+				59874E9AD0FFCB18DD3917AF /* WorkoutService.swift in Sources */,
+				0B7AA01D8A578E1764B648EF /* WorkoutSession.swift in Sources */,
+				3A36CCB2BC2DC32DF2DE1E6C /* WorkoutSessionRepository.swift in Sources */,
+				32EFA9958BD643F8727BB84F /* WorkoutTemplate.swift in Sources */,
+				3C446C9FDB00C37C5B1FAC70 /* YouTubePlayerView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F898BE0348F09E3BA7510C5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4CB21A5723C7645ED86DB6F /* ProgressionServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB9B54192A783F4DE3A7FD6C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7188D19DF08F331E8712C6A /* LiftIQUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		14D071E01E29716D0FC34875 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 24F58CCDD0A2E2AF859DEB23 /* LiftIQ */;
+			targetProxy = 756CB0E2D0C76EA9B12D9142 /* PBXContainerItemProxy */;
+		};
+		8CEF04D7B0F941E485126D74 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 24F58CCDD0A2E2AF859DEB23 /* LiftIQ */;
+			targetProxy = CFCC3758D887E093FB5C058B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		06E6AD99BC357AAB3AFE4C2F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiftIQ.app/LiftIQ";
+			};
+			name = Release;
+		};
+		12350FAAE40899E2E0E1F1E5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiftIQ.app/LiftIQ";
+			};
+			name = Debug;
+		};
+		4454420A9F7D68D3EE34D622 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.app;
+				PRODUCT_NAME = LiftIQ;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		695555F21814951F656DF277 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		7B2BA4F80667794EDF0A357A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.app;
+				PRODUCT_NAME = LiftIQ;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		879BF6DB91B59B7FDBB45373 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftIQ;
+			};
+			name = Debug;
+		};
+		CF0BF7AA65356939B3A745D9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftIQ;
+			};
+			name = Release;
+		};
+		FADB0D3E1044FC467E83FC62 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		04A6AFFCEAD3235D70D69680 /* Build configuration list for PBXNativeTarget "LiftIQ" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4454420A9F7D68D3EE34D622 /* Debug */,
+				7B2BA4F80667794EDF0A357A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		202457A6B99F2C0C23510589 /* Build configuration list for PBXProject "LiftIQ" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				695555F21814951F656DF277 /* Debug */,
+				FADB0D3E1044FC467E83FC62 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A7CFEE0A2D465F39079BB72E /* Build configuration list for PBXNativeTarget "LiftIQUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				879BF6DB91B59B7FDBB45373 /* Debug */,
+				CF0BF7AA65356939B3A745D9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D42B86468076D444A4EB77EE /* Build configuration list for PBXNativeTarget "LiftIQTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				12350FAAE40899E2E0E1F1E5 /* Debug */,
+				06E6AD99BC357AAB3AFE4C2F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		04D262D9275A599C60D6E6BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = exactVersion;
+				version = 11.6.0;
+			};
+		};
+		81F31F4C2352B379C0310AB2 /* XCRemoteSwiftPackageReference "swift-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-algorithms.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0DB8B74B0399C621022F0D09 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 04D262D9275A599C60D6E6BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		174A5F33B9718E52FBFDD653 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 04D262D9275A599C60D6E6BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		2E19ECD0D0247D63CE7B1E4C /* Algorithms */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 81F31F4C2352B379C0310AB2 /* XCRemoteSwiftPackageReference "swift-algorithms" */;
+			productName = Algorithms;
+		};
+		C8D93A7A9168C1F059311E01 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 04D262D9275A599C60D6E6BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+		E938A2B86F7F81BA274741C1 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 04D262D9275A599C60D6E6BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = AED64D5F6F81C5B4364B0AAF /* Project object */;
+}

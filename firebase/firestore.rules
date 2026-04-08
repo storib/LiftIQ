@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /workoutPlans/{planId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /workoutSessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /progressRecords/{recordId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /personalRecords/{prId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /bodyMeasurements/{measurementId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Exercises are read-only for clients
+    match /exercises/{exerciseId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Pre-built templates are read-only
+    match /workoutTemplates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}
