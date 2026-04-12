@@ -32,8 +32,13 @@ final class ProgressService {
         try await loadBodyMeasurements(userId: measurement.userId)
     }
 
-    func checkForPR(userId: String, exerciseId: String, exerciseName: String, setLog: SetLog, sessionId: String) async throws -> PersonalRecord? {
+    func deleteRecord(_ record: PersonalRecord) async throws {
+        try await prRepository.deleteRecord(userId: record.userId, recordId: record.id)
+    }
+
+    func checkForPRs(userId: String, exerciseId: String, exerciseName: String, setLog: SetLog, sessionId: String) async throws -> [PersonalRecord] {
         let existingPRs = try await prRepository.getRecords(userId: userId, exerciseId: exerciseId)
+        var newPRs: [PersonalRecord] = []
 
         let bestWeight = existingPRs.filter { $0.type == .weight }.max(by: { $0.value < $1.value })
         if bestWeight == nil || setLog.weightKg > (bestWeight?.value ?? 0) {
@@ -49,7 +54,7 @@ final class ProgressService {
                 sessionId: sessionId
             )
             try await prRepository.saveRecord(pr)
-            return pr
+            newPRs.append(pr)
         }
 
         let best1RM = existingPRs.filter { $0.type == .estimated1RM }.max(by: { $0.value < $1.value })
@@ -66,9 +71,9 @@ final class ProgressService {
                 sessionId: sessionId
             )
             try await prRepository.saveRecord(pr)
-            return pr
+            newPRs.append(pr)
         }
 
-        return nil
+        return newPRs
     }
 }

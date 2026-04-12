@@ -1,0 +1,148 @@
+import SwiftUI
+
+struct SetRowView: View {
+    let setNumber: Int
+    let setType: SetType
+    @Binding var weightText: String
+    @Binding var repsText: String
+    @Binding var rpeText: String
+    let previousWeight: Double?
+    let previousReps: Int?
+    let unitSystem: UnitSystem
+    let isCompleted: Bool
+    let isPersonalRecord: Bool
+    let onComplete: () -> Void
+    let onUncomplete: () -> Void
+    let onSetTypeChange: (SetType) -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Set number / type label
+            Menu {
+                ForEach(SetType.allCases) { type in
+                    Button {
+                        onSetTypeChange(type)
+                    } label: {
+                        Label(type.displayName, systemImage: type == setType ? "checkmark" : "")
+                    }
+                }
+            } label: {
+                Text(setLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(setLabelColor)
+                    .frame(width: 32)
+            }
+
+            // Weight input
+            ZStack(alignment: .leading) {
+                if weightText.isEmpty, let prev = previousWeight, prev > 0 {
+                    Text(prev.formatted())
+                        .foregroundStyle(.tertiary)
+                        .font(.subheadline)
+                }
+                TextField("", text: $weightText)
+                    .keyboardType(.decimalPad)
+                    .font(.subheadline)
+            }
+            .frame(width: 60)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color(.tertiarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Text(UnitConversionService.weightLabel(for: unitSystem))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+
+            // Reps input
+            ZStack(alignment: .leading) {
+                if repsText.isEmpty, let prev = previousReps, prev > 0 {
+                    Text("\(prev)")
+                        .foregroundStyle(.tertiary)
+                        .font(.subheadline)
+                }
+                TextField("", text: $repsText)
+                    .keyboardType(.numberPad)
+                    .font(.subheadline)
+            }
+            .frame(width: 44)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color(.tertiarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            // RPE input (only for working sets)
+            if setType == .working {
+                TextField("RPE", text: $rpeText)
+                    .keyboardType(.decimalPad)
+                    .font(.caption)
+                    .frame(width: 36)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 6)
+                    .background(Color(.tertiarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                Spacer()
+                    .frame(width: 48)
+            }
+
+            Spacer()
+
+            // Completion checkbox
+            Button {
+                if isCompleted {
+                    onUncomplete()
+                } else {
+                    onComplete()
+                }
+            } label: {
+                Image(systemName: checkboxIcon)
+                    .font(.title3)
+                    .foregroundStyle(checkboxColor)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Computed Helpers
+
+    private var setLabel: String {
+        switch setType {
+        case .warmUp: return "W"
+        case .dropSet: return "D"
+        case .failureSet: return "F"
+        case .working: return "\(setNumber)"
+        }
+    }
+
+    private var setLabelColor: Color {
+        switch setType {
+        case .warmUp: return Color.warmUpSet
+        case .dropSet: return Color.liftWarning
+        case .failureSet: return Color.liftDanger
+        case .working: return .primary
+        }
+    }
+
+    private var checkboxIcon: String {
+        if isPersonalRecord { return "star.circle.fill" }
+        return isCompleted ? "checkmark.circle.fill" : "circle"
+    }
+
+    private var checkboxColor: Color {
+        if isPersonalRecord { return Color.liftPR }
+        return isCompleted ? Color.liftSuccess : .secondary
+    }
+
+    private var rowBackground: Color {
+        if isPersonalRecord { return Color.liftPR.opacity(0.1) }
+        if isCompleted { return Color.liftSuccess.opacity(0.08) }
+        if setType == .warmUp { return Color.warmUpSet.opacity(0.1) }
+        return .clear
+    }
+}

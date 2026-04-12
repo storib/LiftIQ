@@ -5,6 +5,7 @@ import {
   WORKOUT_GENERATION_SYSTEM_PROMPT,
   WORKOUT_GENERATION_PROMPT_VERSION,
 } from "./prompts/workoutGeneration";
+import { WorkoutPlanSchema } from "./validators/schemas";
 import * as admin from "firebase-admin";
 
 if (!admin.apps.length) admin.initializeApp();
@@ -124,7 +125,34 @@ Generate a complete JSON WorkoutPlan object with this structure:
         throw new HttpsError("internal", "Unexpected response type");
       }
 
-      const plan = JSON.parse(content.text);
+      let text = content.text.trim();
+      const fenceMatch = text.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+      if (fenceMatch) text = fenceMatch[1];
+      const rawPlan = JSON.parse(text);
+      const parsedPlan = WorkoutPlanSchema.safeParse(rawPlan);
+      if (!parsedPlan.success) {
+        throw new HttpsError(
+          "internal",
+          "AI returned a workout plan that did not match the expected schema."
+        );
+      }
+
+      const plan = parsedPlan.data;
+      const availableExerciseIds = new Set(availableExercises.map((ex) => ex.id));
+      const invalidExerciseIds = plan.workouts.flatMap((workout) =>
+        workout.exerciseGroups.flatMap((group) =>
+          group.exercises
+            .map((exercise) => exercise.exerciseId)
+            .filter((exerciseId) => !availableExerciseIds.has(exerciseId))
+        )
+      );
+
+      if (invalidExerciseIds.length > 0) {
+        throw new HttpsError(
+          "internal",
+          "AI returned exercises outside the allowed exercise database."
+        );
+      }
 
       // Log usage for cost monitoring
       await db.collection("aiUsageLogs").add({
@@ -138,6 +166,9 @@ Generate a complete JSON WorkoutPlan object with this structure:
 
       return plan;
     } catch (error: any) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       if (error instanceof SyntaxError) {
         throw new HttpsError(
           "internal",

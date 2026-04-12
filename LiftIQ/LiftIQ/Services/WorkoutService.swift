@@ -48,16 +48,22 @@ final class WorkoutService {
 
     func updateSession(_ session: WorkoutSession) async throws {
         try await sessionRepository.saveSession(session)
-        activeSession = session
+        if session.status == .inProgress {
+            activeSession = session
+        } else if activeSession?.id == session.id {
+            activeSession = nil
+        }
     }
 
-    func completeSession(_ session: WorkoutSession) async throws {
+    @discardableResult
+    func completeSession(_ session: WorkoutSession) async throws -> WorkoutSession {
         var completed = session
         completed.status = .completed
         completed.completedAt = Date()
         try await sessionRepository.saveSession(completed)
         activeSession = nil
         try await loadRecentSessions(userId: session.userId)
+        return completed
     }
 
     func abandonSession(_ session: WorkoutSession) async throws {

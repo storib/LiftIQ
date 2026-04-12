@@ -1,37 +1,162 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own data
+
+    // ── Helper functions ──
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /// Ensures only the listed fields are present in the incoming data.
+    function hasOnlyFields(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    /// Validates that the userId field in the document matches the auth UID.
+    function ownershipInvariant(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    // ── User document ──
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && hasOnlyFields(['id', 'email', 'displayName', 'profile', 'createdAt', 'updatedAt'])
+        && request.resource.data.id == userId
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 100;
+
+      allow update: if isOwner(userId)
+        && hasOnlyFields(['id', 'email', 'displayName', 'profile', 'createdAt', 'updatedAt'])
+        // Cannot change id or email via client
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.email == resource.data.email;
+
+      allow delete: if isOwner(userId);
+
+      // ── Workout Plans ──
 
       match /workoutPlans/{planId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 200
+          && request.resource.data.workoutsPerWeek is int
+          && request.resource.data.workoutsPerWeek >= 1
+          && request.resource.data.workoutsPerWeek <= 7;
+
+        allow update: if isOwner(userId)
+          && ownershipInvariant(userId)
+          // Cannot reassign plan to a different user
+          && request.resource.data.userId == resource.data.userId;
+
+        allow delete: if isOwner(userId);
       }
+
+      // ── Workout Sessions ──
+
       match /workoutSessions/{sessionId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.status in ['inProgress', 'completed', 'abandoned']
+          && request.resource.data.workoutName is string;
+
+        allow update: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status in ['inProgress', 'completed', 'abandoned'];
+
+        allow delete: if isOwner(userId);
       }
+
+      // ── Progress Records ──
+
       match /progressRecords/{recordId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.exerciseId is string;
+
+        allow update: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.userId == resource.data.userId;
+
+        allow delete: if isOwner(userId);
       }
+
+      // ── Personal Records ──
+
       match /personalRecords/{prId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.exerciseId is string
+          && request.resource.data.type in ['weight', 'reps', 'volume', 'estimated1RM']
+          && request.resource.data.value is number
+          && request.resource.data.value > 0;
+
+        allow update: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.userId == resource.data.userId;
+
+        allow delete: if isOwner(userId);
       }
+
+      // ── Body Measurements ──
+
       match /bodyMeasurements/{measurementId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.date is timestamp;
+
+        allow update: if isOwner(userId)
+          && ownershipInvariant(userId)
+          && request.resource.data.userId == resource.data.userId;
+
+        allow delete: if isOwner(userId);
       }
     }
 
-    // Exercises are read-only for clients
+    // ── Global read-only collections ──
+
     match /exercises/{exerciseId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if false;
     }
 
-    // Pre-built templates are read-only
     match /workoutTemplates/{templateId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if false;
+    }
+
+    // ── AI usage logs: write-only from Cloud Functions, deny client access ──
+
+    match /aiUsageLogs/{logId} {
+      allow read, write: if false;
+    }
+
+    // ── Deny everything else ──
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

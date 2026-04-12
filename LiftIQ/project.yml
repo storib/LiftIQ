@@ -22,6 +22,7 @@ targets:
       - path: LiftIQ
     resources:
       - path: LiftIQ/Resources/Assets.xcassets
+      - path: LiftIQ/Resources/PrivacyInfo.xcprivacy
     settings:
       base:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -38,6 +39,10 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    postBuildScripts:
+      - script: '"${SRCROOT}/Scripts/release-checks.sh"'
+        name: "Release Security Checks"
+        basedOnDependencyAnalysis: false
     dependencies:
       - package: firebase-ios-sdk
         product: FirebaseAuth
@@ -47,6 +52,8 @@ targets:
         product: FirebaseFunctions
       - package: firebase-ios-sdk
         product: FirebaseMessaging
+      - package: firebase-ios-sdk
+        product: FirebaseAppCheck
       - package: swift-algorithms
         product: Algorithms
 

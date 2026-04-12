@@ -11,7 +11,8 @@ final class UserRepository {
     }
 
     func saveUser(_ user: LiftIQUser) async throws {
-        try db.collection(collection).document(user.id).setData(from: user)
+        let data = try Firestore.Encoder().encode(user)
+        try await db.collection(collection).document(user.id).setData(data)
     }
 
     func updateProfile(userId: String, profile: UserProfile) async throws {

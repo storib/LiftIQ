@@ -42,7 +42,7 @@ struct SetLog: Codable, Identifiable, Hashable {
     var reps: Int
     var rpe: Double?
     var isPersonalRecord: Bool
-    var completedAt: Date
+    var completedAt: Date?
 
     var estimated1RM: Double {
         guard reps > 0 else { return weightKg }

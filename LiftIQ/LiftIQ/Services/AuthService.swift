@@ -96,4 +96,39 @@ final class AuthService {
         currentUser?.updatedAt = Date()
         needsOnboarding = false
     }
+
+    /// Deletes all user data from Firestore, then deletes the Firebase Auth account.
+    /// Requires a recent sign-in; caller should handle `AuthErrorCode.requiresRecentLogin`
+    /// by prompting reauthentication and retrying.
+    func deleteAccount() async throws {
+        guard let userId = currentUserId else { return }
+
+        let db = Firestore.firestore()
+        let userDocRef = db.collection("users").document(userId)
+
+        // Delete all subcollections in a batch per collection
+        let subcollections = [
+            "workoutPlans",
+            "workoutSessions",
+            "progressRecords",
+            "personalRecords",
+            "bodyMeasurements"
+        ]
+
+        for collection in subcollections {
+            let snapshot = try await userDocRef.collection(collection).getDocuments()
+            if snapshot.documents.isEmpty { continue }
+            let batch = db.batch()
+            for doc in snapshot.documents {
+                batch.deleteDocument(doc.reference)
+            }
+            try await batch.commit()
+        }
+
+        // Delete the user document itself
+        try await userDocRef.delete()
+
+        // Delete the Firebase Auth account (must be last — irreversible)
+        try await Auth.auth().currentUser?.delete()
+    }
 }

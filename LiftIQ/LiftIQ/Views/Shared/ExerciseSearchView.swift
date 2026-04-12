@@ -72,6 +72,9 @@ struct ExerciseSearchView: View {
         }
         .searchable(text: $searchText, prompt: "Search exercises")
         .navigationTitle("Exercises")
+        .task {
+            try? await dependencies.exerciseService.loadExercises()
+        }
     }
 }
 

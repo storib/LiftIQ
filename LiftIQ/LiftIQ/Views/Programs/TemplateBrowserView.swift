@@ -5,6 +5,8 @@ struct TemplateBrowserView: View {
     @State private var selectedTemplate: TemplateType?
     @State private var isGenerating = false
     @State private var errorMessage: String?
+    @State private var showingAIConsent = false
+    @State private var pendingTemplate: TemplateType?
 
     var body: some View {
         List {
@@ -40,7 +42,7 @@ struct TemplateBrowserView: View {
         )) {
             Button("Generate") {
                 if let template = selectedTemplate {
-                    generatePlan(template: template)
+                    requestGeneration(template: template)
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -48,6 +50,22 @@ struct TemplateBrowserView: View {
             if let template = selectedTemplate {
                 Text("Create a personalized \(template.displayName) program based on your profile?")
             }
+        }
+        .sheet(isPresented: $showingAIConsent) {
+            AIConsentSheet(
+                onAccept: {
+                    showingAIConsent = false
+                    if let template = pendingTemplate {
+                        pendingTemplate = nil
+                        generatePlan(template: template)
+                    }
+                },
+                onDecline: {
+                    showingAIConsent = false
+                    pendingTemplate = nil
+                }
+            )
+            .presentationDetents([.large])
         }
         .overlay {
             if isGenerating {
@@ -60,6 +78,15 @@ struct TemplateBrowserView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.ultraThinMaterial)
             }
+        }
+    }
+
+    private func requestGeneration(template: TemplateType) {
+        if AIConsentManager.hasConsented {
+            generatePlan(template: template)
+        } else {
+            pendingTemplate = template
+            showingAIConsent = true
         }
     }
 

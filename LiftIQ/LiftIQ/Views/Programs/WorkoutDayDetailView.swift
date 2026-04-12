@@ -45,5 +45,8 @@ struct WorkoutDayDetailView: View {
             }
         }
         .navigationTitle(workout.name)
+        .task {
+            try? await dependencies.exerciseService.loadExercises()
+        }
     }
 }

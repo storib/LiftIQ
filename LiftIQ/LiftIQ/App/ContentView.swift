@@ -16,5 +16,9 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut, value: dependencies.authService.isAuthenticated)
+        .task(id: dependencies.authService.isAuthenticated) {
+            guard dependencies.authService.isAuthenticated else { return }
+            try? await dependencies.exerciseService.loadExercises()
+        }
     }
 }

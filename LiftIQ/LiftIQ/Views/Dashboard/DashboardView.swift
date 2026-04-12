@@ -3,7 +3,7 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel = DashboardViewModel()
-    @State private var showingWorkout = false
+    @State private var workoutExecutionVM: WorkoutExecutionViewModel?
 
     var body: some View {
         ScrollView {
@@ -57,7 +57,13 @@ struct DashboardView: View {
                             }
 
                             Button {
-                                showingWorkout = true
+                                if let userId = dependencies.authService.currentUserId {
+                                    workoutExecutionVM = WorkoutExecutionViewModel(
+                                        template: workout,
+                                        userId: userId,
+                                        planId: dependencies.workoutService.activePlan?.id
+                                    )
+                                }
                             } label: {
                                 Text("Start Workout")
                                     .font(.headline)
@@ -92,6 +98,41 @@ struct DashboardView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
+                    .padding(.horizontal)
+                }
+
+                // Active session recovery
+                if let activeSession = dependencies.workoutService.activeSession,
+                   workoutExecutionVM == nil {
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "figure.run.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color.liftWarning)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Workout in Progress")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(activeSession.workoutName) \u{2022} \(Formatters.durationString(from: Int(Date().timeIntervalSince(activeSession.startedAt))))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        Button {
+                            workoutExecutionVM = WorkoutExecutionViewModel(existingSession: activeSession)
+                        } label: {
+                            Text("Resume Workout")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.liftWarning)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                    .padding()
+                    .background(Color.liftWarning.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal)
                 }
 
@@ -149,6 +190,10 @@ struct DashboardView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Dashboard")
+        .fullScreenCover(item: $workoutExecutionVM) { vm in
+            WorkoutExecutionView(viewModel: vm)
+                .environment(dependencies)
+        }
         .task {
             if let userId = dependencies.authService.currentUserId {
                 await viewModel.load(workoutService: dependencies.workoutService, userId: userId)

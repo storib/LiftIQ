@@ -33,6 +33,9 @@ export const PlannedExerciseSchema = z.object({
   })).nullable().optional(),
   notes: z.string().nullable().optional(),
   isOptional: z.boolean(),
+}).refine((exercise) => exercise.repsMax >= exercise.repsMin, {
+  message: "repsMax must be greater than or equal to repsMin",
+  path: ["repsMax"],
 });
 
 export const ExerciseGroupSchema = z.object({
@@ -61,11 +64,11 @@ export const WorkoutPlanSchema = z.object({
   goal: z.enum(["strength", "hypertrophy", "endurance", "generalFitness"]),
   weekCount: z.number().min(1).max(16),
   currentWeek: z.number().min(1),
-  workoutsPerWeek: z.number().min(2).max(7),
+  workoutsPerWeek: z.number().min(1).max(7),
   workouts: z.array(WorkoutTemplateSchema),
   deloadWeek: z.number().nullable().optional(),
   isActive: z.boolean(),
-  createdAt: z.string(),
+  createdAt: z.string().datetime(),
   aiGenerated: z.boolean(),
   aiPromptContext: z.string().nullable().optional(),
 });

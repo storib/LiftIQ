@@ -27,4 +27,8 @@ final class PersonalRecordRepository {
     func saveRecord(_ record: PersonalRecord) async throws {
         try prCollection(userId: record.userId).document(record.id).setData(from: record)
     }
+
+    func deleteRecord(userId: String, recordId: String) async throws {
+        try await prCollection(userId: userId).document(recordId).delete()
+    }
 }

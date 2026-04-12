@@ -24,13 +24,16 @@ final class DashboardViewModel {
     }
 
     private func computeTodayWorkout(from plan: WorkoutPlan?) {
-        guard let plan else { return }
-        let weekday = Calendar.current.component(.weekday, from: Date())
-        // Simple mapping: assign workouts sequentially to weekdays
-        let workoutIndex = (weekday - 2) % plan.workouts.count // Monday = 0
-        if workoutIndex >= 0 && workoutIndex < plan.workouts.count {
-            todayWorkout = plan.workouts[workoutIndex]
+        guard let plan, !plan.workouts.isEmpty else {
+            todayWorkout = nil
+            return
         }
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        // .weekday: 1=Sunday, 2=Monday, ..., 7=Saturday
+        // Convert to Monday=0, Tuesday=1, ..., Sunday=6
+        let daysSinceMonday = (weekday + 5) % 7
+        let workoutIndex = daysSinceMonday % plan.workouts.count
+        todayWorkout = plan.workouts[workoutIndex]
     }
 
     private func computeStats(from sessions: [WorkoutSession]) {
