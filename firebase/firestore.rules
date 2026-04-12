@@ -22,21 +22,62 @@ service cloud.firestore {
       return request.resource.data.userId == userId;
     }
 
+    function validUserDocument(userId) {
+      return hasOnlyFields(['id', 'email', 'displayName', 'profile', 'createdAt', 'updatedAt'])
+        && request.resource.data.id == userId
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.profile is map
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validWorkoutPlan(userId) {
+      return ownershipInvariant(userId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.workoutsPerWeek is int
+        && request.resource.data.workoutsPerWeek >= 1
+        && request.resource.data.workoutsPerWeek <= 7;
+    }
+
+    function validWorkoutSession(userId) {
+      return ownershipInvariant(userId)
+        && request.resource.data.status in ['inProgress', 'completed', 'abandoned']
+        && request.resource.data.workoutName is string;
+    }
+
+    function validProgressRecord(userId) {
+      return ownershipInvariant(userId)
+        && request.resource.data.exerciseId is string;
+    }
+
+    function validPersonalRecord(userId) {
+      return ownershipInvariant(userId)
+        && request.resource.data.exerciseId is string
+        && request.resource.data.type in ['weight', 'reps', 'volume', 'estimated1RM']
+        && request.resource.data.value is number
+        && request.resource.data.value > 0;
+    }
+
+    function validBodyMeasurement(userId) {
+      return ownershipInvariant(userId)
+        && request.resource.data.date is timestamp;
+    }
+
     // ── User document ──
 
     match /users/{userId} {
       allow read: if isOwner(userId);
 
       allow create: if isOwner(userId)
-        && hasOnlyFields(['id', 'email', 'displayName', 'profile', 'createdAt', 'updatedAt'])
-        && request.resource.data.id == userId
-        && request.resource.data.email is string
-        && request.resource.data.displayName is string
-        && request.resource.data.displayName.size() > 0
-        && request.resource.data.displayName.size() <= 100;
+        && validUserDocument(userId);
 
       allow update: if isOwner(userId)
-        && hasOnlyFields(['id', 'email', 'displayName', 'profile', 'createdAt', 'updatedAt'])
+        && validUserDocument(userId)
         // Cannot change id or email via client
         && request.resource.data.id == resource.data.id
         && request.resource.data.email == resource.data.email;
@@ -49,16 +90,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-          && ownershipInvariant(userId)
-          && request.resource.data.name is string
-          && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 200
-          && request.resource.data.workoutsPerWeek is int
-          && request.resource.data.workoutsPerWeek >= 1
-          && request.resource.data.workoutsPerWeek <= 7;
+          && validWorkoutPlan(userId);
 
         allow update: if isOwner(userId)
-          && ownershipInvariant(userId)
+          && validWorkoutPlan(userId)
           // Cannot reassign plan to a different user
           && request.resource.data.userId == resource.data.userId;
 
@@ -71,12 +106,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-          && ownershipInvariant(userId)
-          && request.resource.data.status in ['inProgress', 'completed', 'abandoned']
-          && request.resource.data.workoutName is string;
+          && validWorkoutSession(userId);
 
         allow update: if isOwner(userId)
-          && ownershipInvariant(userId)
+          && validWorkoutSession(userId)
           && request.resource.data.userId == resource.data.userId
           && request.resource.data.status in ['inProgress', 'completed', 'abandoned'];
 
@@ -89,11 +122,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-          && ownershipInvariant(userId)
-          && request.resource.data.exerciseId is string;
+          && validProgressRecord(userId);
 
         allow update: if isOwner(userId)
-          && ownershipInvariant(userId)
+          && validProgressRecord(userId)
           && request.resource.data.userId == resource.data.userId;
 
         allow delete: if isOwner(userId);
@@ -105,14 +137,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-          && ownershipInvariant(userId)
-          && request.resource.data.exerciseId is string
-          && request.resource.data.type in ['weight', 'reps', 'volume', 'estimated1RM']
-          && request.resource.data.value is number
-          && request.resource.data.value > 0;
+          && validPersonalRecord(userId);
 
         allow update: if isOwner(userId)
-          && ownershipInvariant(userId)
+          && validPersonalRecord(userId)
           && request.resource.data.userId == resource.data.userId;
 
         allow delete: if isOwner(userId);
@@ -124,11 +152,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-          && ownershipInvariant(userId)
-          && request.resource.data.date is timestamp;
+          && validBodyMeasurement(userId);
 
         allow update: if isOwner(userId)
-          && ownershipInvariant(userId)
+          && validBodyMeasurement(userId)
           && request.resource.data.userId == resource.data.userId;
 
         allow delete: if isOwner(userId);

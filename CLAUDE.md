@@ -30,7 +30,7 @@ Utilities/      → Constants, Formatters, Epley (1RM calc), Haptics
 
 Firebase backend in `firebase/functions/src/`:
 ```
-*.ts            → Cloud Functions (generateWorkoutPlan, suggestExerciseSwap, analyzePlateau, seed)
+*.ts            → Cloud Functions (AI calls, account deletion, progress records, seed)
 prompts/        → Versioned Claude API system prompts
 validators/     → Zod schemas for AI output validation
 data/           → exercises.json (100 exercises, seed file)
@@ -42,6 +42,8 @@ data/           → exercises.json (100 exercises, seed file)
 - **State**: iOS 17 `@Observable` macro everywhere (not ObservableObject/@Published).
 - **Firestore**: User data in subcollections (`/users/{uid}/workoutSessions/...`). ExerciseLogs/Sets embedded in session docs (not subcollections). Global `/exercises` collection is read-only.
 - **AI calls**: Always through Cloud Functions (API key never on client). Prompts versioned in `prompts/`. Output validated with Zod before returning.
+- **AI consent**: Gate personal-data AI use with `AIConsentManager` + `AIConsentSheet`. Update the consent version when shared data changes.
+- **Security**: Firebase App Check is configured before Firebase. Account deletion goes through the backend. `seedExerciseDatabase` requires `ADMIN_SEED_KEY`. `PrivacyInfo.xcprivacy` and Release checks are bundled.
 - **Progressive overload**: Deterministic, runs on-device in `ProgressionService`. AI reserved for plan generation, swaps, plateau analysis.
 - **YouTube**: WKWebView iframe embed via `YouTubePlayerView`. Pass `videoId` string only.
 - **Units**: All weights stored in kg internally. Converted at display time via `UnitSystem` enum.
@@ -65,11 +67,12 @@ data/           → exercises.json (100 exercises, seed file)
 /users/{userId}/personalRecords/{id}   → PersonalRecord
 /users/{userId}/bodyMeasurements/{id}  → BodyMeasurement
 /exercises/{id}                        → Exercise (global, read-only, seeded)
+/aiUsageLogs/{id}                      → Server-only
 ```
 
 ## Current Status
 
-Phase 1 complete. See `engineering-roadmap.md` for full phased plan.
+Phase 1 and security baseline are in place. Before TestFlight: deploy Functions + Firestore rules, enable App Check enforcement, verify App Store privacy labels.
 
 ## Gotchas
 
@@ -77,4 +80,6 @@ Phase 1 complete. See `engineering-roadmap.md` for full phased plan.
 - `Tab()` API is iOS 18+ — use `.tabItem { Label() }` + `.tag()` instead.
 - `lazy var` doesn't work with `@Observable` — use `let` instead.
 - After adding/removing Swift files, re-run `xcodegen generate` to update the .xcodeproj.
-- `GoogleService-Info.plist` is gitignored — each dev needs their own Firebase project config.
+- `GoogleService-Info.plist` is gitignored but bundled by `project.yml`; keep it at `LiftIQ/GoogleService-Info.plist`.
+- Firestore rules tests need the emulator and Java: run via `firebase emulators:exec`, not plain Vitest.
+- Function deploys need secrets set: `ANTHROPIC_API_KEY` and `ADMIN_SEED_KEY`.

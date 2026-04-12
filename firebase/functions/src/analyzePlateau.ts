@@ -5,6 +5,10 @@ import {
   PLATEAU_ANALYSIS_SYSTEM_PROMPT,
   PLATEAU_ANALYSIS_PROMPT_VERSION,
 } from "./prompts/plateauAnalysis";
+import {
+  PlateauAnalysisRequestSchema,
+  PlateauAnalysisSchema,
+} from "./validators/schemas";
 import * as admin from "firebase-admin";
 
 if (!admin.apps.length) admin.initializeApp();
@@ -12,13 +16,19 @@ if (!admin.apps.length) admin.initializeApp();
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
 export const analyzePlateau = onCall(
-  { secrets: [anthropicApiKey] },
+  { secrets: [anthropicApiKey], enforceAppCheck: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in");
     }
 
-    const { exercise, history, userProfile, currentProgramWeek } = request.data;
+    const parsedRequest = PlateauAnalysisRequestSchema.safeParse(request.data);
+    if (!parsedRequest.success) {
+      throw new HttpsError("invalid-argument", "Invalid plateau analysis request.");
+    }
+
+    const { exercise, history, userProfile, currentProgramWeek } =
+      parsedRequest.data;
 
     const userPrompt = `Analyze this exercise performance data:
 
@@ -46,7 +56,14 @@ Determine if the user has plateaued and recommend adjustments.`;
         throw new HttpsError("internal", "Unexpected response type");
       }
 
-      const analysis = JSON.parse(content.text);
+      const rawAnalysis = JSON.parse(content.text);
+      const parsedAnalysis = PlateauAnalysisSchema.safeParse(rawAnalysis);
+      if (!parsedAnalysis.success) {
+        throw new HttpsError(
+          "internal",
+          "AI returned plateau analysis that did not match the expected schema."
+        );
+      }
 
       const db = admin.firestore();
       await db.collection("aiUsageLogs").add({
@@ -58,7 +75,7 @@ Determine if the user has plateaued and recommend adjustments.`;
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      return analysis;
+      return parsedAnalysis.data;
     } catch (error: any) {
       throw new HttpsError("internal", error.message || "Analysis failed");
     }

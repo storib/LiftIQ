@@ -5,7 +5,10 @@ import {
   WORKOUT_GENERATION_SYSTEM_PROMPT,
   WORKOUT_GENERATION_PROMPT_VERSION,
 } from "./prompts/workoutGeneration";
-import { WorkoutPlanSchema } from "./validators/schemas";
+import {
+  GenerateWorkoutPlanRequestSchema,
+  WorkoutPlanSchema,
+} from "./validators/schemas";
 import * as admin from "firebase-admin";
 
 if (!admin.apps.length) admin.initializeApp();
@@ -13,10 +16,15 @@ if (!admin.apps.length) admin.initializeApp();
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
 export const generateWorkoutPlan = onCall(
-  { secrets: [anthropicApiKey], maxInstances: 10 },
+  { secrets: [anthropicApiKey], maxInstances: 10, enforceAppCheck: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in");
+    }
+
+    const parsedRequest = GenerateWorkoutPlanRequestSchema.safeParse(request.data);
+    if (!parsedRequest.success) {
+      throw new HttpsError("invalid-argument", "Invalid workout plan request.");
     }
 
     const {
@@ -27,7 +35,7 @@ export const generateWorkoutPlan = onCall(
       sessionDurationMinutes,
       injuries,
       templateType,
-    } = request.data;
+    } = parsedRequest.data;
 
     // Load exercise database
     const db = admin.firestore();
@@ -44,8 +52,13 @@ export const generateWorkoutPlan = onCall(
     }));
 
     // Filter exercises by available equipment
+    const availableEquipmentSet = new Set<string>(availableEquipment);
     const availableExercises = exercises.filter((ex) =>
-      ex.equipment.every((eq: string) => availableEquipment.includes(eq))
+      Array.isArray(ex.equipment) &&
+      ex.equipment.every(
+        (eq: unknown) =>
+          typeof eq === "string" && availableEquipmentSet.has(eq)
+      )
     );
 
     const userPrompt = `Create a ${templateType} workout plan with these parameters:

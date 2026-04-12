@@ -11,9 +11,65 @@ export const EquipmentSchema = z.enum([
   "bands", "kettlebell", "smithMachine", "pullUpBar", "bench", "ezBar",
 ]);
 
+export const ExperienceLevelSchema = z.enum([
+  "beginner", "intermediate", "advanced",
+]);
+
+export const GoalSchema = z.enum([
+  "strength", "hypertrophy", "endurance", "generalFitness",
+]);
+
 export const GroupTypeSchema = z.enum([
   "straight", "superset", "triset", "circuit", "dropSet",
 ]);
+
+export const MovementPatternSchema = z.enum([
+  "horizontalPush", "horizontalPull", "verticalPush", "verticalPull",
+  "hipHinge", "squat", "lunge", "isolation", "carry", "core",
+]);
+
+export const TemplateTypeSchema = z.enum([
+  "ppl", "upperLower", "fullBody", "broSplit", "custom",
+]);
+
+const InjurySchema = z.object({
+  bodyPart: z.string().min(1).max(100),
+  severity: z.string().min(1).max(50),
+  notes: z.string().max(500),
+}).strict();
+
+export const GenerateWorkoutPlanRequestSchema = z.object({
+  experienceLevel: ExperienceLevelSchema,
+  goals: z.array(GoalSchema).min(1).max(4),
+  availableEquipment: z.array(EquipmentSchema).min(1).max(11),
+  trainingDaysPerWeek: z.number().int().min(1).max(7),
+  sessionDurationMinutes: z.number().int().min(20).max(180),
+  injuries: z.array(InjurySchema).max(20).optional().default([]),
+  templateType: TemplateTypeSchema,
+}).strict();
+
+export const ExerciseSwapRequestSchema = z.object({
+  currentExercise: z.object({
+    id: z.string().min(1),
+    name: z.string().min(1).max(200),
+    primaryMuscle: MuscleGroupSchema,
+    movementPattern: MovementPatternSchema,
+  }).strict(),
+  availableEquipment: z.array(EquipmentSchema).min(1).max(11),
+  otherExercisesInWorkout: z.array(z.string().min(1)).max(50),
+}).strict();
+
+export const ExerciseSwapSuggestionSchema = z.object({
+  exerciseId: z.string().min(1),
+  rationale: z.string().min(1).max(500),
+}).strict();
+
+export const PlateauAnalysisRequestSchema = z.object({
+  exercise: z.string().min(1).max(200),
+  history: z.array(z.record(z.unknown())).min(1).max(30),
+  userProfile: z.record(z.unknown()),
+  currentProgramWeek: z.number().int().min(1).max(52),
+}).strict();
 
 export const PlannedExerciseSchema = z.object({
   id: z.string(),
@@ -60,8 +116,8 @@ export const WorkoutPlanSchema = z.object({
   id: z.string(),
   userId: z.string(),
   name: z.string(),
-  templateType: z.enum(["ppl", "upperLower", "fullBody", "broSplit", "custom"]),
-  goal: z.enum(["strength", "hypertrophy", "endurance", "generalFitness"]),
+  templateType: TemplateTypeSchema,
+  goal: GoalSchema,
   weekCount: z.number().min(1).max(16),
   currentWeek: z.number().min(1),
   workoutsPerWeek: z.number().min(1).max(7),

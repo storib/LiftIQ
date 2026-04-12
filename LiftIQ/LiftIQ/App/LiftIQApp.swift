@@ -23,13 +23,18 @@ struct LiftIQApp: App {
         guard !didConfigureFirebase else { return }
         defer { didConfigureFirebase = true }
 
+        let hasRealConfig = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
+
         // Configure App Check BEFORE FirebaseApp.configure()
-        #if DEBUG
-        let providerFactory = AppCheckDebugProviderFactory()
-        #else
-        let providerFactory = LiftIQAppCheckProviderFactory()
-        #endif
-        AppCheck.setAppCheckProviderFactory(providerFactory)
+        // Skip when using placeholder config — there's no real project to validate against
+        if hasRealConfig {
+            #if DEBUG
+            let providerFactory = AppCheckDebugProviderFactory()
+            #else
+            let providerFactory = LiftIQAppCheckProviderFactory()
+            #endif
+            AppCheck.setAppCheckProviderFactory(providerFactory)
+        }
 
         if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
            let options = FirebaseOptions(contentsOfFile: path) {
@@ -58,7 +63,7 @@ final class LiftIQAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
         #if targetEnvironment(simulator)
         return AppCheckDebugProvider(app: app)
         #else
-        return AppAttestProvider(app: app)
+        return AppAttestProvider(app: app) ?? DeviceCheckProvider(app: app)
         #endif
     }
 }

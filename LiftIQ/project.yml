@@ -20,9 +20,8 @@ targets:
     platform: iOS
     sources:
       - path: LiftIQ
-    resources:
-      - path: LiftIQ/Resources/Assets.xcassets
-      - path: LiftIQ/Resources/PrivacyInfo.xcprivacy
+      - path: GoogleService-Info.plist
+        buildPhase: resources
     settings:
       base:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES

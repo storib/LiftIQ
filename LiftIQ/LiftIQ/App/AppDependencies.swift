@@ -10,7 +10,6 @@ final class AppDependencies {
     let progressionService: ProgressionService
 
     init() {
-        let userRepo = UserRepository()
         let planRepo = WorkoutPlanRepository()
         let sessionRepo = WorkoutSessionRepository()
         let exerciseRepo = ExerciseRepository()

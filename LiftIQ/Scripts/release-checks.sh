@@ -45,8 +45,7 @@ DEBUG_PRINTS=$(echo "$SWIFT_SOURCES" | xargs grep -n '\bprint(' 2>/dev/null | gr
 if [ -n "$DEBUG_PRINTS" ]; then
     echo "warning: Found print() statements in release build. Consider removing:"
     echo "$DEBUG_PRINTS" | head -10
-    # Warning only — uncomment next line to make it a hard error:
-    # ERRORS=$((ERRORS + 1))
+    ERRORS=$((ERRORS + 1))
 fi
 
 NSLOG_CALLS=$(echo "$SWIFT_SOURCES" | xargs grep -n '\bNSLog(' 2>/dev/null | grep -v '^\s*//' || true)

@@ -114,6 +114,16 @@ describe("users/{userId}", () => {
     );
   });
 
+  it("denies update with empty displayName", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().collection("users").doc(USER_A).set(validUserDoc);
+    });
+    const db = authedDb(USER_A);
+    await assertFails(
+      db.collection("users").doc(USER_A).update({ displayName: "" })
+    );
+  });
+
   it("allows owner to delete their own doc", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await ctx.firestore().collection("users").doc(USER_A).set(validUserDoc);
@@ -185,6 +195,27 @@ describe("users/{userId}/personalRecords/{prId}", () => {
         .collection("personalRecords")
         .doc("pr-4")
         .set({ ...validPR, id: "pr-4", userId: USER_B })
+    );
+  });
+
+  it("denies updating a PR to an invalid value", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-1")
+        .set(validPR);
+    });
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-1")
+        .update({ value: 0 })
     );
   });
 
@@ -315,6 +346,27 @@ describe("users/{userId}/workoutPlans/{planId}", () => {
         .collection("workoutPlans")
         .doc("plan-3")
         .set({ ...validPlan, id: "plan-3", name: "" })
+    );
+  });
+
+  it("denies updating plan workoutsPerWeek outside the valid range", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("workoutPlans")
+        .doc("plan-1")
+        .set(validPlan);
+    });
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("workoutPlans")
+        .doc("plan-1")
+        .update({ workoutsPerWeek: 8 })
     );
   });
 });

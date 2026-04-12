@@ -1,6 +1,6 @@
 import SwiftUI
 import FirebaseAuth
-import FirebaseFirestore
+import FirebaseFunctions
 
 @Observable
 final class AuthService {
@@ -13,6 +13,7 @@ final class AuthService {
 
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let userRepository = UserRepository()
+    private let functions = Functions.functions()
 
     init() {
         listenToAuthState()
@@ -97,38 +98,36 @@ final class AuthService {
         needsOnboarding = false
     }
 
-    /// Deletes all user data from Firestore, then deletes the Firebase Auth account.
-    /// Requires a recent sign-in; caller should handle `AuthErrorCode.requiresRecentLogin`
-    /// by prompting reauthentication and retrying.
+    /// Deletes all user data and the Firebase Auth account through a trusted backend.
     func deleteAccount() async throws {
         guard let userId = currentUserId else { return }
-
-        let db = Firestore.firestore()
-        let userDocRef = db.collection("users").document(userId)
-
-        // Delete all subcollections in a batch per collection
-        let subcollections = [
-            "workoutPlans",
-            "workoutSessions",
-            "progressRecords",
-            "personalRecords",
-            "bodyMeasurements"
-        ]
-
-        for collection in subcollections {
-            let snapshot = try await userDocRef.collection(collection).getDocuments()
-            if snapshot.documents.isEmpty { continue }
-            let batch = db.batch()
-            for doc in snapshot.documents {
-                batch.deleteDocument(doc.reference)
-            }
-            try await batch.commit()
+        guard let authUser = Auth.auth().currentUser else {
+            throw AuthServiceError.missingCurrentUser
+        }
+        guard authUser.uid == userId else {
+            throw AuthServiceError.userMismatch
         }
 
-        // Delete the user document itself
-        try await userDocRef.delete()
+        _ = try await functions.httpsCallable("deleteAccount").call([:])
+        try? Auth.auth().signOut()
 
-        // Delete the Firebase Auth account (must be last — irreversible)
-        try await Auth.auth().currentUser?.delete()
+        currentUserId = nil
+        currentUser = nil
+        isAuthenticated = false
+        needsOnboarding = false
+    }
+}
+
+enum AuthServiceError: LocalizedError {
+    case missingCurrentUser
+    case userMismatch
+
+    var errorDescription: String? {
+        switch self {
+        case .missingCurrentUser:
+            return "No signed-in Firebase user was found."
+        case .userMismatch:
+            return "The signed-in Firebase user does not match the loaded LiftIQ account."
+        }
     }
 }
