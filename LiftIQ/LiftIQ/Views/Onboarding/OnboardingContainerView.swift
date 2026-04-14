@@ -3,6 +3,7 @@ import SwiftUI
 struct OnboardingContainerView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel = OnboardingViewModel()
+    @State private var showingAIConsent = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,7 +67,7 @@ struct OnboardingContainerView: View {
                     .disabled(!viewModel.canAdvance)
                 } else {
                     Button {
-                        Task { await viewModel.saveProfile(authService: dependencies.authService) }
+                        requestGeneration()
                     } label: {
                         Group {
                             if viewModel.isLoading {
@@ -88,27 +89,120 @@ struct OnboardingContainerView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
+        .sheet(isPresented: $showingAIConsent) {
+            AIConsentSheet(
+                onAccept: {
+                    showingAIConsent = false
+                    generatePlan()
+                },
+                onDecline: {
+                    showingAIConsent = false
+                    generatePlan()
+                }
+            )
+            .presentationDetents([.large])
+        }
+    }
+
+    private func requestGeneration() {
+        if AIConsentManager.hasConsented {
+            generatePlan()
+        } else {
+            showingAIConsent = true
+        }
+    }
+
+    private func generatePlan() {
+        Task {
+            await viewModel.saveProfileAndGeneratePlan(
+                authService: dependencies.authService,
+                aiService: dependencies.aiService,
+                workoutService: dependencies.workoutService
+            )
+        }
     }
 }
 
 struct OnboardingWelcomeStep: View {
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            Image(systemName: "dumbbell.fill")
-                .font(.system(size: 64))
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer().frame(height: 20)
+
+                // App icon / hero
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.12))
+                        .frame(width: 110, height: 110)
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Color.accentColor)
+                }
+
+                VStack(spacing: 8) {
+                    Text("Welcome to LiftIQ")
+                        .font(.title.bold())
+                    Text("Your intelligent lifting companion")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Feature highlights
+                VStack(spacing: 20) {
+                    OnboardingFeatureRow(
+                        icon: "brain.head.profile",
+                        title: "AI-Powered Plans",
+                        description: "Get a workout program built around your goals, experience, and available equipment."
+                    )
+                    OnboardingFeatureRow(
+                        icon: "chart.line.uptrend.xyaxis",
+                        title: "Smart Progression",
+                        description: "Automatically adjusts weights and volume so you keep making gains week over week."
+                    )
+                    OnboardingFeatureRow(
+                        icon: "play.rectangle.fill",
+                        title: "Form Videos",
+                        description: "Watch proper technique for every exercise right from your workout screen."
+                    )
+                    OnboardingFeatureRow(
+                        icon: "trophy.fill",
+                        title: "Track Your Records",
+                        description: "Log every set, see personal records, and watch your progress over time."
+                    )
+                }
+                .padding(.horizontal, 8)
+
+                Text("Let's set up your profile so we can build a program just for you.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+
+                Spacer().frame(height: 20)
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+}
+
+private struct OnboardingFeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
                 .foregroundStyle(Color.accentColor)
-
-            Text("Let's Build Your Program")
-                .font(.title.bold())
-
-            Text("Answer a few questions so we can create a personalized workout plan just for you.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-
-            Spacer()
+                .frame(width: 36)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

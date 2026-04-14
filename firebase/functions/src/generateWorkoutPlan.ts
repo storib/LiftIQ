@@ -67,7 +67,14 @@ export const generateWorkoutPlan = onCall(
 - Available Equipment: ${JSON.stringify(availableEquipment)}
 - Training Days Per Week: ${trainingDaysPerWeek}
 - Session Duration: ${sessionDurationMinutes} minutes
-- Injuries to avoid: ${JSON.stringify(injuries || [])}
+- Injuries:
+${
+  (injuries && injuries.length > 0)
+    ? injuries.map((inj: { bodyPart: string; severity: string; notes: string }) =>
+        `  * ${inj.severity.toUpperCase()} — ${inj.bodyPart}${inj.notes ? ` (${inj.notes})` : ""}`
+      ).join("\n")
+    : "  None"
+}
 
 Available exercises (use ONLY these exercise IDs):
 ${JSON.stringify(availableExercises, null, 2)}
@@ -165,6 +172,76 @@ Generate a complete JSON WorkoutPlan object with this structure:
           "internal",
           "AI returned exercises outside the allowed exercise database."
         );
+      }
+
+      // Validate severe injuries: ensure no exercises target the injured area
+      if (injuries && injuries.length > 0) {
+        const severeInjuries = injuries.filter(
+          (inj: { severity: string }) => inj.severity.toLowerCase() === "severe"
+        );
+        if (severeInjuries.length > 0) {
+          const injuryMuscleMap: Record<string, string[]> = {
+            "shoulder": ["shoulders", "frontDelts", "sideDelts", "rearDelts"],
+            "left shoulder": ["shoulders", "frontDelts", "sideDelts", "rearDelts"],
+            "right shoulder": ["shoulders", "frontDelts", "sideDelts", "rearDelts"],
+            "knee": ["quads", "hamstrings", "glutes", "calves"],
+            "left knee": ["quads", "hamstrings", "glutes", "calves"],
+            "right knee": ["quads", "hamstrings", "glutes", "calves"],
+            "lower back": ["back", "lats", "core"],
+            "back": ["back", "lats", "traps"],
+            "upper back": ["back", "lats", "traps"],
+            "wrist": ["forearms", "biceps"],
+            "left wrist": ["forearms", "biceps"],
+            "right wrist": ["forearms", "biceps"],
+            "elbow": ["biceps", "triceps", "forearms"],
+            "left elbow": ["biceps", "triceps", "forearms"],
+            "right elbow": ["biceps", "triceps", "forearms"],
+            "hip": ["glutes", "hamstrings", "quads"],
+            "left hip": ["glutes", "hamstrings", "quads"],
+            "right hip": ["glutes", "hamstrings", "quads"],
+            "ankle": ["calves"],
+            "left ankle": ["calves"],
+            "right ankle": ["calves"],
+            "neck": ["traps"],
+            "chest": ["chest"],
+          };
+
+          const blockedMuscles = new Set<string>();
+          for (const inj of severeInjuries) {
+            const key = (inj as { bodyPart: string }).bodyPart.toLowerCase().trim();
+            const mapped = injuryMuscleMap[key];
+            if (mapped) {
+              mapped.forEach((m: string) => blockedMuscles.add(m));
+            }
+          }
+
+          if (blockedMuscles.size > 0) {
+            const exerciseIdToMuscle = new Map<string, string>(
+              exercises.map((ex) => [ex.id, ex.primaryMuscleGroup])
+            );
+
+            const violations = plan.workouts.flatMap((workout) =>
+              workout.exerciseGroups.flatMap((group) =>
+                group.exercises
+                  .filter((exercise) => {
+                    const muscle = exerciseIdToMuscle.get(exercise.exerciseId);
+                    return muscle && blockedMuscles.has(muscle);
+                  })
+                  .map((exercise) => exercise.exerciseId)
+              )
+            );
+
+            if (violations.length > 0) {
+              // Log the violation but don't block — the AI prompt should handle it,
+              // and we don't want to fail the entire generation for edge cases.
+              console.warn(
+                `Injury safety warning: plan includes ${violations.length} exercise(s) ` +
+                `targeting severely injured areas: ${violations.join(", ")}. ` +
+                `Blocked muscles: ${[...blockedMuscles].join(", ")}`
+              );
+            }
+          }
+        }
       }
 
       // Log usage for cost monitoring

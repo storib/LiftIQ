@@ -29,8 +29,8 @@ struct EquipmentView: View {
                                     .font(.caption)
                                     .multilineTextAlignment(.center)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                            .padding(.vertical, 8)
                             .background(viewModel.selectedEquipment.contains(equipment) ? Color.accentColor.opacity(0.15) : Color(.secondarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .overlay(

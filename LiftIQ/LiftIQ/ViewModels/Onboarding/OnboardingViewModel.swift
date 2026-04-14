@@ -106,13 +106,41 @@ final class OnboardingViewModel {
         )
     }
 
-    func saveProfile(authService: AuthService) async {
+    /// Best-fit template based on the user's chosen training days.
+    var recommendedTemplate: TemplateType {
+        switch trainingDaysPerWeek {
+        case 1...3: return .fullBody
+        case 4:     return .upperLower
+        case 5:     return .broSplit
+        default:    return .ppl // 6-7
+        }
+    }
+
+    func saveProfileAndGeneratePlan(
+        authService: AuthService,
+        aiService: AIService,
+        workoutService: WorkoutService
+    ) async {
         isLoading = true
         errorMessage = nil
         do {
             let profile = buildProfile()
             try await authService.updateProfile(profile)
+
+            // Auto-generate a plan if the user has given AI consent
+            guard AIConsentManager.hasConsented else { return }
+            guard let userId = authService.currentUserId else { return }
+
+            var plan = try await aiService.generateWorkoutPlan(
+                profile: profile,
+                templateType: recommendedTemplate
+            )
+            plan.userId = userId
+            plan.isActive = true
+            try await workoutService.savePlan(plan)
         } catch {
+            // Profile saved successfully even if plan generation fails —
+            // the user lands in the main app and can retry from Templates.
             errorMessage = error.localizedDescription
         }
         isLoading = false
