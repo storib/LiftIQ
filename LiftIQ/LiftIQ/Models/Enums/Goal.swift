@@ -10,10 +10,23 @@ enum Goal: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .strength: return "Strength"
-        case .hypertrophy: return "Hypertrophy"
-        case .endurance: return "Endurance"
-        case .generalFitness: return "General Fitness"
+        case .strength: return "Get Stronger"
+        case .hypertrophy: return "Build Muscle"
+        case .endurance: return "Boost Endurance"
+        case .generalFitness: return "Stay Fit"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .strength:
+            return "Lift heavier and build raw power"
+        case .hypertrophy:
+            return "Grow and tone your muscles"
+        case .endurance:
+            return "Last longer with higher stamina"
+        case .generalFitness:
+            return "All-around health and wellness"
         }
     }
 

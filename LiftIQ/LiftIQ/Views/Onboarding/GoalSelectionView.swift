@@ -23,7 +23,7 @@ struct GoalSelectionView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(goal.displayName)
                                     .font(.headline)
-                                Text(goal.repRangeDescription)
+                                Text(goal.subtitle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
