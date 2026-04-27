@@ -78,4 +78,9 @@ final class WorkoutService {
         let sessions = try await sessionRepository.getSessionsForExercise(userId: userId, exerciseId: exerciseId, limit: 1)
         return sessions.first?.exerciseLogs.first { $0.exerciseId == exerciseId }
     }
+
+    func getRecentExerciseLogs(userId: String, exerciseId: String, limit: Int = 5) async throws -> [ExerciseLog] {
+        let sessions = try await sessionRepository.getSessionsForExercise(userId: userId, exerciseId: exerciseId, limit: limit)
+        return sessions.compactMap { $0.exerciseLogs.first { $0.exerciseId == exerciseId } }
+    }
 }

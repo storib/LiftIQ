@@ -268,6 +268,139 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertFalse(vm.isFirstInGroup(2))
     }
 
+    // MARK: - Progression suggestions
+
+    /// Helper: build a previous log where every working set hit max reps so
+    /// ProgressionService.suggest() returns a weight-bump suggestion.
+    private func makePriorLogAtMaxReps(
+        exerciseId: String,
+        repsMax: Int = 10,
+        weightKg: Double = 60,
+        setCount: Int = 3
+    ) -> ExerciseLog {
+        let sets = (1...setCount).map { i in
+            SetLog(
+                id: "prior-set-\(i)",
+                setNumber: i,
+                setType: .working,
+                weightKg: weightKg,
+                reps: repsMax,
+                rpe: nil,
+                isPersonalRecord: false,
+                completedAt: Date()
+            )
+        }
+        return ExerciseLog(
+            id: "prior-log-1",
+            sessionId: "prior-session",
+            exerciseId: exerciseId,
+            exerciseName: exerciseId,
+            order: 1,
+            groupType: .straight,
+            sets: sets,
+            notes: nil
+        )
+    }
+
+    private func makePriorLogBelowMin(
+        exerciseId: String,
+        repsMin: Int = 8,
+        weightKg: Double = 60,
+        setCount: Int = 3
+    ) -> ExerciseLog {
+        let sets = (1...setCount).map { i in
+            SetLog(
+                id: "fail-set-\(i)",
+                setNumber: i,
+                setType: .working,
+                weightKg: weightKg,
+                reps: repsMin - 2, // below min
+                rpe: nil,
+                isPersonalRecord: false,
+                completedAt: Date()
+            )
+        }
+        return ExerciseLog(
+            id: "fail-log",
+            sessionId: "fail-session",
+            exerciseId: exerciseId,
+            exerciseName: exerciseId,
+            order: 1,
+            groupType: .straight,
+            sets: sets,
+            notes: nil
+        )
+    }
+
+    func testComputeSuggestionsBumpsWeightWhenAllSetsHitMax() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press"),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let priorLog = makePriorLogAtMaxReps(exerciseId: "bench-press", repsMax: 10, weightKg: 60)
+
+        vm.computeSuggestions(recentLogs: ["bench-press": [priorLog]])
+
+        let suggestion = vm.progressionSuggestions["bench-press"]
+        XCTAssertNotNil(suggestion)
+        XCTAssertEqual(suggestion?.suggestedWeight, 62.5) // +2.5 kg barbell increment
+        XCTAssertFalse(suggestion?.isPlateaued ?? true)
+    }
+
+    func testComputeSuggestionsEmitsPlateauWhenThreeConsecutiveFailures() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press"),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let failLog = makePriorLogBelowMin(exerciseId: "bench-press", repsMin: 8)
+        let recentLogs = Array(repeating: failLog, count: Constants.plateauThreshold)
+
+        vm.computeSuggestions(recentLogs: ["bench-press": recentLogs])
+
+        let suggestion = vm.progressionSuggestions["bench-press"]
+        XCTAssertNotNil(suggestion)
+        XCTAssertTrue(suggestion?.isPlateaued ?? false)
+    }
+
+    func testComputeSuggestionsSkipsExerciseWithNoHistory() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press"),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+
+        vm.computeSuggestions(recentLogs: [:])
+
+        XCTAssertNil(vm.progressionSuggestions["bench-press"])
+    }
+
+    func testComputeSuggestionsClearsStaleEntries() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press"),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        // Seed a stale entry that should be cleared on next compute
+        vm.progressionSuggestions["old-exercise"] = ProgressionSuggestion(
+            exerciseId: "old-exercise",
+            suggestedWeight: 100,
+            suggestedRepsMin: 8,
+            suggestedRepsMax: 10,
+            message: "stale",
+            isPlateaued: false
+        )
+
+        vm.computeSuggestions(recentLogs: [:])
+
+        XCTAssertNil(vm.progressionSuggestions["old-exercise"])
+    }
+
     // MARK: - Scroll target
 
     func testScrollToExerciseLogIndexIsNilByDefault() {

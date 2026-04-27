@@ -19,6 +19,10 @@ struct ExerciseCardView: View {
         viewModel.previousLogs[exerciseLog.exerciseId]
     }
 
+    private var suggestion: ProgressionSuggestion? {
+        viewModel.progressionSuggestions[exerciseLog.exerciseId]
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             // Superset color bar
@@ -54,6 +58,10 @@ struct ExerciseCardView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
+                }
+
+                if let suggestion {
+                    suggestionPill(suggestion)
                 }
 
                 // Collapsible exercise guidance
@@ -186,6 +194,66 @@ struct ExerciseCardView: View {
 
     private var progressService: ProgressService {
         dependencies.progressService
+    }
+
+    @ViewBuilder
+    private func suggestionPill(_ suggestion: ProgressionSuggestion) -> some View {
+        let tint: Color = suggestion.isPlateaued ? .orange : (suggestionIsProgression(suggestion) ? .green : .secondary)
+        let icon = suggestion.isPlateaued ? "exclamationmark.triangle.fill"
+            : (suggestionIsProgression(suggestion) ? "arrow.up.right.circle.fill" : "equal.circle.fill")
+
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.subheadline)
+                .foregroundStyle(tint)
+            Text(suggestionText(suggestion))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+                .lineLimit(2)
+            Spacer()
+            if suggestion.isPlateaued {
+                Button("Swap") {
+                    viewModel.requestSwap(exerciseLogIndex: exerciseLogIndex)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(tint.opacity(0.15))
+                .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func suggestionIsProgression(_ s: ProgressionSuggestion) -> Bool {
+        guard let prevWeight = topPreviousWorkingWeightKg else { return false }
+        return s.suggestedWeight > prevWeight + 0.001
+    }
+
+    private var topPreviousWorkingWeightKg: Double? {
+        previousLog?.sets
+            .filter { $0.setType == .working && $0.weightKg > 0 }
+            .map(\.weightKg)
+            .first
+    }
+
+    private func suggestionText(_ s: ProgressionSuggestion) -> String {
+        if s.isPlateaued {
+            return "Plateau detected — try swapping this exercise"
+        }
+        let displayWeight = UnitConversionService.convertWeight(s.suggestedWeight, to: viewModel.unitSystem)
+        let unitLabel = viewModel.unitSystem == .metric ? "kg" : "lb"
+        if let prevKg = topPreviousWorkingWeightKg, s.suggestedWeight > prevKg + 0.001 {
+            let prevDisplay = UnitConversionService.convertWeight(prevKg, to: viewModel.unitSystem)
+            let delta = displayWeight - prevDisplay
+            return "Try \(displayWeight.formatted(decimals: 1)) \(unitLabel) (+\(delta.formatted(decimals: 1)) from last)"
+        }
+        return "Hold at \(displayWeight.formatted(decimals: 1)) \(unitLabel) — hit \(s.suggestedRepsMax) reps to progress"
     }
 
     private func previousSessionLine(_ prevLog: ExerciseLog) -> some View {

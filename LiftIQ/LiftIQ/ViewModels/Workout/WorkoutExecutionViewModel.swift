@@ -10,6 +10,11 @@ final class WorkoutExecutionViewModel: Identifiable {
     var session: WorkoutSession
     var exerciseDetails: [String: Exercise] = [:]
     var previousLogs: [String: ExerciseLog] = [:]
+    var progressionSuggestions: [String: ProgressionSuggestion] = [:]
+
+    // ProgressionService is stateless; owning an instance here keeps the VM
+    // testable without DI plumbing through start(...).
+    let progressionService = ProgressionService()
 
     // MARK: - Input State (parallel arrays for TextField bindings)
 
@@ -175,8 +180,9 @@ final class WorkoutExecutionViewModel: Identifiable {
             // Persist the initial session
             try await workoutService.startSession(session)
 
-            // Load exercise details and previous logs
+            // Load exercise details, previous logs, and recent logs (for progression).
             let exerciseIds = Set(session.exerciseLogs.map(\.exerciseId))
+            var recentLogsByExerciseId: [String: [ExerciseLog]] = [:]
             for exerciseId in exerciseIds {
                 if let exercise = exerciseService.getExercise(id: exerciseId) {
                     exerciseDetails[exerciseId] = exercise
@@ -186,13 +192,19 @@ final class WorkoutExecutionViewModel: Identifiable {
                     }
                 }
 
-                if let previousLog = try await workoutService.getPreviousExerciseLog(userId: userId, exerciseId: exerciseId) {
-                    previousLogs[exerciseId] = previousLog
+                let recent = (try? await workoutService.getRecentExerciseLogs(
+                    userId: userId, exerciseId: exerciseId, limit: 5
+                )) ?? []
+                recentLogsByExerciseId[exerciseId] = recent
+                if let mostRecent = recent.first {
+                    previousLogs[exerciseId] = mostRecent
                 }
             }
 
-            // Pre-fill weights from previous session
-            prefillFromPreviousSession()
+            computeSuggestions(recentLogs: recentLogsByExerciseId)
+
+            // Pre-fill weights from suggestions (with previous-session fallback)
+            prefillFromSuggestions()
 
             // Start elapsed timer
             startElapsedTimer()
@@ -416,9 +428,22 @@ final class WorkoutExecutionViewModel: Identifiable {
         rpeInputs[index] = Array(repeating: "", count: setCount)
 
         previousLogs.removeValue(forKey: oldExerciseId)
+        progressionSuggestions.removeValue(forKey: oldExerciseId)
         do {
-            if let prevLog = try await workoutService.getPreviousExerciseLog(userId: userId, exerciseId: newExercise.id) {
-                previousLogs[newExercise.id] = prevLog
+            let recent = try await workoutService.getRecentExerciseLogs(
+                userId: userId, exerciseId: newExercise.id, limit: 5
+            )
+            if let mostRecent = recent.first {
+                previousLogs[newExercise.id] = mostRecent
+            }
+            // Recompute the suggestion for just the new exerciseId
+            if let planned = plannedExercise(for: newExercise.id), !recent.isEmpty,
+               let suggestion = progressionService.suggest(
+                   for: planned,
+                   previousLogs: recent,
+                   exerciseInfo: exerciseDetails[newExercise.id]
+               ) {
+                progressionSuggestions[newExercise.id] = suggestion
             }
         } catch {}
 
@@ -577,18 +602,55 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
     }
 
-    private func prefillFromPreviousSession() {
+    /// Pure helper: given recent logs per exerciseId, populate
+    /// `progressionSuggestions` by routing each through `ProgressionService`.
+    /// Exposed (not private) so tests can drive it directly without async I/O.
+    func computeSuggestions(recentLogs: [String: [ExerciseLog]]) {
+        progressionSuggestions.removeAll()
+        let seenExerciseIds = Set(session.exerciseLogs.map(\.exerciseId))
+        for exerciseId in seenExerciseIds {
+            guard let logs = recentLogs[exerciseId], !logs.isEmpty,
+                  let planned = plannedExercise(for: exerciseId) else { continue }
+            if let suggestion = progressionService.suggest(
+                for: planned,
+                previousLogs: logs,
+                exerciseInfo: exerciseDetails[exerciseId]
+            ) {
+                progressionSuggestions[exerciseId] = suggestion
+            }
+        }
+    }
+
+    func plannedExercise(for exerciseId: String) -> PlannedExercise? {
+        for group in templateGroups {
+            if let p = group.exercises.first(where: { $0.exerciseId == exerciseId }) {
+                return p
+            }
+        }
+        return nil
+    }
+
+    private func prefillFromSuggestions() {
         for i in session.exerciseLogs.indices {
             let exerciseId = session.exerciseLogs[i].exerciseId
-            guard let prevLog = previousLogs[exerciseId] else { continue }
+            let suggestion = progressionSuggestions[exerciseId]
+            let prevLog = previousLogs[exerciseId]
 
             for j in session.exerciseLogs[i].sets.indices {
-                guard j < prevLog.sets.count,
-                      session.exerciseLogs[i].sets[j].weightKg == 0 else { continue }
+                guard session.exerciseLogs[i].sets[j].weightKg == 0 else { continue }
 
-                let prevSet = prevLog.sets[j]
-                let displayWeight = UnitConversionService.convertWeight(prevSet.weightKg, to: unitSystem)
-                weightInputs[i][j] = displayWeight > 0 ? "\(displayWeight.formatted(decimals: 1))" : ""
+                // Priority: suggestion's weight > previous session's weight at same set index > empty
+                var weightKg: Double = 0
+                if let s = suggestion, s.suggestedWeight > 0 {
+                    weightKg = s.suggestedWeight
+                } else if let prev = prevLog, j < prev.sets.count {
+                    weightKg = prev.sets[j].weightKg
+                }
+
+                if weightKg > 0 {
+                    let displayWeight = UnitConversionService.convertWeight(weightKg, to: unitSystem)
+                    weightInputs[i][j] = displayWeight.formatted(decimals: 1)
+                }
             }
         }
     }

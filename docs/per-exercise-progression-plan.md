@@ -1,9 +1,9 @@
 # Per-Exercise Progression Suggestions
 
-Status: in progress
+Status: shipped on branch `tests-and-ci` (PR #1)
 Owner: Adrian
 Started: 2026-04-26
-Branch: `tests-and-ci`
+Completed: 2026-04-26
 
 ## Goal
 
