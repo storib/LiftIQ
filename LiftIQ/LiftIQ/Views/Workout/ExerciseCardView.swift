@@ -5,7 +5,7 @@ struct ExerciseCardView: View {
     let exerciseLogIndex: Int
     let groupColor: Color?
 
-    @State private var showVideo = false
+    @State private var showGuidance = false
 
     private var exerciseLog: ExerciseLog {
         viewModel.session.exerciseLogs[exerciseLogIndex]
@@ -31,9 +31,21 @@ struct ExerciseCardView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 // Header
-                HStack {
-                    Text(exerciseLog.exerciseName)
-                        .font(.headline)
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(exerciseLog.exerciseName)
+                            .font(.headline)
+
+                        if let exerciseDetail {
+                            HStack(spacing: 8) {
+                                Label(exerciseDetail.primaryMuscleGroup.displayName, systemImage: "target")
+                                Label(exerciseDetail.movementPattern.displayName, systemImage: "arrow.up.and.down")
+                            }
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        }
+                    }
                     Spacer()
                     Button {
                         viewModel.requestSwap(exerciseLogIndex: exerciseLogIndex)
@@ -44,15 +56,18 @@ struct ExerciseCardView: View {
                     }
                 }
 
-                // Collapsible video
-                if let videoId = exerciseDetail?.youtubeVideoId, !videoId.isEmpty {
-                    DisclosureGroup("Form Video", isExpanded: $showVideo) {
-                        YouTubePlayerView(videoId: videoId)
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                // Collapsible exercise guidance
+                if let exerciseDetail {
+                    Divider()
+
+                    DisclosureGroup(isExpanded: $showGuidance) {
+                        ExerciseGuidanceView(exercise: exerciseDetail)
+                            .padding(.top, 8)
+                    } label: {
+                        Label("Form, cues, and video", systemImage: "play.rectangle")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 }
 
                 // Previous session data

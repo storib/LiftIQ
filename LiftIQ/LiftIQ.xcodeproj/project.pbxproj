@@ -82,6 +82,7 @@
 		BBE5F3507F9AA8EE6F4CE487 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D078599944DDC696093B9573 /* Color+Theme.swift */; };
 		BCD361EAF2C295EDB92AA638 /* ExerciseCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E145D1677211A848612D894 /* ExerciseCardView.swift */; };
 		C18CDEF678680988DFABC0AA /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */; };
+		C82C5FC6D526E0FD1648571A /* ExerciseGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE5571BE6D9A26815CE34A8A /* ExerciseGuidanceView.swift */; };
 		C8FF1350A4E3E04CBE82CEB6 /* Equipment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3494E9E70D3F92F8787CA5F9 /* Equipment.swift */; };
 		C9268C3E784A4320A64D1F9A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD90F6B420857ED77DFB275D /* DashboardView.swift */; };
 		C9700F677F412BDFD306AB0A /* UnitConversionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F32504DF5ECDD0A3BFC790A /* UnitConversionService.swift */; };
@@ -207,6 +208,7 @@
 		EB28A0A7FD8C320D74E3C657 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		EC3C07CA8A4B0CEF03B2AD90 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		ED01BB87C9043D9518812616 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EE5571BE6D9A26815CE34A8A /* ExerciseGuidanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuidanceView.swift; sourceTree = "<group>"; };
 		EF17088170F9D1FAC8467968 /* Goal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Goal.swift; sourceTree = "<group>"; };
 		EF71BCDB13EDC2CC55E5A385 /* PersonalRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecord.swift; sourceTree = "<group>"; };
 		F36940A00370528B0CA5FCFC /* WorkoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplate.swift; sourceTree = "<group>"; };
@@ -438,6 +440,7 @@
 			isa = PBXGroup;
 			children = (
 				72142791C6D73216BB25BDA6 /* AIConsentSheet.swift */,
+				EE5571BE6D9A26815CE34A8A /* ExerciseGuidanceView.swift */,
 				8C5F6DA39FA9755846CB05B4 /* ExerciseSearchView.swift */,
 				E6D0A795D08254815C4A6916 /* LoadingView.swift */,
 				0FE93EC0608669383B8C6358 /* YouTubePlayerView.swift */,
@@ -747,6 +750,7 @@
 				F625CA7C67C72F91D18841EC /* Exercise.swift in Sources */,
 				BCD361EAF2C295EDB92AA638 /* ExerciseCardView.swift in Sources */,
 				492E0C79E2E8D74C0B80A227 /* ExerciseGroup.swift in Sources */,
+				C82C5FC6D526E0FD1648571A /* ExerciseGuidanceView.swift in Sources */,
 				AFEF61327600D5D77CAA0900 /* ExerciseRepository.swift in Sources */,
 				0CF1D5A463991FAF8BCEAF4C /* ExerciseSearchView.swift in Sources */,
 				134FB4AB47824A920C1C4A3A /* ExerciseService.swift in Sources */,
