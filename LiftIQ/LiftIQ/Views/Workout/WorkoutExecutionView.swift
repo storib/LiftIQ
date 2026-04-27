@@ -31,14 +31,32 @@ struct WorkoutExecutionView: View {
                 .padding(.vertical, 8)
 
                 // Exercise list
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        exerciseList
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            exerciseList
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, viewModel.restTimerActive ? 280 : 20)
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, viewModel.restTimerActive ? 280 : 20)
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: viewModel.isLoading) { _, isLoading in
+                        guard !isLoading,
+                              let target = viewModel.scrollToExerciseLogIndex else { return }
+                        Task { @MainActor in
+                            withAnimation {
+                                proxy.scrollTo(target, anchor: .top)
+                            }
+                            // Retry after layout settles; deep LazyVStack targets can
+                            // undershoot on the first pass while cells materialize.
+                            try? await Task.sleep(nanoseconds: 150_000_000)
+                            withAnimation {
+                                proxy.scrollTo(target, anchor: .top)
+                            }
+                            viewModel.scrollToExerciseLogIndex = nil
+                        }
+                    }
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
 
             // Rest timer overlay
@@ -112,13 +130,16 @@ struct WorkoutExecutionView: View {
         }
         .task {
             guard let userId = dependencies.authService.currentUserId else { return }
-            let userUnit = dependencies.authService.currentUser?.profile.unitSystem ?? .metric
+            let profile = dependencies.authService.currentUser?.profile
+            let userUnit = profile?.unitSystem ?? .metric
+            let userDefaultRest = profile?.effectiveDefaultRestSeconds ?? 60
             await viewModel.start(
                 workoutService: dependencies.workoutService,
                 exerciseService: dependencies.exerciseService,
                 progressService: dependencies.progressService,
                 userId: userId,
-                userUnitSystem: userUnit
+                userUnitSystem: userUnit,
+                userDefaultRestSeconds: userDefaultRest
             )
         }
         .onDisappear {
@@ -214,6 +235,7 @@ struct WorkoutExecutionView: View {
                                 ? supersetColor(for: group.groupIndex)
                                 : nil
                         )
+                        .id(logIndex)
                     }
                 }
             }

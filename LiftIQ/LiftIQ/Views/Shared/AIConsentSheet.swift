@@ -7,8 +7,7 @@ struct AIConsentSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header
+                VStack(alignment: .leading, spacing: 28) {
                     VStack(spacing: 12) {
                         Image(systemName: "brain.head.profile.fill")
                             .font(.system(size: 44))
@@ -17,57 +16,39 @@ struct AIConsentSheet: View {
                         Text("AI-Powered Workout Plans")
                             .font(.title2.bold())
                             .multilineTextAlignment(.center)
+
+                        Text("We send some of your training info to Anthropic (Claude) to generate your plan. It isn't used to train their models.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 8)
 
-                    Text("LiftIQ uses a third-party AI service to generate personalized workout programs. Before continuing, please review what data is shared and how it is used.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    ConsentSection(
+                        title: "Shared",
+                        tint: .secondary,
+                        items: [
+                            "Goals, experience, and equipment",
+                            "Training schedule and session length",
+                            "Injuries and exercise history"
+                        ]
+                    )
 
-                    // What data is shared
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label("Data Shared with AI", systemImage: "arrow.up.doc.fill")
-                                .font(.subheadline.weight(.semibold))
+                    ConsentSection(
+                        title: "Not shared",
+                        tint: Color.liftSuccess,
+                        items: [
+                            "Name, email, or account info",
+                            "Body measurements or weight"
+                        ]
+                    )
 
-                            BulletPoint("Experience level and training goals")
-                            BulletPoint("Available equipment")
-                            BulletPoint("Training schedule (days per week, session length)")
-                            BulletPoint("Injury information (body part, severity, notes)")
-                            BulletPoint("Exercise performance history (for plateau analysis)")
-                        }
-                    }
-
-                    // Where it goes
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label("AI Processor", systemImage: "server.rack")
-                                .font(.subheadline.weight(.semibold))
-
-                            Text("Your data is sent to **Anthropic** (Claude AI) via our secure backend servers. Anthropic processes the data to generate your workout plan and does not use it for model training.")
-                                .font(.caption)
-                        }
-                    }
-
-                    // What is NOT shared
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Label("What Is Not Shared", systemImage: "lock.shield.fill")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Color.liftSuccess)
-
-                            BulletPoint("Your email address or account credentials")
-                            BulletPoint("Your name or personal identifiers")
-                            BulletPoint("Body measurements or weight")
-                        }
-                    }
-
-                    Text("You can withdraw consent at any time from your Profile settings. Without AI consent, you can still use manually created workout programs.")
-                        .font(.caption)
+                    Text("You can withdraw consent anytime in Profile.")
+                        .font(.footnote)
                         .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
 
-                    // Buttons
                     VStack(spacing: 12) {
                         Button {
                             AIConsentManager.recordConsent()
@@ -90,29 +71,39 @@ struct AIConsentSheet: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .padding(.top, 4)
                 }
-                .padding()
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
             }
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
 
-private struct BulletPoint: View {
-    let text: String
-
-    init(_ text: String) {
-        self.text = text
-    }
+private struct ConsentSection: View {
+    let title: String
+    let tint: Color
+    let items: [String]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("\u{2022}")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(text)
-                .font(.caption)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+                .tracking(0.5)
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(items, id: \.self) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("•")
+                            .foregroundStyle(.secondary)
+                        Text(item)
+                            .font(.subheadline)
+                    }
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

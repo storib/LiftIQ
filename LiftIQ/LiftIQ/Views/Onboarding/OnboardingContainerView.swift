@@ -97,6 +97,8 @@ struct OnboardingContainerView: View {
                 },
                 onDecline: {
                     showingAIConsent = false
+                    // Without consent we can't generate a plan, but we still
+                    // let the user finish onboarding and land in the app.
                     generatePlan()
                 }
             )

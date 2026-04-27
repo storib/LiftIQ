@@ -22,7 +22,7 @@ final class WorkoutExecutionViewModel: Identifiable {
     var isLoading = false
     var errorMessage: String?
     var elapsedSeconds: Int = 0
-    var unitSystem: UnitSystem = .metric {
+    var unitSystem: UnitSystem = .imperial {
         didSet {
             guard unitSystem != oldValue else { return }
             convertWeightInputs(from: oldValue, to: unitSystem)
@@ -52,6 +52,14 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     var exerciseGroupMap: [Int: Int] = [:]   // exerciseLogIndex -> group index
     var templateGroups: [ExerciseGroup] = []
+
+    // Fallback rest duration when a planned exercise has no restSeconds set.
+    // Sourced from the user's profile via start(...).
+    var userDefaultRestSeconds: Int = 60
+
+    // Optional: when set before presenting, the view scrolls to the matching
+    // exercise log on first appear (used for deep-links from program day view).
+    var scrollToExerciseLogIndex: Int?
 
     // MARK: - Timers
 
@@ -152,12 +160,14 @@ final class WorkoutExecutionViewModel: Identifiable {
         exerciseService: ExerciseService,
         progressService: ProgressService,
         userId: String,
-        userUnitSystem: UnitSystem
+        userUnitSystem: UnitSystem,
+        userDefaultRestSeconds: Int = 60
     ) async {
         guard !hasStarted else { return }
         hasStarted = true
         isLoading = true
         unitSystem = userUnitSystem
+        self.userDefaultRestSeconds = userDefaultRestSeconds
 
         do {
             try await exerciseService.loadExercises()
@@ -594,7 +604,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         elapsedTimer = timer
     }
 
-    private func restDuration(forExerciseLogIndex exerciseLogIndex: Int, setIndex: Int) -> (shouldTrigger: Bool, seconds: Int) {
+    func restDuration(forExerciseLogIndex exerciseLogIndex: Int, setIndex: Int) -> (shouldTrigger: Bool, seconds: Int) {
         let exerciseLog = session.exerciseLogs[exerciseLogIndex]
 
         // For straight sets, always trigger rest
@@ -606,16 +616,16 @@ final class WorkoutExecutionViewModel: Identifiable {
 
             guard let groupIndex = exerciseGroupMap[exerciseLogIndex],
                   groupIndex < templateGroups.count else {
-                return (true, Constants.defaultRestSeconds)
+                return (true, userDefaultRestSeconds)
             }
             let group = templateGroups[groupIndex]
             let planned = group.exercises.first { $0.exerciseId == exerciseLog.exerciseId }
-            return (true, planned?.restSeconds ?? Constants.defaultRestSeconds)
+            return (true, planned?.restSeconds ?? userDefaultRestSeconds)
         }
 
         // For supersets/circuits: rest only after all exercises in the group complete the current round
         guard let groupIndex = exerciseGroupMap[exerciseLogIndex] else {
-            return (true, Constants.defaultRestSeconds)
+            return (true, userDefaultRestSeconds)
         }
 
         // Find all exercise log indices in this group
@@ -636,7 +646,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
         // All done for this round — trigger rest
         let group = templateGroups[groupIndex]
-        let restSeconds = group.restBetweenRoundsSeconds ?? Constants.defaultRestSeconds
+        let restSeconds = group.restBetweenRoundsSeconds ?? userDefaultRestSeconds
         return (true, restSeconds)
     }
 

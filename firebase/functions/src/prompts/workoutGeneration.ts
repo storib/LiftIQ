@@ -48,6 +48,6 @@ If the injury notes contain specific guidance (e.g., "doctor said no overhead pr
 - Warm-up sets: empty bar / 40% / 60% of working weight
 
 ## Output Format
-You MUST respond with a valid JSON object matching the WorkoutPlan schema exactly. Do not include any text before or after the JSON.`;
+Return the plan by calling the \`save_workout_plan\` tool exactly once with the complete WorkoutPlan object. The tool's input_schema defines the required structure. Do not produce the plan as plain text — only the tool call will be persisted.`;
 
-export const WORKOUT_GENERATION_PROMPT_VERSION = "2.0.0";
+export const WORKOUT_GENERATION_PROMPT_VERSION = "2.1.0";

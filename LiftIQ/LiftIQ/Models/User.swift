@@ -20,6 +20,13 @@ struct UserProfile: Codable, Hashable {
     var heightCm: Double?
     var dateOfBirth: Date?
     var unitSystem: UnitSystem
+    var defaultRestSeconds: Int?
+}
+
+extension UserProfile {
+    var effectiveDefaultRestSeconds: Int {
+        defaultRestSeconds ?? 60
+    }
 }
 
 struct Injury: Codable, Hashable, Identifiable {

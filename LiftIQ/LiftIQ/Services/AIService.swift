@@ -21,7 +21,9 @@ final class AIService {
             "templateType": templateType.rawValue
         ]
 
-        let result = try await functions.httpsCallable("generateWorkoutPlan").call(data)
+        let callable = functions.httpsCallable("generateWorkoutPlan")
+        callable.timeoutInterval = 180
+        let result = try await callable.call(data)
         guard let json = result.data as? [String: Any],
               let jsonData = try? JSONSerialization.data(withJSONObject: json) else {
             throw AIServiceError.invalidResponse

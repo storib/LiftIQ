@@ -25,7 +25,7 @@ final class OnboardingViewModel {
     var newInjuryNotes = ""
 
     // Step 6: Body Metrics
-    var unitSystem: UnitSystem = .metric
+    var unitSystem: UnitSystem = .imperial
     var bodyWeight: String = ""
     var height: String = ""
 
@@ -102,7 +102,8 @@ final class OnboardingViewModel {
             bodyWeightKg: weightKg,
             heightCm: heightCm,
             dateOfBirth: nil,
-            unitSystem: unitSystem
+            unitSystem: unitSystem,
+            defaultRestSeconds: 60
         )
     }
 
@@ -125,22 +126,22 @@ final class OnboardingViewModel {
         errorMessage = nil
         do {
             let profile = buildProfile()
+
+            // Generate and save the plan BEFORE marking onboarding complete.
+            // updateProfile flips needsOnboarding to false, which unmounts this
+            // view — so anything awaited after it can't surface errors here.
+            if AIConsentManager.hasConsented, let userId = authService.currentUserId {
+                var plan = try await aiService.generateWorkoutPlan(
+                    profile: profile,
+                    templateType: recommendedTemplate
+                )
+                plan.userId = userId
+                plan.isActive = true
+                try await workoutService.savePlan(plan)
+            }
+
             try await authService.updateProfile(profile)
-
-            // Auto-generate a plan if the user has given AI consent
-            guard AIConsentManager.hasConsented else { return }
-            guard let userId = authService.currentUserId else { return }
-
-            var plan = try await aiService.generateWorkoutPlan(
-                profile: profile,
-                templateType: recommendedTemplate
-            )
-            plan.userId = userId
-            plan.isActive = true
-            try await workoutService.savePlan(plan)
         } catch {
-            // Profile saved successfully even if plan generation fails —
-            // the user lands in the main app and can retry from Templates.
             errorMessage = error.localizedDescription
         }
         isLoading = false
