@@ -170,10 +170,12 @@ struct ExerciseCardView: View {
 
                     if exerciseLog.sets.count > 1 {
                         Button {
-                            viewModel.removeSet(
-                                exerciseLogIndex: exerciseLogIndex,
-                                setIndex: exerciseLog.sets.count - 1
-                            )
+                            Task {
+                                await viewModel.removeSet(
+                                    exerciseLogIndex: exerciseLogIndex,
+                                    setIndex: exerciseLog.sets.count - 1
+                                )
+                            }
                         } label: {
                             Label("Remove", systemImage: "minus.circle")
                                 .font(.caption)

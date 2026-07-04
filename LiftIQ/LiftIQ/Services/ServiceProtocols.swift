@@ -51,7 +51,7 @@ protocol ProgressServicing: AnyObject {
         sessionId: String,
         existingPRs: [PersonalRecord]
     ) async throws -> [PersonalRecord]
-    func deleteRecord(_ record: PersonalRecord) async throws
+    func deleteRecord(userId: String, recordId: String) async throws
 }
 
 @MainActor

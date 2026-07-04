@@ -21,8 +21,11 @@ final class ProgressService {
         recentPRs = try await prRepository.getRecords(userId: userId, limit: 20)
     }
 
-    func deleteRecord(_ record: PersonalRecord) async throws {
-        try await prRepository.deleteRecord(userId: record.userId, recordId: record.id)
+    /// Deletes by id rather than record value so callers can roll back PRs
+    /// they no longer hold in memory (e.g. a resumed session, where the ids
+    /// were persisted on the SetLog but the records were never re-fetched).
+    func deleteRecord(userId: String, recordId: String) async throws {
+        try await prRepository.deleteRecord(userId: userId, recordId: recordId)
     }
 
     /// Fetches an exercise's existing PRs. PR values only ever increase, so

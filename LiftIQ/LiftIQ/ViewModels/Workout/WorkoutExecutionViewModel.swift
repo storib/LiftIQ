@@ -323,31 +323,44 @@ final class WorkoutExecutionViewModel: Identifiable {
         return records
     }
 
+    /// Deletes the PR documents a set created and clears every piece of local
+    /// PR state that references them. Every path that un-completes, resets, or
+    /// removes a completed set must go through here. Works from the ids
+    /// persisted on the SetLog — not `sessionPRs` — so it also covers resumed
+    /// sessions where the in-memory records were never re-fetched. Deletion is
+    /// best effort per record; a failed delete never blocks the edit itself.
+    private func rollBackPersonalRecords(exerciseLogIndex: Int, setIndex: Int) async {
+        guard exerciseLogIndex < session.exerciseLogs.count,
+              setIndex < session.exerciseLogs[exerciseLogIndex].sets.count,
+              let recordIds = session.exerciseLogs[exerciseLogIndex].sets[setIndex].personalRecordIds,
+              !recordIds.isEmpty else { return }
+
+        for recordId in recordIds {
+            try? await progressService.deleteRecord(userId: userId, recordId: recordId)
+        }
+
+        let idSet = Set(recordIds)
+        let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
+        sessionPRs.removeAll { idSet.contains($0.id) }
+        prCache[exerciseId]?.removeAll { idSet.contains($0.id) }
+        if let currentPR = newPR, idSet.contains(currentPR.id) {
+            newPR = nil
+        }
+        session.exerciseLogs[exerciseLogIndex].sets[setIndex].personalRecordIds = nil
+        session.exerciseLogs[exerciseLogIndex].sets[setIndex].isPersonalRecord = false
+    }
+
     func uncompleteSet(exerciseLogIndex: Int, setIndex: Int) async {
         guard exerciseLogIndex < session.exerciseLogs.count,
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
 
-        let exerciseLog = session.exerciseLogs[exerciseLogIndex]
-        let setLog = exerciseLog.sets[setIndex]
-        let setId = setLog.id
+        let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
         completedSetIds.remove(setId)
 
-        // Roll back exactly the records this set created (identity-based, not
-        // value-matched, so equal-weight sets can't delete each other's PRs).
-        if let recordIds = setLog.personalRecordIds, !recordIds.isEmpty {
-            let idSet = Set(recordIds)
-            let recordsToDelete = sessionPRs.filter { idSet.contains($0.id) }
-
-            for record in recordsToDelete {
-                try? await progressService.deleteRecord(record)
-            }
-
-            sessionPRs.removeAll { idSet.contains($0.id) }
-            prCache[exerciseLog.exerciseId]?.removeAll { idSet.contains($0.id) }
-            if let currentPR = newPR, idSet.contains(currentPR.id) {
-                newPR = nil
-            }
-        }
+        // Roll back exactly the records this set created (identity-based via
+        // the ids stamped on the set, so it works on resumed sessions and
+        // equal-weight sets can't delete each other's PRs).
+        await rollBackPersonalRecords(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
 
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].weightKg = 0
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].reps = 0
@@ -388,10 +401,13 @@ final class WorkoutExecutionViewModel: Identifiable {
         setInputs[newSet.id] = SetInput()
     }
 
-    func removeSet(exerciseLogIndex: Int, setIndex: Int) {
+    func removeSet(exerciseLogIndex: Int, setIndex: Int) async {
         guard exerciseLogIndex < session.exerciseLogs.count,
               session.exerciseLogs[exerciseLogIndex].sets.count > 1,
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
+
+        // A removed set's PRs must not outlive it.
+        await rollBackPersonalRecords(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
 
         let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
         completedSetIds.remove(setId)
@@ -422,6 +438,12 @@ final class WorkoutExecutionViewModel: Identifiable {
               index < session.exerciseLogs.count else { return }
 
         let oldExerciseId = session.exerciseLogs[index].exerciseId
+
+        // Swapping resets every set, so any PRs those sets earned must be
+        // deleted first (while the log still carries the old exerciseId).
+        for setIndex in session.exerciseLogs[index].sets.indices {
+            await rollBackPersonalRecords(exerciseLogIndex: index, setIndex: setIndex)
+        }
 
         // Update exercise info
         session.exerciseLogs[index].exerciseId = newExercise.id
@@ -515,10 +537,17 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.durationSeconds = elapsedSeconds
 
         // An abandoned session's sets don't count, so its PRs must not stick
-        // around either. Best effort per record; deletion failures shouldn't
-        // block abandoning the session itself.
-        for record in sessionPRs {
-            try? await progressService.deleteRecord(record)
+        // around either. Collect ids from the sets (survives resume, when
+        // sessionPRs is empty) plus anything in memory. Best effort per
+        // record; deletion failures shouldn't block abandoning the session.
+        var recordIds = Set(sessionPRs.map(\.id))
+        for log in session.exerciseLogs {
+            for set in log.sets {
+                recordIds.formUnion(set.personalRecordIds ?? [])
+            }
+        }
+        for recordId in recordIds {
+            try? await progressService.deleteRecord(userId: userId, recordId: recordId)
         }
         sessionPRs.removeAll()
         newPR = nil

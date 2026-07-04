@@ -3,6 +3,7 @@ import {
   computeRecordsForSession,
   epley,
   progressRecordIdsForSession,
+  staleProgressRecordIds,
 } from "../src/computeProgressRecords";
 
 const SESSION_ID = "session-123";
@@ -242,5 +243,54 @@ describe("progressRecordIdsForSession", () => {
 
   it("returns empty for a session without logs", () => {
     expect(progressRecordIdsForSession({}, SESSION_ID)).toEqual([]);
+  });
+});
+
+describe("staleProgressRecordIds", () => {
+  it("returns ids for exercises the new record set no longer produces", () => {
+    const before = {
+      exerciseLogs: [
+        { exerciseId: "bench-press", sets: [workingSet(100, 5)] },
+        { exerciseId: "squat", sets: [workingSet(140, 5)] },
+      ],
+    };
+    // Edited session dropped squat entirely.
+    const after = {
+      exerciseLogs: [{ exerciseId: "bench-press", sets: [workingSet(100, 5)] }],
+    };
+    const records = computeRecordsForSession(after, SESSION_ID);
+
+    expect(staleProgressRecordIds(before, records, SESSION_ID)).toEqual([
+      `${SESSION_ID}_squat`,
+    ]);
+  });
+
+  it("flags an exercise whose working sets were all invalidated", () => {
+    const before = {
+      exerciseLogs: [{ exerciseId: "squat", sets: [workingSet(140, 5)] }],
+    };
+    // Same exercise still present, but no valid working sets -> no record.
+    const after = {
+      exerciseLogs: [{ exerciseId: "squat", sets: [{ setType: "working", weightKg: 0, reps: 0 }] }],
+    };
+    const records = computeRecordsForSession(after, SESSION_ID);
+
+    expect(records).toEqual([]);
+    expect(staleProgressRecordIds(before, records, SESSION_ID)).toEqual([
+      `${SESSION_ID}_squat`,
+    ]);
+  });
+
+  it("returns nothing when the record set covers everything the before snapshot had", () => {
+    const session = {
+      exerciseLogs: [{ exerciseId: "bench-press", sets: [workingSet(100, 5)] }],
+    };
+    const records = computeRecordsForSession(session, SESSION_ID);
+
+    expect(staleProgressRecordIds(session, records, SESSION_ID)).toEqual([]);
+  });
+
+  it("returns nothing without a before snapshot (session creation)", () => {
+    expect(staleProgressRecordIds(undefined, [], SESSION_ID)).toEqual([]);
   });
 });

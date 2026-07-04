@@ -132,7 +132,7 @@ final class FakeProgressService: ProgressServicing {
     // Recorded calls
     private(set) var checkForPRsCalls: [(exerciseId: String, setLog: SetLog, sessionId: String, existingPRs: [PersonalRecord])] = []
     private(set) var savedPRs: [PersonalRecord] = []
-    private(set) var deletedRecords: [PersonalRecord] = []
+    private(set) var deletedRecordIds: [String] = []
 
     func loadRecentPRs(userId: String) async throws {}
 
@@ -187,9 +187,9 @@ final class FakeProgressService: ProgressServicing {
         return prs
     }
 
-    func deleteRecord(_ record: PersonalRecord) async throws {
+    func deleteRecord(userId: String, recordId: String) async throws {
         if let deleteRecordError { throw deleteRecordError }
-        deletedRecords.append(record)
+        deletedRecordIds.append(recordId)
     }
 }
 

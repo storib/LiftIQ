@@ -122,6 +122,21 @@ export function computeRecordsForSession(
   return records;
 }
 
+// Record IDs the previous snapshot could have produced that the new record
+// set no longer does — an edit to a completed session can drop an exercise
+// entirely or leave it with no valid working sets. Exported for unit tests.
+export function staleProgressRecordIds(
+  before: SessionData | undefined,
+  newRecords: ProgressRecordDoc[],
+  sessionId: string,
+): string[] {
+  if (!before) return [];
+  const newIds = new Set(newRecords.map((r) => r.id));
+  return progressRecordIdsForSession(before, sessionId).filter(
+    (id) => !newIds.has(id),
+  );
+}
+
 // Deterministic doc IDs for a session's progress records, derived from a
 // session snapshot. Used to clean up when a session document is deleted —
 // records written before the `sessionId` field existed are still covered.
@@ -175,11 +190,18 @@ export const computeProgressRecords = onDocumentWritten(
     if (afterData.status !== "completed") return;
 
     const records = computeRecordsForSession(afterData, sessionId);
-    if (records.length === 0) return;
+    // Edits to a completed session can remove an exercise (or strip its valid
+    // working sets); delete the records the previous snapshot produced that
+    // this write no longer does. Deleting a missing doc is a no-op.
+    const staleIds = staleProgressRecordIds(beforeData, records, sessionId);
+    if (records.length === 0 && staleIds.length === 0) return;
 
     const batch = db.batch();
     for (const record of records) {
       batch.set(recordCollection.doc(record.id), { ...record, userId });
+    }
+    for (const id of staleIds) {
+      batch.delete(recordCollection.doc(id));
     }
     await batch.commit();
   }

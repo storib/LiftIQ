@@ -256,7 +256,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertEqual(vm.setInputs.count, 3)
     }
 
-    func testRemoveSetTrimsAndRenumbers() {
+    func testRemoveSetTrimsAndRenumbers() async {
         let template = makeTemplate(groups: [
             ExerciseGroup(id: "g1", groupType: .straight, exercises: [
                 makePlanned(sets: 3),
@@ -264,7 +264,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         ])
         let vm = makeVM(template: template)
         let removedId = vm.session.exerciseLogs[0].sets[1].id
-        vm.removeSet(exerciseLogIndex: 0, setIndex: 1)
+        await vm.removeSet(exerciseLogIndex: 0, setIndex: 1)
 
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, 2)
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.map(\.setNumber), [1, 2])
@@ -272,14 +272,14 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertEqual(vm.setInputs.count, 2)
     }
 
-    func testRemoveSetRefusesToEmptyExercise() {
+    func testRemoveSetRefusesToEmptyExercise() async {
         let template = makeTemplate(groups: [
             ExerciseGroup(id: "g1", groupType: .straight, exercises: [
                 makePlanned(sets: 1),
             ], restBetweenRoundsSeconds: nil),
         ])
         let vm = makeVM(template: template)
-        vm.removeSet(exerciseLogIndex: 0, setIndex: 0)
+        await vm.removeSet(exerciseLogIndex: 0, setIndex: 0)
 
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, 1) // unchanged
     }
@@ -752,7 +752,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
 
         await vm.uncompleteSet(exerciseLogIndex: 0, setIndex: 0)
 
-        XCTAssertEqual(progress.deletedRecords.map(\.id), [prId])
+        XCTAssertEqual(progress.deletedRecordIds, [prId])
         XCTAssertTrue(vm.sessionPRs.isEmpty)
         XCTAssertNil(vm.newPR)
         let set = vm.session.exerciseLogs[0].sets[0]
@@ -791,7 +791,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         await vm.uncompleteSet(exerciseLogIndex: 0, setIndex: 0)
 
         // Only the first set's record was deleted
-        XCTAssertEqual(progress.deletedRecords.map(\.id), firstSetPRIds)
+        XCTAssertEqual(progress.deletedRecordIds, firstSetPRIds)
         XCTAssertEqual(vm.sessionPRs.map(\.id), secondSetPRIds)
         // The second set keeps its PR state untouched
         XCTAssertTrue(vm.session.exerciseLogs[0].sets[1].isPersonalRecord)
@@ -815,7 +815,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
 
         await vm.abandonWorkout()
 
-        XCTAssertEqual(progress.deletedRecords.map(\.id), [prId])
+        XCTAssertEqual(progress.deletedRecordIds, [prId])
         XCTAssertTrue(vm.sessionPRs.isEmpty)
         XCTAssertNil(vm.newPR)
         XCTAssertEqual(workout.abandonedSessions.map(\.id), [vm.session.id])
@@ -836,9 +836,107 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         await vm.abandonWorkout()
 
         // Deletion is best effort; abandoning must still go through
-        XCTAssertTrue(progress.deletedRecords.isEmpty)
+        XCTAssertTrue(progress.deletedRecordIds.isEmpty)
         XCTAssertEqual(workout.abandonedSessions.count, 1)
         XCTAssertNil(vm.errorMessage)
+    }
+
+    // MARK: - PR rollback across resume/swap/remove
+
+    /// Builds a resumed VM whose first set is completed and stamped with PR
+    /// ids, mirroring a relaunch: `personalRecordIds` persisted on the session
+    /// but `sessionPRs` empty because the records were never re-fetched.
+    private func makeResumedVMWithStampedPRs(
+        workout: FakeWorkoutService,
+        progress: FakeProgressService,
+        prIds: [String]
+    ) -> WorkoutExecutionViewModel {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        var existing = WorkoutSession.create(from: template, userId: "u1", planId: nil)
+        existing.exerciseLogs[0].sets[0].weightKg = 100
+        existing.exerciseLogs[0].sets[0].reps = 5
+        existing.exerciseLogs[0].sets[0].isPersonalRecord = true
+        existing.exerciseLogs[0].sets[0].personalRecordIds = prIds
+
+        return WorkoutExecutionViewModel(
+            existingSession: existing,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: progress,
+            progressionService: ProgressionService()
+        )
+    }
+
+    func testUncompleteSetOnResumedSessionDeletesPersistedPRs() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        let vm = makeResumedVMWithStampedPRs(workout: workout, progress: progress,
+                                             prIds: ["pr-1", "pr-2"])
+        defer { vm.stopTimers() }
+        XCTAssertTrue(vm.sessionPRs.isEmpty) // resume: records not in memory
+
+        await vm.uncompleteSet(exerciseLogIndex: 0, setIndex: 0)
+
+        XCTAssertEqual(progress.deletedRecordIds.sorted(), ["pr-1", "pr-2"])
+        XCTAssertNil(vm.session.exerciseLogs[0].sets[0].personalRecordIds)
+        XCTAssertFalse(vm.session.exerciseLogs[0].sets[0].isPersonalRecord)
+    }
+
+    func testAbandonWorkoutOnResumedSessionDeletesStampedPRs() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        let vm = makeResumedVMWithStampedPRs(workout: workout, progress: progress,
+                                             prIds: ["pr-1"])
+        defer { vm.stopTimers() }
+        XCTAssertTrue(vm.sessionPRs.isEmpty)
+
+        await vm.abandonWorkout()
+
+        XCTAssertEqual(progress.deletedRecordIds, ["pr-1"])
+        XCTAssertEqual(workout.abandonedSessions.count, 1)
+    }
+
+    func testSwapExerciseDeletesPRDocsOfResetSets() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+        let prIds = vm.session.exerciseLogs[0].sets[0].personalRecordIds ?? []
+        XCTAssertEqual(prIds.count, 1)
+
+        vm.requestSwap(exerciseLogIndex: 0)
+        await vm.swapExercise(newExercise: makeExercise(id: "incline-press", name: "Incline Press"))
+
+        XCTAssertEqual(progress.deletedRecordIds, prIds)
+        XCTAssertTrue(vm.sessionPRs.isEmpty)
+        XCTAssertNil(vm.session.exerciseLogs[0].sets[0].personalRecordIds)
+    }
+
+    func testRemoveSetDeletesItsPRDocs() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        let lastIndex = vm.session.exerciseLogs[0].sets.count - 1
+        seedInput(vm, exercise: 0, set: lastIndex, weight: "100", reps: "5")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: lastIndex)
+        let prIds = vm.session.exerciseLogs[0].sets[lastIndex].personalRecordIds ?? []
+        XCTAssertEqual(prIds.count, 1)
+
+        await vm.removeSet(exerciseLogIndex: 0, setIndex: lastIndex)
+
+        XCTAssertEqual(progress.deletedRecordIds, prIds)
+        XCTAssertTrue(vm.sessionPRs.isEmpty)
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, lastIndex)
     }
 
     // MARK: - Scroll target

@@ -70,11 +70,16 @@ final class RestTimerController {
     }
 
     /// Tears down the timer and any pending notification without firing
-    /// completion feedback (used when the workout screen goes away).
+    /// completion feedback (used when the workout screen goes away). Resets
+    /// the published state too — a VM that outlives its view would otherwise
+    /// keep showing a stale rest overlay when re-presented.
     func stop() {
         timer?.invalidate()
         timer = nil
         endDate = nil
+        isActive = false
+        secondsRemaining = 0
+        totalSeconds = 0
         cancelRestEndNotification()
     }
 
