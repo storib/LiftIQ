@@ -33,7 +33,13 @@ export type ProgressRecordDoc = {
   totalSets: number;
 };
 
-function epley(weightKg: number, reps: number): number {
+// Epley e1RM estimate. Must mirror the Swift client formula in
+// LiftIQ/LiftIQ/Utilities/Epley.swift exactly so on-device and server-side
+// estimated1RM values agree: reps <= 0 and reps == 1 both return the weight
+// unchanged; only reps >= 2 apply the (1 + reps/30) multiplier.
+// Exported for unit tests.
+export function epley(weightKg: number, reps: number): number {
+  if (reps <= 1) return weightKg;
   return weightKg * (1 + reps / 30.0);
 }
 

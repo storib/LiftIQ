@@ -5,15 +5,12 @@ import Foundation
 final class ProgressService {
     private let progressRepository: ProgressRecordRepository
     private let prRepository: PersonalRecordRepository
-    private let bodyRepository: BodyMeasurementRepository
 
     var recentPRs: [PersonalRecord] = []
-    var bodyMeasurements: [BodyMeasurement] = []
 
-    init(progressRepository: ProgressRecordRepository, prRepository: PersonalRecordRepository, bodyRepository: BodyMeasurementRepository) {
+    init(progressRepository: ProgressRecordRepository, prRepository: PersonalRecordRepository) {
         self.progressRepository = progressRepository
         self.prRepository = prRepository
-        self.bodyRepository = bodyRepository
     }
 
     func getProgressRecords(userId: String, exerciseId: String) async throws -> [ProgressRecord] {
@@ -22,15 +19,6 @@ final class ProgressService {
 
     func loadRecentPRs(userId: String) async throws {
         recentPRs = try await prRepository.getRecords(userId: userId, limit: 20)
-    }
-
-    func loadBodyMeasurements(userId: String) async throws {
-        bodyMeasurements = try await bodyRepository.getMeasurements(userId: userId)
-    }
-
-    func saveBodyMeasurement(_ measurement: BodyMeasurement) async throws {
-        try await bodyRepository.saveMeasurement(measurement)
-        try await loadBodyMeasurements(userId: measurement.userId)
     }
 
     func deleteRecord(_ record: PersonalRecord) async throws {

@@ -50,4 +50,6 @@ If the injury notes contain specific guidance (e.g., "doctor said no overhead pr
 ## Output Format
 Return the plan by calling the \`save_workout_plan\` tool exactly once with the complete WorkoutPlan object. The tool's input_schema defines the required structure. Do not produce the plan as plain text — only the tool call will be persisted.`;
 
-export const WORKOUT_GENERATION_PROMPT_VERSION = "2.1.0";
+// 2.2.0: exercise database moved from the user message into a cached system
+// block (compact JSON, projected fields, sorted by id) for prompt caching.
+export const WORKOUT_GENERATION_PROMPT_VERSION = "2.2.0";

@@ -1,11 +1,40 @@
 import Foundation
 import Observation
-import UserNotifications
+
+/// Text-field backing storage for a single set row. Keyed by SetLog.id in
+/// `WorkoutExecutionViewModel.setInputs`, so adding/removing/reordering sets
+/// can never desynchronize inputs from their sets.
+struct SetInput: Hashable {
+    var weight = ""
+    var reps = ""
+    var rpe = ""
+}
+
+extension Dictionary where Value == SetInput {
+    /// Writable defaulting subscript usable from SwiftUI Bindings.
+    /// The stdlib `[key, default:]` subscript takes its default as
+    /// `@autoclosure`, which cannot appear in a key path, so
+    /// `$viewModel.setInputs[id, default: SetInput()]` does not compile.
+    /// This overload takes a plain value and forms a writable key path:
+    /// `$viewModel.setInputs[setId: id].weight`.
+    subscript(setId key: Key) -> SetInput {
+        get { self[key] ?? SetInput() }
+        set { self[key] = newValue }
+    }
+}
 
 @MainActor
 @Observable
 final class WorkoutExecutionViewModel: Identifiable {
     let id = UUID().uuidString
+
+    // MARK: - Dependencies
+
+    private let workoutService: any WorkoutServicing
+    private let exerciseService: any ExerciseServicing
+    private let progressService: any ProgressServicing
+    let progressionService: ProgressionService
+    let userId: String
 
     // MARK: - Session State
 
@@ -14,15 +43,9 @@ final class WorkoutExecutionViewModel: Identifiable {
     var previousLogs: [String: ExerciseLog] = [:]
     var progressionSuggestions: [String: ProgressionSuggestion] = [:]
 
-    // ProgressionService is stateless; owning an instance here keeps the VM
-    // testable without DI plumbing through start(...).
-    let progressionService = ProgressionService()
+    // MARK: - Input State (keyed by SetLog.id)
 
-    // MARK: - Input State (parallel arrays for TextField bindings)
-
-    var weightInputs: [[String]] = []
-    var repsInputs: [[String]] = []
-    var rpeInputs: [[String]] = []
+    var setInputs: [String: SetInput] = [:]
 
     // MARK: - UI State
 
@@ -39,9 +62,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Rest Timer
 
-    var restTimerActive = false
-    var restSecondsRemaining: Int = 0
-    var restTotalSeconds: Int = 0
+    let restTimer = RestTimerController()
 
     // MARK: - PR Tracking
 
@@ -74,29 +95,50 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Timers
 
-    // Both timers derive their displayed values from wall-clock dates so the
-    // countdown survives backgrounding (foreground Timers suspend).
+    // Derives its displayed value from wall-clock dates so the count survives
+    // backgrounding (foreground Timers suspend). Rest is in RestTimerController.
     private var elapsedTimer: Timer?
-    private var restTimer: Timer?
-    private var restEndDate: Date?
     private var hasStarted = false
-    private static let restNotificationId = "liftiq.rest-timer-complete"
 
     // MARK: - Init (new session from template)
 
-    init(template: WorkoutTemplate, userId: String, planId: String?) {
-        self.session = Self.createSession(from: template, userId: userId, planId: planId)
+    init(
+        template: WorkoutTemplate,
+        userId: String,
+        planId: String?,
+        workoutService: any WorkoutServicing,
+        exerciseService: any ExerciseServicing,
+        progressService: any ProgressServicing,
+        progressionService: ProgressionService
+    ) {
+        self.workoutService = workoutService
+        self.exerciseService = exerciseService
+        self.progressService = progressService
+        self.progressionService = progressionService
+        self.userId = userId
+        self.session = WorkoutSession.create(from: template, userId: userId, planId: planId)
         self.templateGroups = template.exerciseGroups
-        buildGroupMap(from: template)
-        initializeInputArrays()
+        buildGroupMap(from: template.exerciseGroups)
+        initializeInputs()
     }
 
     // MARK: - Init (resume existing session)
 
-    init(existingSession: WorkoutSession) {
+    init(
+        existingSession: WorkoutSession,
+        workoutService: any WorkoutServicing,
+        exerciseService: any ExerciseServicing,
+        progressService: any ProgressServicing,
+        progressionService: ProgressionService
+    ) {
+        self.workoutService = workoutService
+        self.exerciseService = exerciseService
+        self.progressService = progressService
+        self.progressionService = progressionService
+        self.userId = existingSession.userId
         self.session = existingSession
         self.elapsedSeconds = max(0, Int(Date().timeIntervalSince(existingSession.startedAt)))
-        initializeInputArrays()
+        initializeInputs()
         // Mark sets that have real data as completed
         for exerciseLog in session.exerciseLogs {
             for setLog in exerciseLog.sets where setLog.weightKg > 0 && setLog.reps > 0 {
@@ -105,76 +147,9 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
     }
 
-    // MARK: - Session Creation
-
-    static func createSession(from template: WorkoutTemplate, userId: String, planId: String?) -> WorkoutSession {
-        var exerciseLogs: [ExerciseLog] = []
-        var order = 0
-
-        for group in template.exerciseGroups {
-            for planned in group.exercises {
-                var sets: [SetLog] = []
-                for setNum in 1...planned.sets {
-                    sets.append(SetLog(
-                        id: UUID().uuidString,
-                        setNumber: setNum,
-                        setType: .working,
-                        weightKg: 0,
-                        reps: 0,
-                        rpe: nil,
-                        isPersonalRecord: false,
-                        completedAt: nil
-                    ))
-                }
-
-                let fallbackName = planned.exerciseId
-                    .replacingOccurrences(of: "_", with: " ")
-                    .replacingOccurrences(of: "-", with: " ")
-                    .capitalized
-
-                exerciseLogs.append(ExerciseLog(
-                    id: UUID().uuidString,
-                    sessionId: "",
-                    exerciseId: planned.exerciseId,
-                    exerciseName: fallbackName,
-                    order: order,
-                    groupType: group.groupType,
-                    sets: sets,
-                    notes: nil
-                ))
-                order += 1
-            }
-        }
-
-        let sessionId = UUID().uuidString
-        // Backfill sessionId into exercise logs
-        for i in exerciseLogs.indices {
-            exerciseLogs[i].sessionId = sessionId
-        }
-
-        return WorkoutSession(
-            id: sessionId,
-            userId: userId,
-            planId: planId,
-            workoutTemplateId: template.id,
-            workoutName: template.name,
-            startedAt: Date(),
-            completedAt: nil,
-            status: .inProgress,
-            exerciseLogs: exerciseLogs,
-            durationSeconds: 0,
-            notes: nil,
-            mood: nil
-        )
-    }
-
     // MARK: - Start
 
     func start(
-        workoutService: WorkoutService,
-        exerciseService: ExerciseService,
-        progressService: ProgressService,
-        userId: String,
         userUnitSystem: UnitSystem,
         userDefaultRestSeconds: Int = 60
     ) async {
@@ -201,6 +176,10 @@ final class WorkoutExecutionViewModel: Identifiable {
                     }
                 }
             }
+
+            // Resumed sessions arrive without template context; rebuild it
+            // from the plan so superset rest and progression suggestions work.
+            await rebuildTemplateContextIfNeeded()
 
             // One bounded history fetch serves previous logs and progression
             // input for every exercise (sessions embed their logs, so a
@@ -232,23 +211,34 @@ final class WorkoutExecutionViewModel: Identifiable {
         isLoading = false
     }
 
+    /// Resume path: `init(existingSession:)` has no template, so the group
+    /// map and templateGroups start empty. Look the template back up via the
+    /// session's plan. Best effort — when the plan or template is gone the
+    /// session simply behaves as straight sets (the pre-existing behavior).
+    private func rebuildTemplateContextIfNeeded() async {
+        guard templateGroups.isEmpty, let planId = session.planId else { return }
+        try? await workoutService.loadPlans(userId: userId)
+        guard let plan = workoutService.plans.first(where: { $0.id == planId }),
+              let template = plan.workouts.first(where: { $0.id == session.workoutTemplateId })
+        else { return }
+        templateGroups = template.exerciseGroups
+        buildGroupMap(from: template.exerciseGroups)
+    }
+
     // MARK: - Set Completion
 
-    func completeSet(
-        exerciseLogIndex: Int,
-        setIndex: Int,
-        workoutService: WorkoutService,
-        progressService: ProgressService,
-        userId: String
-    ) async {
+    func completeSet(exerciseLogIndex: Int, setIndex: Int) async {
         guard exerciseLogIndex < session.exerciseLogs.count,
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
 
+        let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
+        var input = setInputs[setId] ?? SetInput()
+
         // Parse inputs, adopting the previous-session ghost values when the
         // fields were left empty (the placeholders read as "repeat last time").
-        var weightDisplay = Double(weightInputs[exerciseLogIndex][setIndex]) ?? 0
-        var reps = Int(repsInputs[exerciseLogIndex][setIndex]) ?? 0
-        let rpe = Double(rpeInputs[exerciseLogIndex][setIndex])
+        var weightDisplay = Double(input.weight) ?? 0
+        var reps = Int(input.reps) ?? 0
+        let rpe = Double(input.rpe)
 
         let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
         if weightDisplay <= 0 || reps <= 0,
@@ -256,12 +246,13 @@ final class WorkoutExecutionViewModel: Identifiable {
             let prevSet = prevLog.sets[setIndex]
             if weightDisplay <= 0 && prevSet.weightKg > 0 {
                 weightDisplay = UnitConversionService.convertWeight(prevSet.weightKg, to: unitSystem)
-                weightInputs[exerciseLogIndex][setIndex] = weightDisplay.formatted(decimals: 1)
+                input.weight = weightDisplay.formatted(decimals: 1)
             }
             if reps <= 0 && prevSet.reps > 0 {
                 reps = prevSet.reps
-                repsInputs[exerciseLogIndex][setIndex] = "\(prevSet.reps)"
+                input.reps = "\(prevSet.reps)"
             }
+            setInputs[setId] = input
         }
 
         guard weightDisplay > 0 && reps > 0 else {
@@ -278,7 +269,6 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].rpe = rpe
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].completedAt = Date()
 
-        let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
         completedSetIds.insert(setId)
 
         // Feedback and rest start immediately; PR detection and persistence
@@ -286,7 +276,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         Haptics.medium()
         let restInfo = restDuration(forExerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
         if restInfo.shouldTrigger {
-            startRestTimer(seconds: restInfo.seconds)
+            restTimer.start(seconds: restInfo.seconds)
         }
 
         // Check for PR against the session-cached records
@@ -294,11 +284,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         let setLog = exerciseLog.sets[setIndex]
         if setLog.setType == .working {
             do {
-                let existing = try await existingPRs(
-                    for: exerciseLog.exerciseId,
-                    userId: userId,
-                    progressService: progressService
-                )
+                let existing = try await existingPRs(for: exerciseLog.exerciseId)
                 let prs = try await progressService.checkForPRs(
                     userId: userId,
                     exerciseId: exerciseLog.exerciseId,
@@ -310,6 +296,7 @@ final class WorkoutExecutionViewModel: Identifiable {
                 if !prs.isEmpty {
                     prCache[exerciseLog.exerciseId, default: []].append(contentsOf: prs)
                     session.exerciseLogs[exerciseLogIndex].sets[setIndex].isPersonalRecord = true
+                    session.exerciseLogs[exerciseLogIndex].sets[setIndex].personalRecordIds = prs.map(\.id)
                     sessionPRs.append(contentsOf: prs)
                     newPR = prs.first
                     Haptics.success()
@@ -329,43 +316,35 @@ final class WorkoutExecutionViewModel: Identifiable {
     }
 
     /// Returns (and lazily fetches) the exercise's pre-session PRs.
-    private func existingPRs(for exerciseId: String, userId: String, progressService: ProgressService) async throws -> [PersonalRecord] {
+    private func existingPRs(for exerciseId: String) async throws -> [PersonalRecord] {
         if let cached = prCache[exerciseId] { return cached }
         let records = try await progressService.getExercisePRs(userId: userId, exerciseId: exerciseId)
         prCache[exerciseId] = records
         return records
     }
 
-    func uncompleteSet(
-        exerciseLogIndex: Int,
-        setIndex: Int,
-        workoutService: WorkoutService,
-        progressService: ProgressService
-    ) async {
+    func uncompleteSet(exerciseLogIndex: Int, setIndex: Int) async {
         guard exerciseLogIndex < session.exerciseLogs.count,
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
 
         let exerciseLog = session.exerciseLogs[exerciseLogIndex]
         let setLog = exerciseLog.sets[setIndex]
-        let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
+        let setId = setLog.id
         completedSetIds.remove(setId)
 
-        if setLog.isPersonalRecord {
-            let recordsToDelete = sessionPRs.filter { pr in
-                pr.sessionId == session.id &&
-                pr.exerciseId == exerciseLog.exerciseId &&
-                ((pr.type == .weight && abs(pr.value - setLog.weightKg) < 0.001) ||
-                 (pr.type == .estimated1RM && abs(pr.value - setLog.estimated1RM) < 0.001))
-            }
+        // Roll back exactly the records this set created (identity-based, not
+        // value-matched, so equal-weight sets can't delete each other's PRs).
+        if let recordIds = setLog.personalRecordIds, !recordIds.isEmpty {
+            let idSet = Set(recordIds)
+            let recordsToDelete = sessionPRs.filter { idSet.contains($0.id) }
 
             for record in recordsToDelete {
                 try? await progressService.deleteRecord(record)
             }
 
-            let recordIds = Set(recordsToDelete.map(\.id))
-            sessionPRs.removeAll { recordIds.contains($0.id) }
-            prCache[exerciseLog.exerciseId]?.removeAll { recordIds.contains($0.id) }
-            if let currentPR = newPR, recordIds.contains(currentPR.id) {
+            sessionPRs.removeAll { idSet.contains($0.id) }
+            prCache[exerciseLog.exerciseId]?.removeAll { idSet.contains($0.id) }
+            if let currentPR = newPR, idSet.contains(currentPR.id) {
                 newPR = nil
             }
         }
@@ -374,11 +353,10 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].reps = 0
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].rpe = nil
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].isPersonalRecord = false
+        session.exerciseLogs[exerciseLogIndex].sets[setIndex].personalRecordIds = nil
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].completedAt = nil
 
-        weightInputs[exerciseLogIndex][setIndex] = ""
-        repsInputs[exerciseLogIndex][setIndex] = ""
-        rpeInputs[exerciseLogIndex][setIndex] = ""
+        setInputs[setId] = SetInput()
 
         session.durationSeconds = elapsedSeconds
         do {
@@ -396,7 +374,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         let currentSets = session.exerciseLogs[exerciseLogIndex].sets
         let newSetNumber = (currentSets.last?.setNumber ?? 0) + 1
 
-        session.exerciseLogs[exerciseLogIndex].sets.append(SetLog(
+        let newSet = SetLog(
             id: UUID().uuidString,
             setNumber: newSetNumber,
             setType: .working,
@@ -405,11 +383,9 @@ final class WorkoutExecutionViewModel: Identifiable {
             rpe: nil,
             isPersonalRecord: false,
             completedAt: nil
-        ))
-
-        weightInputs[exerciseLogIndex].append("")
-        repsInputs[exerciseLogIndex].append("")
-        rpeInputs[exerciseLogIndex].append("")
+        )
+        session.exerciseLogs[exerciseLogIndex].sets.append(newSet)
+        setInputs[newSet.id] = SetInput()
     }
 
     func removeSet(exerciseLogIndex: Int, setIndex: Int) {
@@ -420,9 +396,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
         completedSetIds.remove(setId)
         session.exerciseLogs[exerciseLogIndex].sets.remove(at: setIndex)
-        weightInputs[exerciseLogIndex].remove(at: setIndex)
-        repsInputs[exerciseLogIndex].remove(at: setIndex)
-        rpeInputs[exerciseLogIndex].remove(at: setIndex)
+        setInputs.removeValue(forKey: setId)
 
         // Renumber
         for i in session.exerciseLogs[exerciseLogIndex].sets.indices {
@@ -443,11 +417,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         showingExerciseSwap = true
     }
 
-    func swapExercise(
-        newExercise: Exercise,
-        workoutService: WorkoutService,
-        userId: String
-    ) async {
+    func swapExercise(newExercise: Exercise) async {
         guard let index = swapTargetExerciseLogIndex,
               index < session.exerciseLogs.count else { return }
 
@@ -458,7 +428,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[index].exerciseName = newExercise.name
         exerciseDetails[newExercise.id] = newExercise
 
-        // Reset sets
+        // Reset sets and their inputs
         for setIndex in session.exerciseLogs[index].sets.indices {
             let setId = session.exerciseLogs[index].sets[setIndex].id
             completedSetIds.remove(setId)
@@ -466,14 +436,10 @@ final class WorkoutExecutionViewModel: Identifiable {
             session.exerciseLogs[index].sets[setIndex].reps = 0
             session.exerciseLogs[index].sets[setIndex].rpe = nil
             session.exerciseLogs[index].sets[setIndex].isPersonalRecord = false
+            session.exerciseLogs[index].sets[setIndex].personalRecordIds = nil
             session.exerciseLogs[index].sets[setIndex].completedAt = nil
+            setInputs[setId] = SetInput()
         }
-
-        // Reset inputs
-        let setCount = session.exerciseLogs[index].sets.count
-        weightInputs[index] = Array(repeating: "", count: setCount)
-        repsInputs[index] = Array(repeating: "", count: setCount)
-        rpeInputs[index] = Array(repeating: "", count: setCount)
 
         previousLogs.removeValue(forKey: oldExerciseId)
         progressionSuggestions.removeValue(forKey: oldExerciseId)
@@ -509,101 +475,30 @@ final class WorkoutExecutionViewModel: Identifiable {
         swapTargetExerciseLogIndex = nil
     }
 
-    // MARK: - Rest Timer
+    // MARK: - Rest Timer (delegated to RestTimerController)
 
     func startRestTimer(seconds: Int) {
-        guard seconds > 0 else { return }
-        restTimer?.invalidate()
-        restEndDate = Date().addingTimeInterval(TimeInterval(seconds))
-        restSecondsRemaining = seconds
-        restTotalSeconds = seconds
-        restTimerActive = true
-        scheduleRestEndNotification(after: seconds)
-
-        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            MainActor.assumeIsolated {
-                self.tickRestTimer()
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        restTimer = timer
-    }
-
-    private func tickRestTimer() {
-        guard let endDate = restEndDate else {
-            restTimer?.invalidate()
-            return
-        }
-        let remaining = max(0, Int(endDate.timeIntervalSinceNow.rounded(.up)))
-        restSecondsRemaining = remaining
-        if remaining <= 0 {
-            restTimer?.invalidate()
-            restEndDate = nil
-            restTimerActive = false
-            Haptics.success()
-        }
+        restTimer.start(seconds: seconds)
     }
 
     func skipRestTimer() {
-        restTimer?.invalidate()
-        restEndDate = nil
-        restSecondsRemaining = 0
-        restTimerActive = false
-        cancelRestEndNotification()
+        restTimer.skip()
     }
 
     func adjustRestTimer(by seconds: Int) {
-        guard let endDate = restEndDate else { return }
-        let newEnd = endDate.addingTimeInterval(TimeInterval(seconds))
-        let remaining = max(0, Int(newEnd.timeIntervalSinceNow.rounded(.up)))
-        if remaining <= 0 {
-            skipRestTimer()
-            return
-        }
-        restEndDate = newEnd
-        restSecondsRemaining = remaining
-        restTotalSeconds = max(restTotalSeconds, remaining)
-        scheduleRestEndNotification(after: remaining)
+        restTimer.adjust(by: seconds)
     }
 
     /// Re-syncs displayed timer values from the wall clock. Called when the
     /// app returns to the foreground, since Timers suspend in the background.
     func refreshTimersFromWallClock() {
         elapsedSeconds = max(0, Int(Date().timeIntervalSince(session.startedAt)))
-        if restTimerActive {
-            tickRestTimer()
-        }
-    }
-
-    // MARK: - Rest-End Notification
-
-    private func scheduleRestEndNotification(after seconds: Int) {
-        guard seconds > 0 else { return }
-        let identifier = Self.restNotificationId
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = "Rest complete"
-            content.body = "Time for your next set."
-            content.sound = .default
-            let trigger = UNTimeIntervalNotificationTrigger(
-                timeInterval: TimeInterval(seconds),
-                repeats: false
-            )
-            UNUserNotificationCenter.current()
-                .add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
-        }
-    }
-
-    private func cancelRestEndNotification() {
-        UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: [Self.restNotificationId])
+        restTimer.refreshFromWallClock()
     }
 
     // MARK: - Finish / Abandon
 
-    func finishWorkout(workoutService: WorkoutService) async {
+    func finishWorkout() async {
         stopTimers()
         session.durationSeconds = elapsedSeconds
 
@@ -615,9 +510,18 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
     }
 
-    func abandonWorkout(workoutService: WorkoutService) async {
+    func abandonWorkout() async {
         stopTimers()
         session.durationSeconds = elapsedSeconds
+
+        // An abandoned session's sets don't count, so its PRs must not stick
+        // around either. Best effort per record; deletion failures shouldn't
+        // block abandoning the session itself.
+        for record in sessionPRs {
+            try? await progressService.deleteRecord(record)
+        }
+        sessionPRs.removeAll()
+        newPR = nil
 
         do {
             try await workoutService.abandonSession(session)
@@ -626,7 +530,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
     }
 
-    func saveMoodAndNotes(mood: Int?, notes: String?, workoutService: WorkoutService) async {
+    func saveMoodAndNotes(mood: Int?, notes: String?) async {
         session.mood = mood
         session.notes = notes
         do {
@@ -637,10 +541,7 @@ final class WorkoutExecutionViewModel: Identifiable {
     func stopTimers() {
         elapsedTimer?.invalidate()
         elapsedTimer = nil
-        restTimer?.invalidate()
-        restTimer = nil
-        restEndDate = nil
-        cancelRestEndNotification()
+        restTimer.stop()
     }
 
     // MARK: - Computed Properties
@@ -659,7 +560,7 @@ final class WorkoutExecutionViewModel: Identifiable {
     }
 
     var elapsedFormatted: String {
-        Formatters.durationString(from: elapsedSeconds)
+        Formatters.elapsedString(from: elapsedSeconds)
     }
 
     var isAnySetCompleted: Bool {
@@ -668,9 +569,10 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Private Helpers
 
-    private func buildGroupMap(from template: WorkoutTemplate) {
+    private func buildGroupMap(from groups: [ExerciseGroup]) {
+        exerciseGroupMap.removeAll()
         var logIndex = 0
-        for (groupIndex, group) in template.exerciseGroups.enumerated() {
+        for (groupIndex, group) in groups.enumerated() {
             for _ in group.exercises {
                 exerciseGroupMap[logIndex] = groupIndex
                 logIndex += 1
@@ -678,35 +580,31 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
     }
 
-    private func initializeInputArrays() {
-        weightInputs = session.exerciseLogs.map { log in
-            log.sets.map { set in
-                set.weightKg > 0 ? "\(UnitConversionService.convertWeight(set.weightKg, to: unitSystem).formatted(decimals: 1))" : ""
-            }
-        }
-        repsInputs = session.exerciseLogs.map { log in
-            log.sets.map { set in
-                set.reps > 0 ? "\(set.reps)" : ""
-            }
-        }
-        rpeInputs = session.exerciseLogs.map { log in
-            log.sets.map { set in
-                if let rpe = set.rpe { return "\(rpe.formatted(decimals: 1))" }
-                return ""
+    private func initializeInputs() {
+        setInputs.removeAll()
+        for log in session.exerciseLogs {
+            for set in log.sets {
+                var input = SetInput()
+                if set.weightKg > 0 {
+                    input.weight = UnitConversionService.convertWeight(set.weightKg, to: unitSystem).formatted(decimals: 1)
+                }
+                if set.reps > 0 {
+                    input.reps = "\(set.reps)"
+                }
+                if let rpe = set.rpe {
+                    input.rpe = rpe.formatted(decimals: 1)
+                }
+                setInputs[set.id] = input
             }
         }
     }
 
     private func convertWeightInputs(from oldUnit: UnitSystem, to newUnit: UnitSystem) {
-        guard !weightInputs.isEmpty else { return }
-
-        for exerciseIndex in weightInputs.indices {
-            for setIndex in weightInputs[exerciseIndex].indices {
-                guard let oldValue = Double(weightInputs[exerciseIndex][setIndex]), oldValue > 0 else { continue }
-                let kg = UnitConversionService.convertToKg(oldValue, from: oldUnit)
-                let newValue = UnitConversionService.convertWeight(kg, to: newUnit)
-                weightInputs[exerciseIndex][setIndex] = newValue.formatted(decimals: 1)
-            }
+        for (setId, input) in setInputs {
+            guard let oldValue = Double(input.weight), oldValue > 0 else { continue }
+            let kg = UnitConversionService.convertToKg(oldValue, from: oldUnit)
+            let newValue = UnitConversionService.convertWeight(kg, to: newUnit)
+            setInputs[setId]?.weight = newValue.formatted(decimals: 1)
         }
     }
 
@@ -757,7 +655,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
                 if weightKg > 0 {
                     let displayWeight = UnitConversionService.convertWeight(weightKg, to: unitSystem)
-                    weightInputs[i][j] = displayWeight.formatted(decimals: 1)
+                    setInputs[session.exerciseLogs[i].sets[j].id, default: SetInput()].weight = displayWeight.formatted(decimals: 1)
                 }
             }
         }

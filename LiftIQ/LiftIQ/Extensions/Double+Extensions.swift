@@ -8,18 +8,10 @@ extension Double {
         return String(format: "%.\(decimals)f", self)
     }
 
+    /// Formats a kg value in the given unit system, delegating the conversion
+    /// to `UnitConversionService` (the single source of truth for factors).
     func asWeight(unit: UnitSystem) -> String {
-        let value = unit == .imperial ? self * 2.20462 : self
-        let unitLabel = unit == .imperial ? "lb" : "kg"
-        return "\(value.formatted()) \(unitLabel)"
+        let value = UnitConversionService.convertWeight(self, to: unit)
+        return "\(value.formatted()) \(UnitConversionService.weightLabel(for: unit))"
     }
-
-    func asLength(unit: UnitSystem) -> String {
-        let value = unit == .imperial ? self / 2.54 : self
-        let unitLabel = unit == .imperial ? "in" : "cm"
-        return "\(value.formatted()) \(unitLabel)"
-    }
-
-    var kgToLb: Double { self * 2.20462 }
-    var lbToKg: Double { self / 2.20462 }
 }

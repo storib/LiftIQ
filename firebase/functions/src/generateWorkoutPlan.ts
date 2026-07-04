@@ -155,6 +155,47 @@ export type PlanShapeResult =
 
 type ExerciseDoc = { id: string; equipment: unknown };
 
+// Fields the system prompt actually needs for exercise selection: identity
+// (id/name), muscle coverage (primary/secondary for volume + injury rules),
+// equipment matching, push/pull balance (movementPattern), compound-first
+// ordering (isCompound), and experience-level fit (difficulty). Everything
+// else (instructions, tips, youtubeVideoId, tags, alternatives) is dropped
+// before serialization to keep the prompt small.
+export type PromptExercise = {
+  id: string;
+  name?: unknown;
+  primaryMuscleGroup?: unknown;
+  secondaryMuscleGroups?: unknown;
+  equipment?: unknown;
+  movementPattern?: unknown;
+  difficulty?: unknown;
+  isCompound?: unknown;
+};
+
+// Compact, byte-stable serialization of the exercise database for the prompt:
+// projected to the selection-relevant fields with a fixed key order, sorted by
+// id, and stringified without indentation. Determinism matters — the block
+// lives inside a cache_control'd system block, and prompt caching is an exact
+// prefix match, so the same equipment set must always serialize to the same
+// bytes. Exported for unit tests.
+export function serializeExercisesForPrompt(
+  exercises: readonly PromptExercise[],
+): string {
+  const projected = [...exercises]
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((ex) => ({
+      id: ex.id,
+      name: ex.name,
+      primaryMuscleGroup: ex.primaryMuscleGroup,
+      secondaryMuscleGroups: ex.secondaryMuscleGroups,
+      equipment: ex.equipment,
+      movementPattern: ex.movementPattern,
+      difficulty: ex.difficulty,
+      isCompound: ex.isCompound,
+    }));
+  return JSON.stringify(projected);
+}
+
 // Returns the subset of exercises whose entire `equipment` array is contained
 // in the user's `availableEquipment` set. Exported for unit tests; an empty
 // result here drives the "no exercises match" precondition error.
@@ -223,14 +264,14 @@ export function validatePlanShape(
 
 async function generatePlanAttempt(
   client: Anthropic,
-  systemPrompt: string,
+  system: Anthropic.TextBlockParam[],
   userPrompt: string,
 ): Promise<AttemptResult> {
   const message = await client.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 24000,
     thinking: THINKING_DISABLED,
-    system: systemPrompt,
+    system,
     messages: [{ role: "user", content: userPrompt }],
     tools: [SAVE_WORKOUT_PLAN_TOOL],
     tool_choice: { type: "tool", name: SAVE_WORKOUT_PLAN_TOOL.name },
@@ -325,6 +366,24 @@ export const generateWorkoutPlan = onCall(
       );
     }
 
+    // Prompt caching: tools + system render before messages, so the stable
+    // content (coaching system prompt + exercise database for this equipment
+    // set) lives in system blocks with cache_control on the LAST stable block.
+    // Retries within this request and other generations that share the same
+    // equipment set hit the cache within the TTL. Nothing per-request
+    // (timestamps, uid, injuries, template params) may appear in these blocks
+    // — all of that stays in the user message below, after the cached prefix.
+    const systemBlocks: Anthropic.TextBlockParam[] = [
+      { type: "text", text: WORKOUT_GENERATION_SYSTEM_PROMPT },
+      {
+        type: "text",
+        text: `## Exercise Database
+Use ONLY exercise IDs from this database (JSON, sorted by id):
+${serializeExercisesForPrompt(availableExercises)}`,
+        cache_control: { type: "ephemeral" },
+      },
+    ];
+
     const userPrompt = `Create a ${templateType} workout plan with these parameters:
 - Experience Level: ${experienceLevel}
 - Goals: ${JSON.stringify(goals)}
@@ -339,9 +398,6 @@ ${
       ).join("\n")
     : "  None"
 }
-
-Use ONLY exercise IDs from this database:
-${JSON.stringify(availableExercises, null, 2)}
 
 When the plan is finalized, call the save_workout_plan tool with the complete plan. Apply these defaults:
 - templateType: "${templateType}"
@@ -369,6 +425,18 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
         (sum, a) => sum + a.message.usage.output_tokens,
         0,
       );
+      // Prompt-cache observability: cache_creation = tokens written to the
+      // cache (~1.25x cost), cache_read = tokens served from it (~0.1x cost).
+      // If cacheReadInputTokens stays 0 across warm traffic, a silent cache
+      // invalidator has crept into the system blocks.
+      const cacheCreationInputTokens = attempts.reduce(
+        (sum, a) => sum + (a.message.usage.cache_creation_input_tokens ?? 0),
+        0,
+      );
+      const cacheReadInputTokens = attempts.reduce(
+        (sum, a) => sum + (a.message.usage.cache_read_input_tokens ?? 0),
+        0,
+      );
       try {
         await db.collection("aiUsageLogs").add({
           userId: request.auth!.uid,
@@ -376,6 +444,8 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
           promptVersion: WORKOUT_GENERATION_PROMPT_VERSION,
           inputTokens,
           outputTokens,
+          cacheCreationInputTokens,
+          cacheReadInputTokens,
           attempts: attempts.length,
           success,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -396,7 +466,7 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
       for (let i = 0; i < maxAttempts; i++) {
         const attempt = await generatePlanAttempt(
           client,
-          WORKOUT_GENERATION_SYSTEM_PROMPT,
+          systemBlocks,
           userPrompt,
         );
         attempts.push(attempt);

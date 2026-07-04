@@ -9,7 +9,7 @@ final class DashboardViewModel {
     var weeklyVolume: Double = 0
     var weeklySessionCount: Int = 0
 
-    func load(workoutService: WorkoutService, userId: String) async {
+    func load(workoutService: any WorkoutServicing, userId: String) async {
         isLoading = true
         do {
             try await workoutService.loadPlans(userId: userId)

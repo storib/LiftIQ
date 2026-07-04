@@ -40,7 +40,7 @@ struct WorkoutExecutionView: View {
                             exerciseList
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, viewModel.restTimerActive ? 280 : 20)
+                        .padding(.bottom, viewModel.restTimer.isActive ? 280 : 20)
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: viewModel.isLoading) { _, isLoading in
@@ -63,31 +63,36 @@ struct WorkoutExecutionView: View {
             }
 
             // Rest timer overlay
-            if viewModel.restTimerActive {
+            if viewModel.restTimer.isActive {
                 VStack {
                     Spacer()
                     RestTimerView(
-                        secondsRemaining: viewModel.restSecondsRemaining,
-                        totalSeconds: viewModel.restTotalSeconds,
+                        secondsRemaining: viewModel.restTimer.secondsRemaining,
+                        totalSeconds: viewModel.restTimer.totalSeconds,
                         onSkip: { viewModel.skipRestTimer() },
                         onAdjust: { viewModel.adjustRestTimer(by: $0) }
                     )
                     .padding(.bottom, 20)
                 }
                 .transition(.move(edge: .bottom))
-                .animation(.spring(response: 0.4), value: viewModel.restTimerActive)
+                .animation(.spring(response: 0.4), value: viewModel.restTimer.isActive)
             }
 
-            // PR celebration overlay
-            if let pr = viewModel.newPR {
-                PRCelebrationOverlay(
-                    personalRecord: pr,
-                    unitSystem: viewModel.unitSystem,
-                    onDismiss: { viewModel.newPR = nil }
-                )
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.3), value: viewModel.newPR != nil)
+            // PR celebration toast (non-blocking, pinned to the top)
+            VStack {
+                if let pr = viewModel.newPR {
+                    PRToastView(
+                        personalRecord: pr,
+                        unitSystem: viewModel.unitSystem,
+                        onDismiss: { viewModel.newPR = nil }
+                    )
+                    .padding(.horizontal)
+                    .id(pr.id)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                Spacer()
             }
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.newPR?.id)
         }
         // Attached once at screen level; attaching inside LazyVStack rows
         // would duplicate the toolbar per materialized row.
@@ -125,11 +130,7 @@ struct WorkoutExecutionView: View {
                 let currentExercise = viewModel.exerciseDetails[viewModel.session.exerciseLogs[swapIndex].exerciseId]
                 ExerciseSwapSheet(currentExercise: currentExercise) { newExercise in
                     Task {
-                        await viewModel.swapExercise(
-                            newExercise: newExercise,
-                            workoutService: dependencies.workoutService,
-                            userId: viewModel.session.userId
-                        )
+                        await viewModel.swapExercise(newExercise: newExercise)
                     }
                 }
             }
@@ -145,7 +146,7 @@ struct WorkoutExecutionView: View {
         .alert("Abandon Workout?", isPresented: $viewModel.showingAbandonConfirmation) {
             Button("Abandon", role: .destructive) {
                 Task {
-                    await viewModel.abandonWorkout(workoutService: dependencies.workoutService)
+                    await viewModel.abandonWorkout()
                     dismiss()
                 }
             }
@@ -160,28 +161,17 @@ struct WorkoutExecutionView: View {
                 unitSystem: viewModel.unitSystem,
                 onSaveMoodAndNotes: { mood, notes in
                     Task {
-                        await viewModel.saveMoodAndNotes(
-                            mood: mood,
-                            notes: notes,
-                            workoutService: dependencies.workoutService
-                        )
+                        await viewModel.saveMoodAndNotes(mood: mood, notes: notes)
                     }
                 },
                 onDismiss: { dismiss() }
             )
         }
         .task {
-            guard let userId = dependencies.authService.currentUserId else { return }
             let profile = dependencies.authService.currentUser?.profile
-            let userUnit = profile?.unitSystem ?? .metric
-            let userDefaultRest = profile?.effectiveDefaultRestSeconds ?? 60
             await viewModel.start(
-                workoutService: dependencies.workoutService,
-                exerciseService: dependencies.exerciseService,
-                progressService: dependencies.progressService,
-                userId: userId,
-                userUnitSystem: userUnit,
-                userDefaultRestSeconds: userDefaultRest
+                userUnitSystem: profile?.unitSystem ?? .metric,
+                userDefaultRestSeconds: profile?.effectiveDefaultRestSeconds ?? 60
             )
         }
         .onDisappear {
@@ -235,7 +225,7 @@ struct WorkoutExecutionView: View {
 
                 Button {
                     Task {
-                        await viewModel.finishWorkout(workoutService: dependencies.workoutService)
+                        await viewModel.finishWorkout()
                     }
                 } label: {
                     Text("Finish")

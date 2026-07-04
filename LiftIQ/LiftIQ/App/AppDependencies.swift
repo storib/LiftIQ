@@ -11,17 +11,17 @@ final class AppDependencies {
     let progressionService: ProgressionService
 
     init() {
+        let userRepo = UserRepository()
         let planRepo = WorkoutPlanRepository()
         let sessionRepo = WorkoutSessionRepository()
         let exerciseRepo = ExerciseRepository()
         let progressRepo = ProgressRecordRepository()
         let prRepo = PersonalRecordRepository()
-        let bodyRepo = BodyMeasurementRepository()
 
-        self.authService = AuthService()
+        self.authService = AuthService(userRepository: userRepo)
         self.workoutService = WorkoutService(planRepository: planRepo, sessionRepository: sessionRepo)
         self.exerciseService = ExerciseService(repository: exerciseRepo)
-        self.progressService = ProgressService(progressRepository: progressRepo, prRepository: prRepo, bodyRepository: bodyRepo)
+        self.progressService = ProgressService(progressRepository: progressRepo, prRepository: prRepo)
         self.aiService = AIService()
         self.progressionService = ProgressionService()
     }

@@ -65,7 +65,11 @@ struct DashboardView: View {
                                     workoutExecutionVM = WorkoutExecutionViewModel(
                                         template: workout,
                                         userId: userId,
-                                        planId: dependencies.workoutService.activePlan?.id
+                                        planId: dependencies.workoutService.activePlan?.id,
+                                        workoutService: dependencies.workoutService,
+                                        exerciseService: dependencies.exerciseService,
+                                        progressService: dependencies.progressService,
+                                        progressionService: dependencies.progressionService
                                     )
                                 }
                             } label: {
@@ -119,7 +123,13 @@ struct DashboardView: View {
                             Spacer()
                         }
                         Button {
-                            workoutExecutionVM = WorkoutExecutionViewModel(existingSession: activeSession)
+                            workoutExecutionVM = WorkoutExecutionViewModel(
+                                existingSession: activeSession,
+                                workoutService: dependencies.workoutService,
+                                exerciseService: dependencies.exerciseService,
+                                progressService: dependencies.progressService,
+                                progressionService: dependencies.progressionService
+                            )
                         } label: {
                             Text("Resume Workout")
                                 .font(.subheadline.weight(.semibold))

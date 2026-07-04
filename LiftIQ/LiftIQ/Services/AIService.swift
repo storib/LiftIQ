@@ -32,30 +32,6 @@ final class AIService {
         return try Self.makeDecoder().decode(WorkoutPlan.self, from: jsonData)
     }
 
-    func suggestExerciseSwap(
-        currentExercise: Exercise,
-        availableEquipment: [Equipment],
-        otherExercisesInWorkout: [String]
-    ) async throws -> [Exercise] {
-        let data: [String: Any] = [
-            "currentExercise": [
-                "id": currentExercise.id,
-                "name": currentExercise.name,
-                "primaryMuscle": currentExercise.primaryMuscleGroup.rawValue,
-                "movementPattern": currentExercise.movementPattern.rawValue
-            ],
-            "availableEquipment": availableEquipment.map { $0.rawValue },
-            "otherExercisesInWorkout": otherExercisesInWorkout
-        ]
-
-        let result = try await functions.httpsCallable("suggestExerciseSwap").call(data)
-        guard let json = result.data as? [[String: Any]],
-              let jsonData = try? JSONSerialization.data(withJSONObject: json) else {
-            throw AIServiceError.invalidResponse
-        }
-        return try Self.makeDecoder().decode([Exercise].self, from: jsonData)
-    }
-
     private static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in

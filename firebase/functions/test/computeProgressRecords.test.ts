@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeRecordsForSession,
+  epley,
   progressRecordIdsForSession,
 } from "../src/computeProgressRecords";
 
@@ -10,9 +11,32 @@ function workingSet(weightKg: number, reps: number) {
   return { setType: "working", weightKg, reps };
 }
 
-function epley(weightKg: number, reps: number) {
+// Reference implementation mirroring the Swift client (Epley.swift):
+// reps <= 1 returns the weight unchanged.
+function referenceEpley(weightKg: number, reps: number) {
+  if (reps <= 1) return weightKg;
   return weightKg * (1 + reps / 30.0);
 }
+
+describe("epley (Swift client parity)", () => {
+  it("returns the weight unchanged for a 1-rep set", () => {
+    expect(epley(100, 1)).toBe(100);
+    expect(epley(142.5, 1)).toBe(142.5);
+  });
+
+  it("applies the (1 + reps/30) multiplier for reps >= 2", () => {
+    expect(epley(100, 2)).toBeCloseTo(100 * (1 + 2 / 30.0), 10);
+    expect(epley(95, 8)).toBeCloseTo(95 * (1 + 8 / 30.0), 10);
+  });
+
+  it("matches the Swift reference across a grid of inputs", () => {
+    for (const weight of [20, 60, 100, 142.5, 200]) {
+      for (const reps of [1, 2, 3, 5, 8, 12, 20]) {
+        expect(epley(weight, reps)).toBeCloseTo(referenceEpley(weight, reps), 10);
+      }
+    }
+  });
+});
 
 describe("computeRecordsForSession", () => {
   it("computes one record per exercise with best set, volume, and name", () => {
@@ -145,6 +169,45 @@ describe("computeRecordsForSession", () => {
     const second = computeRecordsForSession(session, SESSION_ID);
     expect(first.map((r) => r.id)).toEqual(second.map((r) => r.id));
     expect(first[0].id).toBe(`${SESSION_ID}_row`);
+  });
+
+  it("uses the raw weight as e1RM for a 1-rep set (Swift client parity)", () => {
+    const session = {
+      startedAt: "2026-06-30T10:00:00Z",
+      exerciseLogs: [
+        {
+          exerciseId: "deadlift",
+          exerciseName: "Deadlift",
+          sets: [workingSet(180, 1)],
+        },
+      ],
+    };
+    const records = computeRecordsForSession(session, SESSION_ID);
+    expect(records).toHaveLength(1);
+    // No (1 + 1/30) inflation: a single at 180 estimates exactly 180.
+    expect(records[0].estimated1RM).toBe(180);
+    expect(records[0].bestSetWeight).toBe(180);
+    expect(records[0].bestSetReps).toBe(1);
+  });
+
+  it("compares best sets using the reps==1 special case", () => {
+    const session = {
+      exerciseLogs: [
+        {
+          exerciseId: "squat",
+          exerciseName: "Back Squat",
+          // 150x1 → e1RM 150 (not 155); 145x2 → e1RM 154.67. Under the old
+          // formula the single would have won (155 > 154.67); with client
+          // parity the double wins.
+          sets: [workingSet(150, 1), workingSet(145, 2)],
+        },
+      ],
+    };
+    const records = computeRecordsForSession(session, SESSION_ID);
+    expect(records).toHaveLength(1);
+    expect(records[0].bestSetWeight).toBe(145);
+    expect(records[0].bestSetReps).toBe(2);
+    expect(records[0].estimated1RM).toBeCloseTo(145 * (1 + 2 / 30.0), 6);
   });
 
   it("backfills exerciseName from a later log of the same exercise", () => {

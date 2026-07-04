@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   filterExercisesByEquipment,
   normalizePlan,
+  serializeExercisesForPrompt,
   validatePlanShape,
 } from "../src/generateWorkoutPlan";
 import { WorkoutPlanSchema } from "../src/validators/schemas";
@@ -49,6 +50,96 @@ describe("filterExercisesByEquipment", () => {
       "barbell", "bench", "pullUpBar", "bodyweight", "cables", "kettlebell",
     ]);
     expect(result.map((e) => e.id)).not.toContain("weird");
+  });
+});
+
+// ──────────────────────────────────────────────
+// serializeExercisesForPrompt
+// ──────────────────────────────────────────────
+
+describe("serializeExercisesForPrompt", () => {
+  const exercises = [
+    {
+      id: "squat",
+      name: "Back Squat",
+      primaryMuscleGroup: "quads",
+      secondaryMuscleGroups: ["glutes", "hamstrings"],
+      equipment: ["barbell", "squatRack"],
+      movementPattern: "squat",
+      difficulty: "intermediate",
+      isCompound: true,
+      // Fields the prompt never references must be dropped:
+      youtubeVideoId: "abc123",
+      instructions: "A very long instruction paragraph...",
+      tips: ["tip one", "tip two"],
+      tags: ["legs"],
+      alternatives: ["leg-press"],
+    },
+    {
+      id: "bench-press",
+      name: "Barbell Bench Press",
+      primaryMuscleGroup: "chest",
+      secondaryMuscleGroups: ["triceps", "frontDelts"],
+      equipment: ["barbell", "bench"],
+      movementPattern: "horizontalPush",
+      difficulty: "beginner",
+      isCompound: true,
+    },
+  ];
+
+  it("emits compact JSON (no indentation or newlines)", () => {
+    const out = serializeExercisesForPrompt(exercises);
+    expect(out).not.toContain("\n");
+    expect(out).not.toContain("  ");
+    expect(JSON.parse(out)).toBeInstanceOf(Array);
+  });
+
+  it("sorts exercises by id for byte-stable output", () => {
+    const parsed = JSON.parse(serializeExercisesForPrompt(exercises));
+    expect(parsed.map((e: { id: string }) => e.id)).toEqual([
+      "bench-press",
+      "squat",
+    ]);
+    // Same set in a different input order serializes to identical bytes
+    const reversed = serializeExercisesForPrompt([...exercises].reverse());
+    expect(reversed).toBe(serializeExercisesForPrompt(exercises));
+  });
+
+  it("projects to selection fields only, dropping prompt-irrelevant data", () => {
+    const parsed = JSON.parse(serializeExercisesForPrompt(exercises));
+    const squat = parsed.find((e: { id: string }) => e.id === "squat");
+    expect(Object.keys(squat).sort()).toEqual(
+      [
+        "id",
+        "name",
+        "primaryMuscleGroup",
+        "secondaryMuscleGroups",
+        "equipment",
+        "movementPattern",
+        "difficulty",
+        "isCompound",
+      ].sort(),
+    );
+    expect(squat.youtubeVideoId).toBeUndefined();
+    expect(squat.instructions).toBeUndefined();
+    expect(squat.tips).toBeUndefined();
+    expect(squat.tags).toBeUndefined();
+    expect(squat.alternatives).toBeUndefined();
+  });
+
+  it("preserves ids verbatim so the whitelist validation keeps working", () => {
+    const parsed = JSON.parse(serializeExercisesForPrompt(exercises)) as {
+      id: string;
+    }[];
+    expect(new Set(parsed.map((e) => e.id))).toEqual(
+      new Set(exercises.map((e) => e.id)),
+    );
+  });
+
+  it("is deterministic across repeated calls", () => {
+    expect(serializeExercisesForPrompt(exercises)).toBe(
+      serializeExercisesForPrompt(exercises),
+    );
   });
 });
 

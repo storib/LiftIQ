@@ -88,12 +88,12 @@ final class OnboardingViewModel {
     func buildProfile() -> UserProfile {
         let weightKg: Double? = {
             guard let value = Double(bodyWeight), value > 0 else { return nil }
-            return unitSystem == .imperial ? value / 2.20462 : value
+            return UnitConversionService.convertToKg(value, from: unitSystem)
         }()
 
         let heightCm: Double? = {
             guard let value = Double(height), value > 0 else { return nil }
-            return unitSystem == .imperial ? value * 2.54 : value
+            return UnitConversionService.convertToCm(value, from: unitSystem)
         }()
 
         return UserProfile(
@@ -124,7 +124,7 @@ final class OnboardingViewModel {
     func saveProfileAndGeneratePlan(
         authService: AuthService,
         aiService: AIService,
-        workoutService: WorkoutService
+        workoutService: any WorkoutServicing
     ) async {
         isLoading = true
         errorMessage = nil

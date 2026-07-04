@@ -13,11 +13,6 @@ final class WorkoutPlanRepository {
         return try snapshot.documents.compactMap { try $0.data(as: WorkoutPlan.self) }
     }
 
-    func getActivePlan(userId: String) async throws -> WorkoutPlan? {
-        let snapshot = try await planCollection(userId: userId).whereField("isActive", isEqualTo: true).limit(to: 1).getDocuments()
-        return try snapshot.documents.first.map { try $0.data(as: WorkoutPlan.self) }
-    }
-
     func savePlan(_ plan: WorkoutPlan) async throws {
         try planCollection(userId: plan.userId).document(plan.id).setData(from: plan)
     }
@@ -35,10 +30,6 @@ final class WorkoutPlanRepository {
         }
         try batch.setData(from: plan, forDocument: collection.document(plan.id))
         try await batch.commit()
-    }
-
-    func updatePlan(_ plan: WorkoutPlan) async throws {
-        try planCollection(userId: plan.userId).document(plan.id).setData(from: plan, merge: true)
     }
 
     func deletePlan(userId: String, planId: String) async throws {

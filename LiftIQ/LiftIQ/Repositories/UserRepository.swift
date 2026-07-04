@@ -19,8 +19,4 @@ final class UserRepository {
         let data = try Firestore.Encoder().encode(profile)
         try await db.collection(collection).document(userId).updateData(["profile": data, "updatedAt": FieldValue.serverTimestamp()])
     }
-
-    func deleteUser(id: String) async throws {
-        try await db.collection(collection).document(id).delete()
-    }
 }

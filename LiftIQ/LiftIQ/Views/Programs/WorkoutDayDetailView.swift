@@ -216,7 +216,11 @@ struct WorkoutDayDetailView: View {
         let vm = WorkoutExecutionViewModel(
             template: workout,
             userId: userId,
-            planId: workout.planId
+            planId: workout.planId,
+            workoutService: dependencies.workoutService,
+            exerciseService: dependencies.exerciseService,
+            progressService: dependencies.progressService,
+            progressionService: dependencies.progressionService
         )
         vm.scrollToExerciseLogIndex = logIndex
         workoutExecutionVM = vm

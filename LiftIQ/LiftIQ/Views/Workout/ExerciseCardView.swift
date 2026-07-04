@@ -125,9 +125,9 @@ struct ExerciseCardView: View {
                         setIndex: setIndex,
                         setNumber: setLog.setNumber,
                         setType: setLog.setType,
-                        weightText: $viewModel.weightInputs[exerciseLogIndex][setIndex],
-                        repsText: $viewModel.repsInputs[exerciseLogIndex][setIndex],
-                        rpeText: $viewModel.rpeInputs[exerciseLogIndex][setIndex],
+                        weightText: $viewModel.setInputs[setId: setLog.id].weight,
+                        repsText: $viewModel.setInputs[setId: setLog.id].reps,
+                        rpeText: $viewModel.setInputs[setId: setLog.id].rpe,
                         previousWeight: prevWeight,
                         previousReps: prevSet?.reps,
                         unitSystem: viewModel.unitSystem,
@@ -138,10 +138,7 @@ struct ExerciseCardView: View {
                             Task {
                                 await viewModel.completeSet(
                                     exerciseLogIndex: exerciseLogIndex,
-                                    setIndex: setIndex,
-                                    workoutService: workoutService,
-                                    progressService: progressService,
-                                    userId: viewModel.session.userId
+                                    setIndex: setIndex
                                 )
                             }
                         },
@@ -149,9 +146,7 @@ struct ExerciseCardView: View {
                             Task {
                                 await viewModel.uncompleteSet(
                                     exerciseLogIndex: exerciseLogIndex,
-                                    setIndex: setIndex,
-                                    workoutService: workoutService,
-                                    progressService: progressService
+                                    setIndex: setIndex
                                 )
                             }
                         },
@@ -194,16 +189,6 @@ struct ExerciseCardView: View {
     }
 
     // MARK: - Subviews
-
-    @Environment(AppDependencies.self) private var dependencies
-
-    private var workoutService: WorkoutService {
-        dependencies.workoutService
-    }
-
-    private var progressService: ProgressService {
-        dependencies.progressService
-    }
 
     @ViewBuilder
     private func suggestionPill(_ suggestion: ProgressionSuggestion) -> some View {

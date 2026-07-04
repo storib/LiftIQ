@@ -13,6 +13,23 @@ final class ExerciseService {
 
     func loadExercises() async throws {
         guard !isLoaded else { return }
+
+        // The 136-doc global catalog rarely changes, so serve Firestore's
+        // local cache first and only hit the server when the cache is empty.
+        if let cached = try? await repository.getCachedExercises(), !cached.isEmpty {
+            exercises = cached
+            isLoaded = true
+            // Refresh in the background so catalog updates still propagate
+            // within this session.
+            Task { [weak self] in
+                guard let self,
+                      let fresh = try? await self.repository.getAllExercises(),
+                      !fresh.isEmpty else { return }
+                self.exercises = fresh
+            }
+            return
+        }
+
         exercises = try await repository.getAllExercises()
         isLoaded = true
     }
@@ -38,14 +55,6 @@ final class ExerciseService {
     func getExercises(forEquipment equipment: Set<Equipment>) -> [Exercise] {
         exercises.filter { exercise in
             exercise.equipment.allSatisfy { equipment.contains($0) }
-        }
-    }
-
-    func getAlternatives(for exercise: Exercise, availableEquipment: Set<Equipment>) -> [Exercise] {
-        exercises.filter { alt in
-            alt.id != exercise.id &&
-            alt.primaryMuscleGroup == exercise.primaryMuscleGroup &&
-            alt.equipment.allSatisfy { availableEquipment.contains($0) }
         }
     }
 }

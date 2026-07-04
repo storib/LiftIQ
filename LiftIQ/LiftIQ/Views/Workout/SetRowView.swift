@@ -45,11 +45,15 @@ struct SetRowView: View {
                     Text(prev.formatted())
                         .foregroundStyle(.tertiary)
                         .font(.subheadline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .accessibilityHidden(true)
                 }
                 TextField("", text: $weightText)
                     .keyboardType(.decimalPad)
                     .font(.subheadline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .focused(focusedField, equals: focusTarget(.weight))
                     .accessibilityLabel("Weight")
             }
@@ -62,6 +66,8 @@ struct SetRowView: View {
             Text(UnitConversionService.weightLabel(for: unitSystem))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .frame(width: 18)
 
             // Reps input
@@ -70,11 +76,15 @@ struct SetRowView: View {
                     Text("\(prev)")
                         .foregroundStyle(.tertiary)
                         .font(.subheadline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .accessibilityHidden(true)
                 }
                 TextField("", text: $repsText)
                     .keyboardType(.numberPad)
                     .font(.subheadline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .focused(focusedField, equals: focusTarget(.reps))
                     .accessibilityLabel("Reps")
             }
@@ -89,6 +99,8 @@ struct SetRowView: View {
                 TextField("RPE", text: $rpeText)
                     .keyboardType(.decimalPad)
                     .font(.caption)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .frame(width: 36)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 6)
@@ -128,6 +140,10 @@ struct SetRowView: View {
         // keeps the row at the same overall height it had before.
         .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        // Stopgap for accessibility sizes: the fixed-width numeric columns clip
+        // digits past xxLarge, so clamp the row and let minimumScaleFactor
+        // absorb the rest until the row is rebuilt as a Grid.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 
     // MARK: - Computed Helpers

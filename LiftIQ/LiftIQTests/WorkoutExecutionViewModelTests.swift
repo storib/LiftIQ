@@ -43,7 +43,42 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         )
     }
 
-    // MARK: - createSession
+    private func makeVM(
+        template: WorkoutTemplate,
+        planId: String? = nil,
+        workout: FakeWorkoutService? = nil,
+        progress: FakeProgressService? = nil,
+        exercise: FakeExerciseService? = nil
+    ) -> WorkoutExecutionViewModel {
+        WorkoutExecutionViewModel(
+            template: template,
+            userId: "u1",
+            planId: planId,
+            workoutService: workout ?? FakeWorkoutService(),
+            exerciseService: exercise ?? FakeExerciseService(),
+            progressService: progress ?? FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+    }
+
+    /// Input helpers: setInputs is keyed by SetLog.id.
+    private func input(_ vm: WorkoutExecutionViewModel, exercise: Int, set: Int) -> SetInput {
+        vm.setInputs[vm.session.exerciseLogs[exercise].sets[set].id] ?? SetInput()
+    }
+
+    private func seedInput(
+        _ vm: WorkoutExecutionViewModel,
+        exercise: Int,
+        set: Int,
+        weight: String = "",
+        reps: String = "",
+        rpe: String = ""
+    ) {
+        let id = vm.session.exerciseLogs[exercise].sets[set].id
+        vm.setInputs[id] = SetInput(weight: weight, reps: reps, rpe: rpe)
+    }
+
+    // MARK: - WorkoutSession.create
 
     func testCreateSessionBuildsExerciseLogsInGroupOrder() {
         let template = makeTemplate(groups: [
@@ -57,7 +92,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             ], restBetweenRoundsSeconds: 60),
         ])
 
-        let session = WorkoutExecutionViewModel.createSession(
+        let session = WorkoutSession.create(
             from: template, userId: "u1", planId: "plan-1"
         )
 
@@ -81,7 +116,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             ], restBetweenRoundsSeconds: nil),
         ])
 
-        let session = WorkoutExecutionViewModel.createSession(
+        let session = WorkoutSession.create(
             from: template, userId: "u1", planId: nil
         )
 
@@ -99,7 +134,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()],
                           restBetweenRoundsSeconds: nil),
         ])
-        let session = WorkoutExecutionViewModel.createSession(
+        let session = WorkoutSession.create(
             from: template, userId: "u1", planId: nil
         )
         XCTAssertEqual(session.exerciseLogs[0].sessionId, session.id)
@@ -113,7 +148,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(restSeconds: 120),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         vm.userDefaultRestSeconds = 45 // user override should NOT win when planned is set
 
         // Mark all but the last set as not completed (we want rest to trigger)
@@ -137,7 +172,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(exerciseId: "bench-press", restSeconds: 120),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         vm.userDefaultRestSeconds = 75
         // Simulate a swap that changed the exerciseId; templateGroups still hold the old id
         vm.session.exerciseLogs[0].exerciseId = "different-exercise"
@@ -146,7 +181,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
 
         let result = vm.restDuration(forExerciseLogIndex: 0, setIndex: 0)
         XCTAssertTrue(result.shouldTrigger)
-        XCTAssertEqual(result.seconds, 75) // user default, not Constants.defaultRestSeconds (90)
+        XCTAssertEqual(result.seconds, 75) // user default, not a hardcoded fallback
     }
 
     func testRestSuppressedAfterFinalSetWhenAllCompleted() {
@@ -155,7 +190,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(sets: 2, restSeconds: 120),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         // Mark both sets completed
         for s in vm.session.exerciseLogs[0].sets {
             vm.completedSetIds.insert(s.id)
@@ -172,7 +207,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p2", exerciseId: "ex-b", sets: 3, restSeconds: 30),
             ], restBetweenRoundsSeconds: 90),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         vm.userDefaultRestSeconds = 60
 
         // Complete round 0 across both exercises
@@ -191,7 +226,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p2", exerciseId: "ex-b", sets: 3, restSeconds: 30),
             ], restBetweenRoundsSeconds: 90),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
 
         // Complete only the first exercise in round 0
         vm.completedSetIds.insert(vm.session.exerciseLogs[0].sets[0].id)
@@ -208,16 +243,17 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(sets: 2),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, 2)
-        XCTAssertEqual(vm.weightInputs[0].count, 2)
+        XCTAssertEqual(vm.setInputs.count, 2)
 
         vm.addSet(exerciseLogIndex: 0)
 
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, 3)
         XCTAssertEqual(vm.session.exerciseLogs[0].sets[2].setNumber, 3)
-        XCTAssertEqual(vm.weightInputs[0].count, 3)
-        XCTAssertEqual(vm.repsInputs[0].count, 3)
+        // The new set gets fresh (empty) input storage keyed by its id
+        XCTAssertEqual(vm.setInputs[vm.session.exerciseLogs[0].sets[2].id], SetInput())
+        XCTAssertEqual(vm.setInputs.count, 3)
     }
 
     func testRemoveSetTrimsAndRenumbers() {
@@ -226,12 +262,14 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(sets: 3),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
+        let removedId = vm.session.exerciseLogs[0].sets[1].id
         vm.removeSet(exerciseLogIndex: 0, setIndex: 1)
 
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, 2)
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.map(\.setNumber), [1, 2])
-        XCTAssertEqual(vm.weightInputs[0].count, 2)
+        XCTAssertNil(vm.setInputs[removedId])
+        XCTAssertEqual(vm.setInputs.count, 2)
     }
 
     func testRemoveSetRefusesToEmptyExercise() {
@@ -240,7 +278,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(sets: 1),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         vm.removeSet(exerciseLogIndex: 0, setIndex: 0)
 
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, 1) // unchanged
@@ -256,7 +294,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p2"), makePlanned(id: "p3"),
             ], restBetweenRoundsSeconds: 60),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
 
         XCTAssertEqual(vm.groupIndex(for: 0), 0)
         XCTAssertEqual(vm.groupIndex(for: 1), 1)
@@ -339,7 +377,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p1", exerciseId: "bench-press"),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         let priorLog = makePriorLogAtMaxReps(exerciseId: "bench-press", repsMax: 10, weightKg: 60)
 
         vm.computeSuggestions(recentLogs: ["bench-press": [priorLog]])
@@ -356,7 +394,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p1", exerciseId: "bench-press"),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         let failLog = makePriorLogBelowMin(exerciseId: "bench-press", repsMin: 8)
         let recentLogs = Array(repeating: failLog, count: Constants.plateauThreshold)
 
@@ -373,7 +411,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p1", exerciseId: "bench-press"),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
 
         vm.computeSuggestions(recentLogs: [:])
 
@@ -386,7 +424,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p1", exerciseId: "bench-press"),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         // Seed a stale entry that should be cleared on next compute
         vm.progressionSuggestions["old-exercise"] = ProgressionSuggestion(
             exerciseId: "old-exercise",
@@ -402,6 +440,407 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertNil(vm.progressionSuggestions["old-exercise"])
     }
 
+    // MARK: - Async flows via fakes
+
+    private func makeExercise(id: String, name: String? = nil) -> Exercise {
+        Exercise(
+            id: id,
+            name: name ?? id.capitalized,
+            primaryMuscleGroup: .chest,
+            secondaryMuscleGroups: [],
+            equipment: [.barbell],
+            movementPattern: .horizontalPush,
+            difficulty: .beginner,
+            youtubeVideoId: "",
+            instructions: "",
+            tips: [],
+            alternatives: [],
+            isCompound: true,
+            tags: []
+        )
+    }
+
+    private func makeBenchVM(
+        sets: Int = 3,
+        workout: FakeWorkoutService? = nil,
+        progress: FakeProgressService? = nil,
+        exercise: FakeExerciseService? = nil
+    ) -> WorkoutExecutionViewModel {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: sets),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        return makeVM(template: template, workout: workout, progress: progress, exercise: exercise)
+    }
+
+    // MARK: start()
+
+    func testStartLoadsDetailsAndPreviousLogsExcludingInFlightSession() async throws {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        let exercise = FakeExerciseService(exercises: [makeExercise(id: "bench-press", name: "Bench Press")])
+        let prior = makePriorLogAtMaxReps(exerciseId: "bench-press", repsMax: 10, weightKg: 60)
+        workout.recentLogsByExerciseId["bench-press"] = [prior]
+        let vm = makeBenchVM(workout: workout, progress: progress, exercise: exercise)
+        defer { vm.stopTimers() }
+
+        await vm.start(userUnitSystem: .metric)
+
+        XCTAssertEqual(workout.startedSessions.map(\.id), [vm.session.id])
+        XCTAssertEqual(vm.exerciseDetails["bench-press"]?.name, "Bench Press")
+        XCTAssertEqual(vm.session.exerciseLogs[0].exerciseName, "Bench Press")
+        XCTAssertEqual(vm.previousLogs["bench-press"]?.id, prior.id)
+        // Suggestion computed from the batched map (all prior sets hit max reps)
+        XCTAssertEqual(vm.progressionSuggestions["bench-press"]?.suggestedWeight, 62.5)
+        XCTAssertFalse(vm.isLoading)
+        XCTAssertNil(vm.errorMessage)
+
+        // The single batched history fetch must exclude the in-flight session
+        XCTAssertEqual(workout.recentLogsRequests.count, 1)
+        let request = try XCTUnwrap(workout.recentLogsRequests.first)
+        XCTAssertEqual(request.excludingSessionId, vm.session.id)
+        XCTAssertEqual(request.exerciseIds, ["bench-press"])
+        XCTAssertEqual(request.userId, "u1")
+    }
+
+    func testStartFailureSetsErrorAndAllowsRetry() async {
+        let workout = FakeWorkoutService()
+        let exercise = FakeExerciseService(exercises: [makeExercise(id: "bench-press")])
+        let vm = makeBenchVM(workout: workout, exercise: exercise)
+        defer { vm.stopTimers() }
+        workout.startSessionError = FakeServiceError(message: "offline")
+
+        await vm.start(userUnitSystem: .metric)
+
+        XCTAssertEqual(vm.errorMessage, "offline")
+        XCTAssertFalse(vm.isLoading)
+        XCTAssertTrue(workout.startedSessions.isEmpty)
+
+        // hasStarted must reset on failure so a retry actually runs
+        workout.startSessionError = nil
+        vm.errorMessage = nil
+
+        await vm.start(userUnitSystem: .metric)
+
+        XCTAssertNil(vm.errorMessage)
+        XCTAssertEqual(workout.startedSessions.count, 1)
+    }
+
+    // MARK: resume rebuild
+
+    func testStartOnResumedSessionRebuildsTemplateGroupsFromPlan() async {
+        // A resumed session (init(existingSession:)) has no template context.
+        // start() must find the plan/template again so superset rest works.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "ex-a", sets: 3, restSeconds: 30),
+                makePlanned(id: "p2", exerciseId: "ex-b", sets: 3, restSeconds: 30),
+            ], restBetweenRoundsSeconds: 90),
+        ])
+        let plan = WorkoutPlan(
+            id: "plan-1",
+            userId: "u1",
+            name: "Test Plan",
+            templateType: .fullBody,
+            goal: .hypertrophy,
+            weekCount: 4,
+            currentWeek: 1,
+            workoutsPerWeek: 3,
+            workouts: [template],
+            deloadWeek: nil,
+            isActive: true,
+            createdAt: Date(),
+            aiGenerated: false,
+            aiPromptContext: nil
+        )
+        let workout = FakeWorkoutService()
+        workout.plans = [plan]
+        workout.recentLogsByExerciseId["ex-a"] = [makePriorLogAtMaxReps(exerciseId: "ex-a", repsMax: 10, weightKg: 40)]
+        let existing = WorkoutSession.create(from: template, userId: "u1", planId: "plan-1")
+
+        let vm = WorkoutExecutionViewModel(
+            existingSession: existing,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { vm.stopTimers() }
+        XCTAssertTrue(vm.templateGroups.isEmpty) // resume starts without context
+
+        await vm.start(userUnitSystem: .metric)
+
+        // Template context restored
+        XCTAssertEqual(vm.templateGroups.count, 1)
+        XCTAssertEqual(vm.groupIndex(for: 0), 0)
+        XCTAssertEqual(vm.groupIndex(for: 1), 0)
+        // Suggestions work again because plannedExercise() can resolve
+        XCTAssertEqual(vm.progressionSuggestions["ex-a"]?.suggestedWeight, 42.5)
+
+        // Superset rest logic works: rest triggers only when the round is done
+        vm.completedSetIds.insert(vm.session.exerciseLogs[0].sets[0].id)
+        XCTAssertFalse(vm.restDuration(forExerciseLogIndex: 0, setIndex: 0).shouldTrigger)
+        vm.completedSetIds.insert(vm.session.exerciseLogs[1].sets[0].id)
+        let result = vm.restDuration(forExerciseLogIndex: 0, setIndex: 0)
+        XCTAssertTrue(result.shouldTrigger)
+        XCTAssertEqual(result.seconds, 90)
+    }
+
+    func testStartOnResumedSessionDegradesGracefullyWhenPlanMissing() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "ex-a", sets: 2),
+                makePlanned(id: "p2", exerciseId: "ex-b", sets: 2),
+            ], restBetweenRoundsSeconds: 90),
+        ])
+        let workout = FakeWorkoutService() // no plans seeded — lookup fails
+        let existing = WorkoutSession.create(from: template, userId: "u1", planId: "plan-gone")
+
+        let vm = WorkoutExecutionViewModel(
+            existingSession: existing,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { vm.stopTimers() }
+
+        await vm.start(userUnitSystem: .metric)
+
+        // No crash, no error, just the pre-existing straight-set behavior
+        XCTAssertNil(vm.errorMessage)
+        XCTAssertTrue(vm.templateGroups.isEmpty)
+        XCTAssertTrue(vm.exerciseGroupMap.isEmpty)
+    }
+
+    // MARK: completeSet()
+
+    func testCompleteSetPersistsViaServiceAndMarksCompleted() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        let set = vm.session.exerciseLogs[0].sets[0]
+        XCTAssertEqual(set.weightKg, 100)
+        XCTAssertEqual(set.reps, 5)
+        XCTAssertNotNil(set.completedAt)
+        XCTAssertTrue(vm.completedSetIds.contains(set.id))
+        XCTAssertEqual(workout.updatedSessions.count, 1)
+        XCTAssertEqual(workout.updatedSessions.first?.exerciseLogs[0].sets[0].weightKg, 100)
+        XCTAssertNil(vm.errorMessage)
+    }
+
+    func testCompleteSetAdoptsGhostValuesWhenInputsEmpty() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        vm.previousLogs["bench-press"] = makePriorLogAtMaxReps(
+            exerciseId: "bench-press", repsMax: 10, weightKg: 60
+        )
+        // Inputs deliberately left empty: placeholders read "repeat last time"
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        let set = vm.session.exerciseLogs[0].sets[0]
+        XCTAssertEqual(set.weightKg, 60)
+        XCTAssertEqual(set.reps, 10)
+        XCTAssertTrue(vm.completedSetIds.contains(set.id))
+        // Inputs are backfilled so the UI shows what was logged
+        XCTAssertEqual(Double(input(vm, exercise: 0, set: 0).weight), 60)
+        XCTAssertEqual(input(vm, exercise: 0, set: 0).reps, "10")
+        XCTAssertEqual(workout.updatedSessions.count, 1)
+    }
+
+    func testCompleteSetRefusesWithoutInputsOrHistory() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        let set = vm.session.exerciseLogs[0].sets[0]
+        XCTAssertEqual(set.weightKg, 0)
+        XCTAssertNil(set.completedAt)
+        XCTAssertTrue(vm.completedSetIds.isEmpty)
+        XCTAssertTrue(workout.updatedSessions.isEmpty) // nothing persisted
+    }
+
+    func testCompleteSetDetectsPRAndFlagsSet() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        progress.existingPRsByExerciseId["bench-press"] = [] // no prior records
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        XCTAssertEqual(vm.sessionPRs.count, 1)
+        XCTAssertEqual(vm.newPR?.type, .weight)
+        XCTAssertEqual(vm.newPR?.value, 100)
+        XCTAssertTrue(vm.session.exerciseLogs[0].sets[0].isPersonalRecord)
+        // The set remembers exactly which records it created
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets[0].personalRecordIds, vm.sessionPRs.map(\.id))
+        XCTAssertEqual(progress.savedPRs.count, 1)
+        // The PR check received the session-cached existing records
+        XCTAssertEqual(progress.checkForPRsCalls.count, 1)
+        XCTAssertEqual(progress.checkForPRsCalls.first?.existingPRs.count, 0)
+        // And the persisted session carries the flag
+        XCTAssertEqual(workout.updatedSessions.first?.exerciseLogs[0].sets[0].isPersonalRecord, true)
+    }
+
+    func testCompleteSetPRCheckFailureDoesNotBlockPersistence() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.getExercisePRsError = FakeServiceError(message: "pr lookup down")
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        XCTAssertTrue(vm.sessionPRs.isEmpty)
+        XCTAssertNil(vm.newPR)
+        XCTAssertFalse(vm.session.exerciseLogs[0].sets[0].isPersonalRecord)
+        // The set still persists and completes locally
+        XCTAssertEqual(workout.updatedSessions.count, 1)
+        XCTAssertTrue(vm.completedSetIds.contains(vm.session.exerciseLogs[0].sets[0].id))
+        XCTAssertNil(vm.errorMessage) // PR detection is best-effort
+    }
+
+    func testCompleteSetSaveFailureSetsErrorButKeepsLocalCompletion() async {
+        let workout = FakeWorkoutService()
+        workout.updateSessionError = FakeServiceError(message: "network down")
+        let vm = makeBenchVM(workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        XCTAssertEqual(vm.errorMessage, "Failed to save: network down")
+        // Local state keeps the completion so the lifter's data isn't lost
+        let set = vm.session.exerciseLogs[0].sets[0]
+        XCTAssertEqual(set.weightKg, 100)
+        XCTAssertTrue(vm.completedSetIds.contains(set.id))
+    }
+
+    // MARK: uncompleteSet()
+
+    func testUncompleteSetRollsBackPRAndDeletesRecord() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+        XCTAssertEqual(vm.sessionPRs.count, 1)
+        let prId = vm.sessionPRs[0].id
+
+        await vm.uncompleteSet(exerciseLogIndex: 0, setIndex: 0)
+
+        XCTAssertEqual(progress.deletedRecords.map(\.id), [prId])
+        XCTAssertTrue(vm.sessionPRs.isEmpty)
+        XCTAssertNil(vm.newPR)
+        let set = vm.session.exerciseLogs[0].sets[0]
+        XCTAssertFalse(vm.completedSetIds.contains(set.id))
+        XCTAssertEqual(set.weightKg, 0)
+        XCTAssertEqual(set.reps, 0)
+        XCTAssertFalse(set.isPersonalRecord)
+        XCTAssertNil(set.personalRecordIds)
+        XCTAssertNil(set.completedAt)
+        XCTAssertEqual(input(vm, exercise: 0, set: 0).weight, "")
+        // Uncompleting persists the reverted session too
+        XCTAssertEqual(workout.updatedSessions.count, 2)
+    }
+
+    func testUncompleteSetDeletesOnlyItsOwnPRsWhenValuesAreIdentical() async {
+        // Two sets at the same weight each produce a "PR" record (the fake
+        // detects unconditionally). Uncompleting the first set must delete
+        // only the record ids stored on that set — identity, not value match.
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+        seedInput(vm, exercise: 0, set: 1, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 1)
+        XCTAssertEqual(vm.sessionPRs.count, 2)
+        XCTAssertEqual(vm.sessionPRs[0].value, vm.sessionPRs[1].value) // identical values
+        let firstSetPRIds = vm.session.exerciseLogs[0].sets[0].personalRecordIds ?? []
+        let secondSetPRIds = vm.session.exerciseLogs[0].sets[1].personalRecordIds ?? []
+        XCTAssertEqual(firstSetPRIds.count, 1)
+
+        await vm.uncompleteSet(exerciseLogIndex: 0, setIndex: 0)
+
+        // Only the first set's record was deleted
+        XCTAssertEqual(progress.deletedRecords.map(\.id), firstSetPRIds)
+        XCTAssertEqual(vm.sessionPRs.map(\.id), secondSetPRIds)
+        // The second set keeps its PR state untouched
+        XCTAssertTrue(vm.session.exerciseLogs[0].sets[1].isPersonalRecord)
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets[1].personalRecordIds, secondSetPRIds)
+    }
+
+    // MARK: abandonWorkout()
+
+    func testAbandonWorkoutDeletesSessionPRsAndPersistsAbandon() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+        XCTAssertEqual(vm.sessionPRs.count, 1)
+        let prId = vm.sessionPRs[0].id
+
+        await vm.abandonWorkout()
+
+        XCTAssertEqual(progress.deletedRecords.map(\.id), [prId])
+        XCTAssertTrue(vm.sessionPRs.isEmpty)
+        XCTAssertNil(vm.newPR)
+        XCTAssertEqual(workout.abandonedSessions.map(\.id), [vm.session.id])
+        XCTAssertNil(vm.errorMessage)
+    }
+
+    func testAbandonWorkoutStillAbandonsWhenPRDeletionFails() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let vm = makeBenchVM(workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "100", reps: "5")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+
+        progress.deleteRecordError = FakeServiceError(message: "delete down")
+        await vm.abandonWorkout()
+
+        // Deletion is best effort; abandoning must still go through
+        XCTAssertTrue(progress.deletedRecords.isEmpty)
+        XCTAssertEqual(workout.abandonedSessions.count, 1)
+        XCTAssertNil(vm.errorMessage)
+    }
+
     // MARK: - Scroll target
 
     func testScrollToExerciseLogIndexIsNilByDefault() {
@@ -409,7 +848,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()],
                           restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         XCTAssertNil(vm.scrollToExerciseLogIndex)
     }
 
@@ -420,7 +859,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
                 makePlanned(id: "p2"),
             ], restBetweenRoundsSeconds: nil),
         ])
-        let vm = WorkoutExecutionViewModel(template: template, userId: "u1", planId: nil)
+        let vm = makeVM(template: template)
         vm.scrollToExerciseLogIndex = 1
         XCTAssertEqual(vm.scrollToExerciseLogIndex, 1)
     }

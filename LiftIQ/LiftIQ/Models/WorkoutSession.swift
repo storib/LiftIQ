@@ -43,9 +43,79 @@ struct SetLog: Codable, Identifiable, Hashable {
     var rpe: Double?
     var isPersonalRecord: Bool
     var completedAt: Date?
+    /// Ids of the PersonalRecords this set produced, so uncompleting the set
+    /// can roll back exactly those records. Optional so documents written
+    /// before this field existed keep decoding (decodeIfPresent).
+    var personalRecordIds: [String]? = nil
 
     var estimated1RM: Double {
-        guard reps > 0 else { return weightKg }
-        return weightKg * (1 + Double(reps) / 30.0)  // Epley formula
+        Epley.estimated1RM(weight: weightKg, reps: reps)
+    }
+}
+
+// MARK: - Session Factory
+
+extension WorkoutSession {
+    /// Builds a fresh in-progress session from a template, one exercise log
+    /// per planned exercise in group order, with all sets zeroed.
+    static func create(from template: WorkoutTemplate, userId: String, planId: String?) -> WorkoutSession {
+        var exerciseLogs: [ExerciseLog] = []
+        var order = 0
+
+        for group in template.exerciseGroups {
+            for planned in group.exercises {
+                var sets: [SetLog] = []
+                for setNum in 1...planned.sets {
+                    sets.append(SetLog(
+                        id: UUID().uuidString,
+                        setNumber: setNum,
+                        setType: .working,
+                        weightKg: 0,
+                        reps: 0,
+                        rpe: nil,
+                        isPersonalRecord: false,
+                        completedAt: nil
+                    ))
+                }
+
+                let fallbackName = planned.exerciseId
+                    .replacingOccurrences(of: "_", with: " ")
+                    .replacingOccurrences(of: "-", with: " ")
+                    .capitalized
+
+                exerciseLogs.append(ExerciseLog(
+                    id: UUID().uuidString,
+                    sessionId: "",
+                    exerciseId: planned.exerciseId,
+                    exerciseName: fallbackName,
+                    order: order,
+                    groupType: group.groupType,
+                    sets: sets,
+                    notes: nil
+                ))
+                order += 1
+            }
+        }
+
+        let sessionId = UUID().uuidString
+        // Backfill sessionId into exercise logs
+        for i in exerciseLogs.indices {
+            exerciseLogs[i].sessionId = sessionId
+        }
+
+        return WorkoutSession(
+            id: sessionId,
+            userId: userId,
+            planId: planId,
+            workoutTemplateId: template.id,
+            workoutName: template.name,
+            startedAt: Date(),
+            completedAt: nil,
+            status: .inProgress,
+            exerciseLogs: exerciseLogs,
+            durationSeconds: 0,
+            notes: nil,
+            mood: nil
+        )
     }
 }

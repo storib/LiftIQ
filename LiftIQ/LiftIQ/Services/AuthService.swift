@@ -13,10 +13,13 @@ final class AuthService {
     var errorMessage: String?
 
     private var authStateListener: AuthStateDidChangeListenerHandle?
-    private let userRepository = UserRepository()
+    private let userRepository: UserRepository
+    // Functions has no seam yet; faking it requires a wrapper protocol around
+    // HTTPSCallable, which a later stage can add if deleteAccount needs tests.
     private let functions = Functions.functions()
 
-    init() {
+    init(userRepository: UserRepository = UserRepository()) {
+        self.userRepository = userRepository
         listenToAuthState()
     }
 
