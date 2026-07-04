@@ -86,8 +86,11 @@ final class WorkoutService {
         excludingSessionId: String? = nil,
         limit: Int = 5
     ) async throws -> [String: [ExerciseLog]] {
+        // Only completed sessions count as history — abandoned or in-progress
+        // sessions carry zero-weight sets that would poison "previous" ghost
+        // values and progression suggestions ("Hold at 0 lb").
         let sessions = try await sessionRepository.getSessions(userId: userId, limit: 100)
-            .filter { $0.id != excludingSessionId }
+            .filter { $0.id != excludingSessionId && $0.status == .completed }
         var logs: [String: [ExerciseLog]] = [:]
         for exerciseId in exerciseIds {
             let recent = sessions.compactMap { session in

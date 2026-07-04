@@ -19,21 +19,30 @@ struct RestTimerView: View {
             ZStack {
                 // Background ring
                 Circle()
-                    .stroke(Color.secondary.opacity(0.2), lineWidth: 8)
+                    .stroke(Color.secondary.opacity(0.15), lineWidth: 10)
 
-                // Progress ring
+                // Progress ring with a subtle accent gradient along the sweep
                 Circle()
                     .trim(from: 0, to: progress)
-                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(
+                        AngularGradient(
+                            colors: [Color.accentColor.opacity(0.55), Color.accentColor],
+                            center: .center,
+                            startAngle: .degrees(0),
+                            endAngle: .degrees(360)
+                        ),
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1), value: progress)
 
                 // Timer text
                 Text(Formatters.timerString(from: secondsRemaining))
-                    .font(.system(size: 36, weight: .bold, design: .monospaced))
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .monospacedDigit()
                     .contentTransition(.numericText())
             }
-            .frame(width: 120, height: 120)
+            .frame(width: 128, height: 128)
 
             // Adjust buttons
             HStack(spacing: 24) {
@@ -71,7 +80,7 @@ struct RestTimerView: View {
         .padding(24)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
+        .shadow(color: .black.opacity(0.1), radius: 24, y: 8)
         .padding(.horizontal, 40)
     }
 

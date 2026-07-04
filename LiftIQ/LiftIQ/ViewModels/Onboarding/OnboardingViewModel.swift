@@ -107,7 +107,10 @@ final class OnboardingViewModel {
             heightCm: heightCm,
             dateOfBirth: nil,
             unitSystem: unitSystem,
-            defaultRestSeconds: 60
+            // nil = "follow the program's rest values". A concrete value here
+            // would override every planned rest (see restDuration precedence);
+            // users opt into that from Profile.
+            defaultRestSeconds: nil
         )
     }
 

@@ -89,6 +89,12 @@ final class WorkoutExecutionViewModel: Identifiable {
     // Sourced from the user's profile via start(...).
     var userDefaultRestSeconds: Int = 60
 
+    // A rest duration the user set explicitly in Profile. When present it
+    // wins over the plan's per-exercise/per-group rest values ("my setting
+    // rules everywhere"); when nil, planned rest applies with the default
+    // as fallback.
+    var userRestOverride: Int?
+
     // Optional: when set before presenting, the view scrolls to the matching
     // exercise log on first appear (used for deep-links from program day view).
     var scrollToExerciseLogIndex: Int?
@@ -151,13 +157,15 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     func start(
         userUnitSystem: UnitSystem,
-        userDefaultRestSeconds: Int = 60
+        userDefaultRestSeconds: Int = 60,
+        userRestOverride: Int? = nil
     ) async {
         guard !hasStarted else { return }
         hasStarted = true
         isLoading = true
         unitSystem = userUnitSystem
         self.userDefaultRestSeconds = userDefaultRestSeconds
+        self.userRestOverride = userRestOverride
 
         do {
             try await exerciseService.loadExercises()
@@ -722,7 +730,7 @@ final class WorkoutExecutionViewModel: Identifiable {
             }
             let group = templateGroups[groupIndex]
             let planned = group.exercises.first { $0.exerciseId == exerciseLog.exerciseId }
-            return (true, planned?.restSeconds ?? userDefaultRestSeconds)
+            return (true, userRestOverride ?? planned?.restSeconds ?? userDefaultRestSeconds)
         }
 
         // For supersets/circuits: rest only after all exercises in the group complete the current round
@@ -748,7 +756,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
         // All done for this round — trigger rest
         let group = templateGroups[groupIndex]
-        let restSeconds = group.restBetweenRoundsSeconds ?? userDefaultRestSeconds
+        let restSeconds = userRestOverride ?? group.restBetweenRoundsSeconds ?? userDefaultRestSeconds
         return (true, restSeconds)
     }
 

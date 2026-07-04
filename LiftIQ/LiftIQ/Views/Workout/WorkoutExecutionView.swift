@@ -16,13 +16,19 @@ struct WorkoutExecutionView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Custom toolbar
-                toolbar
+                // Custom toolbar with the session progress bar attached, so
+                // the header reads as one surface.
+                VStack(spacing: 0) {
+                    toolbar
 
-                // Progress bar
-                ProgressView(value: viewModel.progressFraction)
-                    .tint(Color.accentColor)
-                    .padding(.horizontal)
+                    ProgressView(value: viewModel.progressFraction)
+                        .tint(Color.accentColor)
+                        .padding(.horizontal)
+                        .padding(.bottom, 10)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.9), value: viewModel.progressFraction)
+                }
+                .background(Color.liftCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
 
                 // Unit toggle
                 Picker("Unit", selection: $viewModel.unitSystem) {
@@ -171,7 +177,8 @@ struct WorkoutExecutionView: View {
             let profile = dependencies.authService.currentUser?.profile
             await viewModel.start(
                 userUnitSystem: profile?.unitSystem ?? .metric,
-                userDefaultRestSeconds: profile?.effectiveDefaultRestSeconds ?? 60
+                userDefaultRestSeconds: profile?.effectiveDefaultRestSeconds ?? 60,
+                userRestOverride: profile?.defaultRestSeconds
             )
         }
         .onDisappear {
@@ -194,8 +201,10 @@ struct WorkoutExecutionView: View {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                     .font(.caption)
+                    .symbolRenderingMode(.hierarchical)
                 Text(viewModel.elapsedFormatted)
-                    .font(.subheadline.monospacedDigit())
+                    .font(.subheadline.weight(.medium).monospacedDigit())
+                    .contentTransition(.numericText())
             }
             .foregroundStyle(.secondary)
 
@@ -203,7 +212,7 @@ struct WorkoutExecutionView: View {
 
             // Workout name
             Text(viewModel.session.workoutName)
-                .font(.headline)
+                .font(.system(.headline, design: .rounded))
                 .lineLimit(1)
 
             Spacer()
@@ -239,8 +248,8 @@ struct WorkoutExecutionView: View {
             }
         }
         .padding(.horizontal)
-        .padding(.vertical, 12)
-        .background(Color.liftCardBackground)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
     }
 
     // MARK: - Exercise List

@@ -55,6 +55,9 @@ struct YouTubePlayerView: UIViewRepresentable {
         </body>
         </html>
         """
-        webView.loadHTMLString(html, baseURL: nil)
+        // A nil baseURL gives the embed no HTTP referer, which YouTube rejects
+        // with "Error 153 — video player configuration error". Loading against
+        // youtube.com provides a valid origin so playback is allowed.
+        webView.loadHTMLString(html, baseURL: URL(string: "https://www.youtube.com"))
     }
 }

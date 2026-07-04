@@ -200,6 +200,40 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertFalse(result.shouldTrigger)
     }
 
+    func testUserRestOverrideBeatsPlannedRest() {
+        // "I asked for 1 min rest in my settings" — an explicit profile rest
+        // wins over the plan's per-exercise value.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(restSeconds: 120),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template)
+        vm.userRestOverride = 60
+        vm.completedSetIds.insert(vm.session.exerciseLogs[0].sets[0].id)
+
+        let result = vm.restDuration(forExerciseLogIndex: 0, setIndex: 0)
+        XCTAssertTrue(result.shouldTrigger)
+        XCTAssertEqual(result.seconds, 60)
+    }
+
+    func testUserRestOverrideBeatsGroupRoundRest() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "ex-a", sets: 3, restSeconds: 30),
+                makePlanned(id: "p2", exerciseId: "ex-b", sets: 3, restSeconds: 30),
+            ], restBetweenRoundsSeconds: 90),
+        ])
+        let vm = makeVM(template: template)
+        vm.userRestOverride = 45
+        vm.completedSetIds.insert(vm.session.exerciseLogs[0].sets[0].id)
+        vm.completedSetIds.insert(vm.session.exerciseLogs[1].sets[0].id)
+
+        let result = vm.restDuration(forExerciseLogIndex: 0, setIndex: 0)
+        XCTAssertTrue(result.shouldTrigger)
+        XCTAssertEqual(result.seconds, 45)
+    }
+
     func testSupersetRestUsesGroupRestBetweenRounds() {
         let template = makeTemplate(groups: [
             ExerciseGroup(id: "g1", groupType: .superset, exercises: [

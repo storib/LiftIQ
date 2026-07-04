@@ -140,6 +140,11 @@ struct SetRowView: View {
         // keeps the row at the same overall height it had before.
         .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(rowStrokeColor, lineWidth: 1)
+        )
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isCompleted)
         // Stopgap for accessibility sizes: the fixed-width numeric columns clip
         // digits past xxLarge, so clamp the row and let minimumScaleFactor
         // absorb the rest until the row is rebuilt as a Grid.
@@ -185,10 +190,32 @@ struct SetRowView: View {
         return isCompleted ? Color.liftSuccess : .secondary
     }
 
-    private var rowBackground: Color {
-        if isPersonalRecord { return Color.liftPR.opacity(0.1) }
-        if isCompleted { return Color.liftSuccess.opacity(0.08) }
-        if setType == .warmUp { return Color.warmUpSet.opacity(0.1) }
+    private var rowBackground: AnyShapeStyle {
+        if isPersonalRecord {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [Color.liftPR.opacity(0.14), Color.liftPR.opacity(0.06)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+        }
+        if isCompleted {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [Color.liftSuccess.opacity(0.12), Color.liftSuccess.opacity(0.05)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+        }
+        if setType == .warmUp { return AnyShapeStyle(Color.warmUpSet.opacity(0.1)) }
+        return AnyShapeStyle(Color.clear)
+    }
+
+    private var rowStrokeColor: Color {
+        if isPersonalRecord { return Color.liftPR.opacity(0.25) }
+        if isCompleted { return Color.liftSuccess.opacity(0.2) }
         return .clear
     }
 }

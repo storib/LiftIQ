@@ -37,9 +37,9 @@ struct ExerciseCardView: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Header
                 HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(exerciseLog.exerciseName)
-                            .font(.headline)
+                            .font(.system(.headline, design: .rounded))
 
                         if let exerciseDetail {
                             HStack(spacing: 8) {
@@ -66,7 +66,7 @@ struct ExerciseCardView: View {
                     .accessibilityLabel("Swap exercise")
                 }
 
-                if let suggestion {
+                if let suggestion, shouldShowSuggestionPill(suggestion) {
                     suggestionPill(suggestion)
                 }
 
@@ -187,7 +187,8 @@ struct ExerciseCardView: View {
             .padding()
         }
         .background(Color.liftCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
     }
 
     // MARK: - Subviews
@@ -238,12 +239,26 @@ struct ExerciseCardView: View {
             .first
     }
 
+    /// Hide the pill when there's no meaningful guidance to show: a
+    /// zero-weight suggestion with no previous data would read as "Hold at
+    /// 0 lb", which looks broken.
+    private func shouldShowSuggestionPill(_ s: ProgressionSuggestion) -> Bool {
+        if s.isPlateaued { return true }
+        if s.suggestedWeight > 0.001 { return true }
+        return previousLog != nil
+    }
+
     private func suggestionText(_ s: ProgressionSuggestion) -> String {
         if s.isPlateaued {
             return "Plateau detected — try swapping this exercise"
         }
-        let displayWeight = UnitConversionService.convertWeight(s.suggestedWeight, to: viewModel.unitSystem)
         let unitLabel = viewModel.unitSystem == .metric ? "kg" : "lb"
+        // Bodyweight / unweighted movements: no weight to hold, so lead with
+        // the rep target instead of a "0 lb" callout.
+        guard s.suggestedWeight > 0.001 else {
+            return "Hit \(s.suggestedRepsMax) reps to progress"
+        }
+        let displayWeight = UnitConversionService.convertWeight(s.suggestedWeight, to: viewModel.unitSystem)
         if let prevKg = topPreviousWorkingWeightKg, s.suggestedWeight > prevKg + 0.001 {
             let prevDisplay = UnitConversionService.convertWeight(prevKg, to: viewModel.unitSystem)
             let delta = displayWeight - prevDisplay
