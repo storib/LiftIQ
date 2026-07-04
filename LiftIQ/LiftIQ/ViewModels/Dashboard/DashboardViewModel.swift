@@ -16,7 +16,10 @@ final class DashboardViewModel {
             try await workoutService.loadRecentSessions(userId: userId)
             try await workoutService.loadActiveSession(userId: userId)
 
-            computeTodayWorkout(from: workoutService.activePlan)
+            todayWorkout = Self.nextWorkout(
+                plan: workoutService.activePlan,
+                sessions: workoutService.recentSessions
+            )
             computeStats(from: workoutService.recentSessions)
         } catch {
             // Handle silently for dashboard
@@ -24,17 +27,32 @@ final class DashboardViewModel {
         isLoading = false
     }
 
-    private func computeTodayWorkout(from plan: WorkoutPlan?) {
-        guard let plan, !plan.workouts.isEmpty else {
-            todayWorkout = nil
-            return
+    /// Recommends the plan day after the most recently completed one, cycling
+    /// back to day 1 at the end of the rotation. Completing a workout advances
+    /// the recommendation immediately — it is not tied to the calendar weekday.
+    static func nextWorkout(plan: WorkoutPlan?, sessions: [WorkoutSession]) -> WorkoutTemplate? {
+        guard let plan, !plan.workouts.isEmpty else { return nil }
+        let templateIds = Set(plan.workouts.map(\.id))
+        let lastCompleted = sessions
+            .filter { session in
+                session.status == .completed &&
+                session.workoutTemplateId.map(templateIds.contains) == true
+            }
+            .max { ($0.completedAt ?? $0.startedAt) < ($1.completedAt ?? $1.startedAt) }
+
+        guard let last = lastCompleted,
+              let lastIndex = plan.workouts.firstIndex(where: { $0.id == last.workoutTemplateId }) else {
+            return plan.workouts.first
         }
-        let weekday = Calendar.current.component(.weekday, from: Date())
-        // .weekday: 1=Sunday, 2=Monday, ..., 7=Saturday
-        // Convert to Monday=0, Tuesday=1, ..., Sunday=6
-        let daysSinceMonday = (weekday + 5) % 7
-        let workoutIndex = daysSinceMonday % plan.workouts.count
-        todayWorkout = plan.workouts[workoutIndex]
+        return plan.workouts[(lastIndex + 1) % plan.workouts.count]
+    }
+
+    /// The rotation that follows `nextWorkout`, used to project upcoming days.
+    static func upcomingRotation(plan: WorkoutPlan?, sessions: [WorkoutSession], count: Int) -> [WorkoutTemplate] {
+        guard let plan, !plan.workouts.isEmpty, count > 0,
+              let next = nextWorkout(plan: plan, sessions: sessions),
+              let nextIndex = plan.workouts.firstIndex(where: { $0.id == next.id }) else { return [] }
+        return (0..<count).map { plan.workouts[(nextIndex + $0) % plan.workouts.count] }
     }
 
     private func computeStats(from sessions: [WorkoutSession]) {

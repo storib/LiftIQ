@@ -4,6 +4,7 @@ struct DashboardView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel = DashboardViewModel()
     @State private var workoutExecutionVM: WorkoutExecutionViewModel?
+    @State private var sessionPendingDeletion: WorkoutSession?
 
     private var unitSystem: UnitSystem {
         dependencies.authService.currentUser?.profile.unitSystem ?? .imperial
@@ -31,10 +32,10 @@ struct DashboardView: View {
                     .padding(.horizontal)
                 }
 
-                // Today's Workout Card
+                // Next recommended workout — advances as plan days complete
                 if let workout = viewModel.todayWorkout {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Today's Workout")
+                        Text("Up Next")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
@@ -167,31 +168,35 @@ struct DashboardView: View {
                 // Recent Activity
                 if !dependencies.workoutService.recentSessions.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Recent Activity")
-                            .font(.headline)
-                            .padding(.horizontal)
+                        HStack {
+                            Text("Recent Activity")
+                                .font(.headline)
+                            Spacer()
+                            NavigationLink {
+                                WorkoutHistoryView()
+                            } label: {
+                                Text("See All")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        .padding(.horizontal)
 
                         ForEach(dependencies.workoutService.recentSessions.prefix(5)) { session in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(session.workoutName)
-                                        .font(.subheadline.weight(.semibold))
-                                    Text(session.startedAt.relativeDescription)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    Text(Formatters.durationString(from: session.durationSeconds))
-                                        .font(.subheadline)
-                                    Text("\(Int(UnitConversionService.convertWeight(session.totalVolumeKg, to: unitSystem))) \(UnitConversionService.weightLabel(for: unitSystem))")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                            NavigationLink {
+                                SessionDetailView(session: session)
+                            } label: {
+                                SessionRowContent(session: session, unitSystem: unitSystem)
+                                    .padding()
+                                    .background(Color(.secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Delete Workout", role: .destructive) {
+                                    sessionPendingDeletion = session
                                 }
                             }
-                            .padding()
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .padding(.horizontal)
                         }
                     }
@@ -205,6 +210,26 @@ struct DashboardView: View {
             if let userId = dependencies.authService.currentUserId {
                 await viewModel.load(workoutService: dependencies.workoutService, userId: userId)
             }
+        }
+        .confirmationDialog(
+            "Delete this workout?",
+            isPresented: Binding(
+                get: { sessionPendingDeletion != nil },
+                set: { if !$0 { sessionPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Workout", role: .destructive) {
+                if let session = sessionPendingDeletion, let userId = dependencies.authService.currentUserId {
+                    Task {
+                        try? await dependencies.workoutService.deleteSession(session)
+                        await viewModel.load(workoutService: dependencies.workoutService, userId: userId)
+                    }
+                }
+                sessionPendingDeletion = nil
+            }
+        } message: {
+            Text("This removes the workout and any records it set. This can't be undone.")
         }
         .fullScreenCover(item: $workoutExecutionVM) { vm in
             WorkoutExecutionView(viewModel: vm)

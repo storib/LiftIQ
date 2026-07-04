@@ -27,4 +27,8 @@ final class WorkoutSessionRepository {
     func saveSession(_ session: WorkoutSession) async throws {
         try sessionCollection(userId: session.userId).document(session.id).setData(from: session)
     }
+
+    func deleteSession(userId: String, sessionId: String) async throws {
+        try await sessionCollection(userId: userId).document(sessionId).delete()
+    }
 }

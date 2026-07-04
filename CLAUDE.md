@@ -67,6 +67,8 @@ test/           Vitest + Firestore rules tests
 
 - Onboarding: profile, equipment presets, optional AI consent, then a generated active plan. Declining consent ends in "Finish Setup" with pointers to templates; page swipe cannot skip validation.
 - Workout execution: tapping ✓ on empty fields adopts the ghost previous-session values; rest timer keeps time in the background and fires a local notification; PRs appear as a non-blocking top toast; keyboard has a prev/next/Done toolbar; controls have 44pt targets and VoiceOver labels.
+- Dashboard "Up Next" recommends the plan day after the most recently completed session (`DashboardViewModel.nextWorkout`, cycles at rotation end) — it is not weekday-based. Welcome screen has a swipeable tutorial carousel; sign-up validates live with a strength meter.
+- History: Dashboard Recent Activity rows open `SessionDetailView` (edit set weights/reps of finished sessions, delete with confirmation); "See All" opens `WorkoutHistoryView`, a weekly calendar of past sessions plus projected upcoming plan days. `WorkoutService.deleteSession` best-effort deletes the session's PRs client-side; progressRecords cleanup is server-side.
 - Progress tab: Swift Charts — estimated-1RM line and weekly volume bars per exercise, from progressRecords.
 - Program day rows deep-link into `WorkoutExecutionView`. Resuming an interrupted session rebuilds superset rest and progression suggestions from the plan.
 - User default rest is `UserProfile.defaultRestSeconds` with a 60s fallback; AI/planned rest values win.

@@ -79,6 +79,9 @@ final class FakeWorkoutService: WorkoutServicing {
     func updateSession(_ session: WorkoutSession) async throws {
         if let updateSessionError { throw updateSessionError }
         updatedSessions.append(session)
+        if let index = recentSessions.firstIndex(where: { $0.id == session.id }) {
+            recentSessions[index] = session
+        }
         activeSession = session.status == .inProgress ? session : nil
     }
 
@@ -97,6 +100,18 @@ final class FakeWorkoutService: WorkoutServicing {
         if let abandonSessionError { throw abandonSessionError }
         abandonedSessions.append(session)
         activeSession = nil
+    }
+
+    var deletedSessions: [WorkoutSession] = []
+    var deleteSessionError: Error?
+
+    func deleteSession(_ session: WorkoutSession) async throws {
+        if let deleteSessionError { throw deleteSessionError }
+        deletedSessions.append(session)
+        recentSessions.removeAll { $0.id == session.id }
+        if activeSession?.id == session.id {
+            activeSession = nil
+        }
     }
 
     func getRecentExerciseLogs(

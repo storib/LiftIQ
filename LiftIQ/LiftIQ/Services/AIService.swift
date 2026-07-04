@@ -43,7 +43,13 @@ final class AIService {
             }
 
             let value = try container.decode(String.self)
-            if let date = iso8601WithFractionalSeconds.date(from: value) ?? iso8601.date(from: value) {
+            // Created per call: ISO8601DateFormatter statics on this @MainActor
+            // class can't be touched from the nonisolated decoding closure.
+            let fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let plain = ISO8601DateFormatter()
+            plain.formatOptions = [.withInternetDateTime]
+            if let date = fractional.date(from: value) ?? plain.date(from: value) {
                 return date
             }
 
@@ -55,17 +61,6 @@ final class AIService {
         return decoder
     }
 
-    private static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
-    private static let iso8601: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
 }
 
 enum AIServiceError: LocalizedError {

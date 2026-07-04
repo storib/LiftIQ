@@ -19,7 +19,7 @@ final class AppDependencies {
         let prRepo = PersonalRecordRepository()
 
         self.authService = AuthService(userRepository: userRepo)
-        self.workoutService = WorkoutService(planRepository: planRepo, sessionRepository: sessionRepo)
+        self.workoutService = WorkoutService(planRepository: planRepo, sessionRepository: sessionRepo, prRepository: prRepo)
         self.exerciseService = ExerciseService(repository: exerciseRepo)
         self.progressService = ProgressService(progressRepository: progressRepo, prRepository: prRepo)
         self.aiService = AIService()

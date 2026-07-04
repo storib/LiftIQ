@@ -28,6 +28,7 @@ protocol WorkoutServicing: AnyObject {
     @discardableResult
     func completeSession(_ session: WorkoutSession) async throws -> WorkoutSession
     func abandonSession(_ session: WorkoutSession) async throws
+    func deleteSession(_ session: WorkoutSession) async throws
     func getRecentExerciseLogs(
         userId: String,
         exerciseIds: Set<String>,

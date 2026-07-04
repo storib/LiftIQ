@@ -5,15 +5,21 @@ import Foundation
 final class WorkoutService {
     private let planRepository: WorkoutPlanRepository
     private let sessionRepository: WorkoutSessionRepository
+    private let prRepository: PersonalRecordRepository
 
     var activePlan: WorkoutPlan?
     var plans: [WorkoutPlan] = []
     var recentSessions: [WorkoutSession] = []
     var activeSession: WorkoutSession?
 
-    init(planRepository: WorkoutPlanRepository, sessionRepository: WorkoutSessionRepository) {
+    init(
+        planRepository: WorkoutPlanRepository,
+        sessionRepository: WorkoutSessionRepository,
+        prRepository: PersonalRecordRepository
+    ) {
         self.planRepository = planRepository
         self.sessionRepository = sessionRepository
+        self.prRepository = prRepository
     }
 
     func loadPlans(userId: String) async throws {
@@ -55,6 +61,9 @@ final class WorkoutService {
         } else if activeSession?.id == session.id {
             activeSession = nil
         }
+        if let index = recentSessions.firstIndex(where: { $0.id == session.id }) {
+            recentSessions[index] = session
+        }
     }
 
     @discardableResult
@@ -66,6 +75,21 @@ final class WorkoutService {
         activeSession = nil
         try await loadRecentSessions(userId: session.userId)
         return completed
+    }
+
+    /// Deletes a session and best-effort rolls back the personal records its
+    /// sets produced (same tradeoff as the set-clearing rollback in workout
+    /// execution). progressRecords cleanup happens server-side on the delete.
+    func deleteSession(_ session: WorkoutSession) async throws {
+        let recordIds = Set(session.exerciseLogs.flatMap(\.sets).flatMap { $0.personalRecordIds ?? [] })
+        for recordId in recordIds {
+            try? await prRepository.deleteRecord(userId: session.userId, recordId: recordId)
+        }
+        try await sessionRepository.deleteSession(userId: session.userId, sessionId: session.id)
+        recentSessions.removeAll { $0.id == session.id }
+        if activeSession?.id == session.id {
+            activeSession = nil
+        }
     }
 
     func abandonSession(_ session: WorkoutSession) async throws {
