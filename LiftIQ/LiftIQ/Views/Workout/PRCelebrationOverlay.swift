@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PRCelebrationOverlay: View {
     let personalRecord: PersonalRecord
@@ -76,6 +77,9 @@ struct PRCelebrationOverlay: View {
             .scaleEffect(showCard ? 1 : 0.5)
             .opacity(showCard ? 1 : 0)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityAnnouncement)
+        .accessibilityAddTraits(.isModal)
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                 showCard = true
@@ -83,11 +87,16 @@ struct PRCelebrationOverlay: View {
             withAnimation(.easeOut(duration: 0.3)) {
                 showConfetti = true
             }
+            UIAccessibility.post(notification: .announcement, argument: accessibilityAnnouncement)
         }
         .task {
             try? await Task.sleep(for: .seconds(2.5))
             onDismiss()
         }
+    }
+
+    private var accessibilityAnnouncement: String {
+        "New personal record: \(personalRecord.exerciseName), \(prDescription)"
     }
 
     private var prDescription: String {

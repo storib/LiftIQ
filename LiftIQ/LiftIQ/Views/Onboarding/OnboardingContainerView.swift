@@ -39,6 +39,9 @@ struct OnboardingContainerView: View {
                     .tag(7)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            // Steps advance only through the validated Next button; swiping
+            // could skip past steps that fail validation.
+            .highPriorityGesture(DragGesture())
             .animation(.easeInOut, value: viewModel.currentStep)
 
             // Navigation buttons
@@ -67,13 +70,13 @@ struct OnboardingContainerView: View {
                     .disabled(!viewModel.canAdvance)
                 } else {
                     Button {
-                        requestGeneration()
+                        requestCompletion()
                     } label: {
                         Group {
                             if viewModel.isLoading {
                                 ProgressView().tint(.white)
                             } else {
-                                Text("Generate My Program")
+                                Text(viewModel.declinedAIConsent ? "Finish Setup" : "Generate My Program")
                             }
                         }
                         .font(.headline)
@@ -93,28 +96,30 @@ struct OnboardingContainerView: View {
             AIConsentSheet(
                 onAccept: {
                     showingAIConsent = false
-                    generatePlan()
+                    completeOnboarding()
                 },
                 onDecline: {
                     showingAIConsent = false
-                    // Without consent we can't generate a plan, but we still
-                    // let the user finish onboarding and land in the app.
-                    generatePlan()
+                    // Without consent we can't generate a plan. Return to the
+                    // summary so the CTA and copy can explain what happens next
+                    // instead of silently ending onboarding without a program.
+                    viewModel.declinedAIConsent = true
                 }
             )
             .presentationDetents([.large])
         }
     }
 
-    private func requestGeneration() {
-        if AIConsentManager.hasConsented {
-            generatePlan()
+    private func requestCompletion() {
+        if AIConsentManager.hasConsented || viewModel.declinedAIConsent {
+            completeOnboarding()
         } else {
             showingAIConsent = true
         }
     }
 
-    private func generatePlan() {
+    /// Saves the profile and, when AI consent was granted, generates the plan.
+    private func completeOnboarding() {
         Task {
             await viewModel.saveProfileAndGeneratePlan(
                 authService: dependencies.authService,

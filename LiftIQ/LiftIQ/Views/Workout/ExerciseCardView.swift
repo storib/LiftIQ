@@ -4,6 +4,7 @@ struct ExerciseCardView: View {
     @Bindable var viewModel: WorkoutExecutionViewModel
     let exerciseLogIndex: Int
     let groupColor: Color?
+    var focusedField: FocusState<SetFieldFocus?>.Binding
 
     @State private var showGuidance = false
 
@@ -57,7 +58,12 @@ struct ExerciseCardView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            // 44pt hit area; top-trailing alignment keeps the glyph
+                            // in its original corner position.
+                            .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                            .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("Swap exercise")
                 }
 
                 if let suggestion {
@@ -115,6 +121,8 @@ struct ExerciseCardView: View {
                     }
 
                     SetRowView(
+                        exerciseLogIndex: exerciseLogIndex,
+                        setIndex: setIndex,
                         setNumber: setLog.setNumber,
                         setType: setLog.setType,
                         weightText: $viewModel.weightInputs[exerciseLogIndex][setIndex],
@@ -125,6 +133,7 @@ struct ExerciseCardView: View {
                         unitSystem: viewModel.unitSystem,
                         isCompleted: viewModel.completedSetIds.contains(setLog.id),
                         isPersonalRecord: setLog.isPersonalRecord,
+                        focusedField: focusedField,
                         onComplete: {
                             Task {
                                 await viewModel.completeSet(

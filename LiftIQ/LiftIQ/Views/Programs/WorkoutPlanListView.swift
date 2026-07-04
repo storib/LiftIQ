@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkoutPlanListView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel = WorkoutPlanListViewModel()
+    @State private var planPendingDeletion: WorkoutPlan?
 
     var body: some View {
         List {
@@ -53,14 +54,9 @@ struct WorkoutPlanListView: View {
                 }
             }
             .onDelete { indexSet in
-                Task {
-                    for index in indexSet {
-                        let plan = dependencies.workoutService.plans[index]
-                        if let userId = dependencies.authService.currentUserId {
-                            await viewModel.deletePlan(workoutService: dependencies.workoutService, userId: userId, planId: plan.id)
-                        }
-                    }
-                }
+                // Resolve the plan synchronously; indices may go stale after an await.
+                let plans = dependencies.workoutService.plans
+                planPendingDeletion = indexSet.compactMap { plans.indices.contains($0) ? plans[$0] : nil }.first
             }
         }
         .navigationTitle("Programs")
@@ -71,6 +67,7 @@ struct WorkoutPlanListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("Add program")
             }
         }
         .overlay {
@@ -78,9 +75,50 @@ struct WorkoutPlanListView: View {
                 ProgressView()
             }
         }
+        .confirmationDialog(
+            "Delete Program?",
+            isPresented: Binding(
+                get: { planPendingDeletion != nil },
+                set: { if !$0 { planPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: planPendingDeletion
+        ) { plan in
+            Button("Delete \u{201C}\(plan.name)\u{201D}", role: .destructive) {
+                deletePlan(plan)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { plan in
+            if plan.isActive {
+                Text("\u{201C}\(plan.name)\u{201D} is your active program. Deleting it cannot be undone.")
+            } else {
+                Text("\u{201C}\(plan.name)\u{201D} will be permanently deleted. This cannot be undone.")
+            }
+        }
+        .alert("Something Went Wrong", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
+        .refreshable {
+            if let userId = dependencies.authService.currentUserId {
+                await viewModel.load(workoutService: dependencies.workoutService, userId: userId)
+            }
+        }
         .task {
             if let userId = dependencies.authService.currentUserId {
                 await viewModel.load(workoutService: dependencies.workoutService, userId: userId)
+            }
+        }
+    }
+
+    private func deletePlan(_ plan: WorkoutPlan) {
+        Task {
+            if let userId = dependencies.authService.currentUserId {
+                await viewModel.deletePlan(workoutService: dependencies.workoutService, userId: userId, planId: plan.id)
             }
         }
     }

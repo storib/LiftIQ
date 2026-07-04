@@ -3,7 +3,10 @@ import SwiftUI
 struct WorkoutExecutionView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Bindable var viewModel: WorkoutExecutionViewModel
+
+    @FocusState private var focusedSetField: SetFieldFocus?
 
     private static let supersetColors: [Color] = [.blue, .purple, .orange, .teal, .pink, .indigo]
 
@@ -86,6 +89,37 @@ struct WorkoutExecutionView: View {
                 .animation(.easeInOut(duration: 0.3), value: viewModel.newPR != nil)
             }
         }
+        // Attached once at screen level; attaching inside LazyVStack rows
+        // would duplicate the toolbar per materialized row.
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Button {
+                    if let target = previousFocusTarget {
+                        focusedSetField = target
+                    }
+                } label: {
+                    Image(systemName: "chevron.up")
+                }
+                .disabled(previousFocusTarget == nil)
+                .accessibilityLabel("Previous field")
+
+                Button {
+                    if let target = nextFocusTarget {
+                        focusedSetField = target
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
+                }
+                .disabled(nextFocusTarget == nil)
+                .accessibilityLabel("Next field")
+
+                Spacer()
+
+                Button("Done") {
+                    focusedSetField = nil
+                }
+            }
+        }
         .sheet(isPresented: $viewModel.showingExerciseSwap) {
             if let swapIndex = viewModel.swapTargetExerciseLogIndex {
                 let currentExercise = viewModel.exerciseDetails[viewModel.session.exerciseLogs[swapIndex].exerciseId]
@@ -99,6 +133,14 @@ struct WorkoutExecutionView: View {
                     }
                 }
             }
+        }
+        .alert("Couldn't Save", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.errorMessage ?? "")
         }
         .alert("Abandon Workout?", isPresented: $viewModel.showingAbandonConfirmation) {
             Button("Abandon", role: .destructive) {
@@ -145,6 +187,13 @@ struct WorkoutExecutionView: View {
         .onDisappear {
             viewModel.stopTimers()
         }
+        .onChange(of: scenePhase) { _, phase in
+            // Timers suspend in the background; re-derive from the wall clock
+            // the moment the app is foregrounded again.
+            if phase == .active {
+                viewModel.refreshTimersFromWallClock()
+            }
+        }
     }
 
     // MARK: - Toolbar
@@ -182,6 +231,7 @@ struct WorkoutExecutionView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
+                .accessibilityLabel("Workout options")
 
                 Button {
                     Task {
@@ -233,7 +283,8 @@ struct WorkoutExecutionView: View {
                             exerciseLogIndex: logIndex,
                             groupColor: group.groupType != .straight
                                 ? supersetColor(for: group.groupIndex)
-                                : nil
+                                : nil,
+                            focusedField: $focusedSetField
                         )
                         .id(logIndex)
                     }
@@ -283,5 +334,102 @@ struct WorkoutExecutionView: View {
 
     private func supersetColor(for groupIndex: Int) -> Color {
         Self.supersetColors[groupIndex % Self.supersetColors.count]
+    }
+
+    // MARK: - Keyboard Focus Navigation
+
+    private var previousFocusTarget: SetFieldFocus? {
+        focusedSetField.flatMap {
+            SetFieldFocus.previous(before: $0, in: viewModel.session.exerciseLogs)
+        }
+    }
+
+    private var nextFocusTarget: SetFieldFocus? {
+        focusedSetField.flatMap {
+            SetFieldFocus.next(after: $0, in: viewModel.session.exerciseLogs)
+        }
+    }
+}
+
+// MARK: - Set Field Focus
+
+/// Identifies a single input field within the workout's set rows so a single
+/// `@FocusState` at the screen level can drive the keyboard focus chain.
+struct SetFieldFocus: Hashable {
+    enum Field: Hashable {
+        case weight, reps, rpe
+    }
+
+    let exerciseLogIndex: Int
+    let setIndex: Int
+    let field: Field
+
+    // Navigation is kept as pure helpers over the session's exercise logs so
+    // the chain can be exercised in tests without a view hierarchy.
+
+    /// Next field in the chain: weight → reps → rpe (working sets only) →
+    /// next set's weight, then the next exercise's first set. `nil` at the end.
+    static func next(after current: SetFieldFocus, in exerciseLogs: [ExerciseLog]) -> SetFieldFocus? {
+        guard exerciseLogs.indices.contains(current.exerciseLogIndex),
+              exerciseLogs[current.exerciseLogIndex].sets.indices.contains(current.setIndex) else { return nil }
+
+        let set = exerciseLogs[current.exerciseLogIndex].sets[current.setIndex]
+        switch current.field {
+        case .weight:
+            return SetFieldFocus(exerciseLogIndex: current.exerciseLogIndex, setIndex: current.setIndex, field: .reps)
+        case .reps where set.setType == .working:
+            // Non-working sets don't render an RPE field, so skip it.
+            return SetFieldFocus(exerciseLogIndex: current.exerciseLogIndex, setIndex: current.setIndex, field: .rpe)
+        case .reps, .rpe:
+            return firstField(after: current, in: exerciseLogs)
+        }
+    }
+
+    /// Mirror of `next(after:in:)`. `nil` at the very first field.
+    static func previous(before current: SetFieldFocus, in exerciseLogs: [ExerciseLog]) -> SetFieldFocus? {
+        guard exerciseLogs.indices.contains(current.exerciseLogIndex),
+              exerciseLogs[current.exerciseLogIndex].sets.indices.contains(current.setIndex) else { return nil }
+
+        switch current.field {
+        case .rpe:
+            return SetFieldFocus(exerciseLogIndex: current.exerciseLogIndex, setIndex: current.setIndex, field: .reps)
+        case .reps:
+            return SetFieldFocus(exerciseLogIndex: current.exerciseLogIndex, setIndex: current.setIndex, field: .weight)
+        case .weight:
+            return lastField(before: current, in: exerciseLogs)
+        }
+    }
+
+    /// First field of the following set, rolling over to the next exercise
+    /// that has sets.
+    private static func firstField(after current: SetFieldFocus, in exerciseLogs: [ExerciseLog]) -> SetFieldFocus? {
+        if current.setIndex + 1 < exerciseLogs[current.exerciseLogIndex].sets.count {
+            return SetFieldFocus(exerciseLogIndex: current.exerciseLogIndex, setIndex: current.setIndex + 1, field: .weight)
+        }
+        for logIndex in (current.exerciseLogIndex + 1)..<exerciseLogs.count where !exerciseLogs[logIndex].sets.isEmpty {
+            return SetFieldFocus(exerciseLogIndex: logIndex, setIndex: 0, field: .weight)
+        }
+        return nil
+    }
+
+    /// Last field of the preceding set, rolling back to the previous exercise
+    /// that has sets.
+    private static func lastField(before current: SetFieldFocus, in exerciseLogs: [ExerciseLog]) -> SetFieldFocus? {
+        if current.setIndex > 0 {
+            return lastField(exerciseLogIndex: current.exerciseLogIndex, setIndex: current.setIndex - 1, in: exerciseLogs)
+        }
+        for logIndex in stride(from: current.exerciseLogIndex - 1, through: 0, by: -1) where !exerciseLogs[logIndex].sets.isEmpty {
+            return lastField(exerciseLogIndex: logIndex, setIndex: exerciseLogs[logIndex].sets.count - 1, in: exerciseLogs)
+        }
+        return nil
+    }
+
+    private static func lastField(exerciseLogIndex: Int, setIndex: Int, in exerciseLogs: [ExerciseLog]) -> SetFieldFocus {
+        let setType = exerciseLogs[exerciseLogIndex].sets[setIndex].setType
+        return SetFieldFocus(
+            exerciseLogIndex: exerciseLogIndex,
+            setIndex: setIndex,
+            field: setType == .working ? .rpe : .reps
+        )
     }
 }

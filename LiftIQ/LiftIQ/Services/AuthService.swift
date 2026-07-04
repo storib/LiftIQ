@@ -2,6 +2,7 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFunctions
 
+@MainActor
 @Observable
 final class AuthService {
     var isAuthenticated = false

@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseFunctions
 
+@MainActor
 @Observable
 final class AIService {
     private let functions = Functions.functions()

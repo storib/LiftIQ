@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   filterExercisesByEquipment,
+  normalizePlan,
   validatePlanShape,
 } from "../src/generateWorkoutPlan";
 import { WorkoutPlanSchema } from "../src/validators/schemas";
@@ -161,5 +162,72 @@ describe("validatePlanShape", () => {
     const result = validatePlanShape(parsed, 1, "tool_use");
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toMatch(/no exercises/i);
+  });
+});
+
+// ──────────────────────────────────────────────
+// normalizePlan
+// ──────────────────────────────────────────────
+
+describe("normalizePlan", () => {
+  const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  it("assigns a fresh UUID plan id, ignoring whatever the model produced", () => {
+    const plan = makePlan();
+    const normalized = normalizePlan(plan, "user-123");
+    expect(normalized.id).toMatch(UUID_PATTERN);
+    expect(normalized.id).not.toBe(plan.id);
+  });
+
+  it("sets userId from the authenticated uid", () => {
+    const normalized = normalizePlan(makePlan(), "user-123");
+    expect(normalized.userId).toBe("user-123");
+  });
+
+  it("stamps createdAt with a server-side ISO datetime", () => {
+    const before = Date.now();
+    const normalized = normalizePlan(makePlan(), "user-123");
+    const after = Date.now();
+    const createdAt = Date.parse(normalized.createdAt);
+    expect(createdAt).toBeGreaterThanOrEqual(before);
+    expect(createdAt).toBeLessThanOrEqual(after);
+  });
+
+  it("points every workout's planId at the new plan id", () => {
+    const normalized = normalizePlan(makePlan(), "user-123");
+    expect(normalized.workouts.length).toBeGreaterThan(0);
+    for (const workout of normalized.workouts) {
+      expect(workout.planId).toBe(normalized.id);
+    }
+  });
+
+  it("does not mutate the input plan", () => {
+    const plan = makePlan();
+    const originalId = plan.id;
+    const originalWorkoutPlanId = plan.workouts[0].planId;
+    normalizePlan(plan, "user-123");
+    expect(plan.id).toBe(originalId);
+    expect(plan.userId).toBe("u");
+    expect(plan.workouts[0].planId).toBe(originalWorkoutPlanId);
+  });
+
+  it("preserves all non-identity fields and still satisfies the schema", () => {
+    const plan = makePlan();
+    const normalized = normalizePlan(plan, "user-123");
+    expect(normalized.name).toBe(plan.name);
+    expect(normalized.templateType).toBe(plan.templateType);
+    expect(normalized.goal).toBe(plan.goal);
+    expect(normalized.weekCount).toBe(plan.weekCount);
+    expect(normalized.workouts[0].exerciseGroups).toEqual(
+      plan.workouts[0].exerciseGroups,
+    );
+    expect(WorkoutPlanSchema.safeParse(normalized).success).toBe(true);
+  });
+
+  it("generates a distinct plan id per call", () => {
+    const a = normalizePlan(makePlan(), "user-123");
+    const b = normalizePlan(makePlan(), "user-123");
+    expect(a.id).not.toBe(b.id);
   });
 });

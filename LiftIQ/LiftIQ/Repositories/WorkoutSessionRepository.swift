@@ -24,13 +24,6 @@ final class WorkoutSessionRepository {
         return try snapshot.documents.first.map { try $0.data(as: WorkoutSession.self) }
     }
 
-    func getSessionsForExercise(userId: String, exerciseId: String, limit: Int = 10) async throws -> [WorkoutSession] {
-        let sessions = try await getSessions(userId: userId, limit: 100)
-        return sessions.filter { session in
-            session.exerciseLogs.contains { $0.exerciseId == exerciseId }
-        }.prefix(limit).map { $0 }
-    }
-
     func saveSession(_ session: WorkoutSession) async throws {
         try sessionCollection(userId: session.userId).document(session.id).setData(from: session)
     }

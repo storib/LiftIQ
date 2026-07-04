@@ -35,6 +35,14 @@ struct OnboardingSummaryView: View {
                 .padding(.horizontal)
             }
 
+            if viewModel.declinedAIConsent {
+                Text("AI plan generation is off, so we won't create a program for you. After setup you can browse Program Templates, or enable AI anytime in Profile.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.caption)

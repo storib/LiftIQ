@@ -219,6 +219,121 @@ describe("users/{userId}/personalRecords/{prId}", () => {
     );
   });
 
+  it("denies PR with value above 1000 kg", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-huge")
+        .set({ ...validPR, id: "pr-huge", value: 1001 })
+    );
+  });
+
+  it("denies PR with extra fields", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-extra")
+        .set({ ...validPR, id: "pr-extra", injected: "hack" })
+    );
+  });
+
+  it("denies PR with a type the client never writes", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-reps")
+        .set({ ...validPR, id: "pr-reps", type: "reps" })
+    );
+  });
+
+  it("denies PR with non-timestamp achievedAt", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-date")
+        .set({ ...validPR, id: "pr-date", achievedAt: "2026-06-30" })
+    );
+  });
+
+  it("allows PR without the optional previousValue field", async () => {
+    const db = authedDb(USER_A);
+    const { previousValue: _omit, ...withoutPrevious } = validPR;
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-first")
+        .set({ ...withoutPrevious, id: "pr-first" })
+    );
+  });
+
+  it("denies any update, even with valid data", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-1")
+        .set(validPR);
+    });
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-1")
+        .set({ ...validPR, value: 105 })
+    );
+  });
+
+  it("allows owner to delete their own PR", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-1")
+        .set(validPR);
+    });
+    const db = authedDb(USER_A);
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-1")
+        .delete()
+    );
+  });
+
+  it("denies user B from creating a PR under user A", async () => {
+    const db = authedDb(USER_B);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-b")
+        .set({ ...validPR, id: "pr-b" })
+    );
+  });
+
   it("denies user B from reading user A's PRs", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await ctx
@@ -237,6 +352,209 @@ describe("users/{userId}/personalRecords/{prId}", () => {
         .collection("personalRecords")
         .doc("pr-1")
         .get()
+    );
+  });
+});
+
+// ══════════════════════════════════════════
+// Progress Records rules (server-only writes)
+// ══════════════════════════════════════════
+
+describe("users/{userId}/progressRecords/{recordId}", () => {
+  const serverRecord = {
+    id: "session-1_bench-press",
+    userId: USER_A,
+    exerciseId: "bench-press",
+    exerciseName: "Bench Press",
+    sessionId: "session-1",
+    date: new Date(),
+    estimated1RM: 120,
+    bestSetWeight: 100,
+    bestSetReps: 6,
+    totalVolume: 1800,
+    totalSets: 3,
+  };
+
+  function seedRecord() {
+    return testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("progressRecords")
+        .doc(serverRecord.id)
+        .set(serverRecord);
+    });
+  }
+
+  it("allows owner to read their progress records", async () => {
+    await seedRecord();
+    const db = authedDb(USER_A);
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("progressRecords")
+        .doc(serverRecord.id)
+        .get()
+    );
+  });
+
+  it("denies owner from creating a progress record", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("progressRecords")
+        .doc("session-2_squat")
+        .set({ ...serverRecord, id: "session-2_squat", exerciseId: "squat" })
+    );
+  });
+
+  it("denies owner from updating a progress record", async () => {
+    await seedRecord();
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("progressRecords")
+        .doc(serverRecord.id)
+        .update({ estimated1RM: 999 })
+    );
+  });
+
+  it("denies owner from deleting a progress record", async () => {
+    await seedRecord();
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("progressRecords")
+        .doc(serverRecord.id)
+        .delete()
+    );
+  });
+
+  it("denies user B from reading user A's progress records", async () => {
+    await seedRecord();
+    const db = authedDb(USER_B);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("progressRecords")
+        .doc(serverRecord.id)
+        .get()
+    );
+  });
+});
+
+// ══════════════════════════════════════════
+// Body Measurements rules
+// ══════════════════════════════════════════
+
+describe("users/{userId}/bodyMeasurements/{measurementId}", () => {
+  const validMeasurement = {
+    id: "bm-1",
+    userId: USER_A,
+    date: new Date(),
+    weightKg: 82.5,
+  };
+
+  it("allows owner to create a valid measurement", async () => {
+    const db = authedDb(USER_A);
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-1")
+        .set(validMeasurement)
+    );
+  });
+
+  it("denies measurement with non-timestamp date", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-2")
+        .set({ ...validMeasurement, id: "bm-2", date: "2026-06-30" })
+    );
+  });
+
+  it("denies measurement with mismatched userId", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-3")
+        .set({ ...validMeasurement, id: "bm-3", userId: USER_B })
+    );
+  });
+
+  it("allows owner to read and delete their measurement", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-1")
+        .set(validMeasurement);
+    });
+    const db = authedDb(USER_A);
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-1")
+        .get()
+    );
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-1")
+        .delete()
+    );
+  });
+
+  it("denies user B from reading or writing user A's measurements", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-1")
+        .set(validMeasurement);
+    });
+    const db = authedDb(USER_B);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-1")
+        .get()
+    );
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("bodyMeasurements")
+        .doc("bm-b")
+        .set({ ...validMeasurement, id: "bm-b" })
     );
   });
 });
@@ -289,6 +607,31 @@ describe("users/{userId}/workoutSessions/{sessionId}", () => {
         .collection("workoutSessions")
         .doc("session-3")
         .set({ ...validSession, id: "session-3", userId: USER_B })
+    );
+  });
+
+  it("denies session with missing startedAt", async () => {
+    const db = authedDb(USER_A);
+    const { startedAt: _omit, ...withoutStartedAt } = validSession;
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("workoutSessions")
+        .doc("session-4")
+        .set({ ...withoutStartedAt, id: "session-4" })
+    );
+  });
+
+  it("denies session with non-timestamp startedAt", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("workoutSessions")
+        .doc("session-5")
+        .set({ ...validSession, id: "session-5", startedAt: "2026-06-30T10:00:00Z" })
     );
   });
 });

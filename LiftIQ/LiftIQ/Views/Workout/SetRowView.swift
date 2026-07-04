@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SetRowView: View {
+    let exerciseLogIndex: Int
+    let setIndex: Int
     let setNumber: Int
     let setType: SetType
     @Binding var weightText: String
@@ -11,6 +13,7 @@ struct SetRowView: View {
     let unitSystem: UnitSystem
     let isCompleted: Bool
     let isPersonalRecord: Bool
+    var focusedField: FocusState<SetFieldFocus?>.Binding
     let onComplete: () -> Void
     let onUncomplete: () -> Void
     let onSetTypeChange: (SetType) -> Void
@@ -31,6 +34,9 @@ struct SetRowView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(setLabelColor)
                     .frame(width: 32)
+                    // Hit-area expansion only; the glyph and column width stay as-is.
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
 
             // Weight input
@@ -39,10 +45,13 @@ struct SetRowView: View {
                     Text(prev.formatted())
                         .foregroundStyle(.tertiary)
                         .font(.subheadline)
+                        .accessibilityHidden(true)
                 }
                 TextField("", text: $weightText)
                     .keyboardType(.decimalPad)
                     .font(.subheadline)
+                    .focused(focusedField, equals: focusTarget(.weight))
+                    .accessibilityLabel("Weight")
             }
             .frame(width: 60)
             .padding(.horizontal, 8)
@@ -61,10 +70,13 @@ struct SetRowView: View {
                     Text("\(prev)")
                         .foregroundStyle(.tertiary)
                         .font(.subheadline)
+                        .accessibilityHidden(true)
                 }
                 TextField("", text: $repsText)
                     .keyboardType(.numberPad)
                     .font(.subheadline)
+                    .focused(focusedField, equals: focusTarget(.reps))
+                    .accessibilityLabel("Reps")
             }
             .frame(width: 44)
             .padding(.horizontal, 8)
@@ -82,6 +94,8 @@ struct SetRowView: View {
                     .padding(.vertical, 6)
                     .background(Color(.tertiarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .focused(focusedField, equals: focusTarget(.rpe))
+                    .accessibilityLabel("RPE")
             } else {
                 Spacer()
                     .frame(width: 48)
@@ -100,16 +114,32 @@ struct SetRowView: View {
                 Image(systemName: checkboxIcon)
                     .font(.title3)
                     .foregroundStyle(checkboxColor)
+                    // 44pt hit area without growing the glyph; trailing alignment
+                    // keeps the icon lined up with the header's checkmark column.
+                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(isCompleted ? "Mark set \(setNumber) incomplete" : "Complete set \(setNumber)")
+            .accessibilityValue(checkboxAccessibilityValue)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        // No vertical padding: the 44pt tap targets set the row height, which
+        // keeps the row at the same overall height it had before.
         .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Computed Helpers
+
+    private func focusTarget(_ field: SetFieldFocus.Field) -> SetFieldFocus {
+        SetFieldFocus(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex, field: field)
+    }
+
+    private var checkboxAccessibilityValue: String {
+        if isPersonalRecord { return "Completed, personal record" }
+        return isCompleted ? "Completed" : "Not completed"
+    }
 
     private var setLabel: String {
         switch setType {

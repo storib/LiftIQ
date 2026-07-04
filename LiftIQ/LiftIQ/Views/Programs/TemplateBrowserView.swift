@@ -7,6 +7,7 @@ struct TemplateBrowserView: View {
     @State private var errorMessage: String?
     @State private var showingAIConsent = false
     @State private var pendingTemplate: TemplateType?
+    @State private var lastAttemptedTemplate: TemplateType?
 
     var body: some View {
         List {
@@ -51,6 +52,19 @@ struct TemplateBrowserView: View {
                 Text("Create a personalized \(template.displayName) program based on your profile?")
             }
         }
+        .alert("Generation Failed", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("Retry") {
+                if let template = lastAttemptedTemplate {
+                    generatePlan(template: template)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
         .sheet(isPresented: $showingAIConsent) {
             AIConsentSheet(
                 onAccept: {
@@ -74,6 +88,9 @@ struct TemplateBrowserView: View {
                     Text("Generating your program...")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Text("This usually takes about 30 seconds.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.ultraThinMaterial)
@@ -94,6 +111,7 @@ struct TemplateBrowserView: View {
         guard let profile = dependencies.authService.currentUser?.profile,
               let userId = dependencies.authService.currentUserId else { return }
 
+        lastAttemptedTemplate = template
         isGenerating = true
         Task {
             do {

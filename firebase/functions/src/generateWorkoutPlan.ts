@@ -9,7 +9,10 @@ import {
   GenerateWorkoutPlanRequestSchema,
   WorkoutPlanSchema,
 } from "./validators/schemas";
+import { CLAUDE_MODEL, THINKING_DISABLED } from "./models";
+import { assertWithinDailyQuota } from "./rateLimit";
 import * as admin from "firebase-admin";
+import { randomUUID } from "node:crypto";
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -169,6 +172,23 @@ export function filterExercisesByEquipment<T extends ExerciseDoc>(
   );
 }
 
+// Overwrites the identity fields the model is asked to leave as placeholders.
+// The server — not the model or the client — is authoritative for the plan id,
+// owner, timestamps, and workout back-references. Pure and exported for tests.
+export function normalizePlan(
+  plan: ReturnType<typeof WorkoutPlanSchema.parse>,
+  userId: string,
+): ReturnType<typeof WorkoutPlanSchema.parse> {
+  const planId = randomUUID();
+  return {
+    ...plan,
+    id: planId,
+    userId,
+    createdAt: new Date().toISOString(),
+    workouts: plan.workouts.map((workout) => ({ ...workout, planId })),
+  };
+}
+
 export function validatePlanShape(
   plan: ReturnType<typeof WorkoutPlanSchema.parse>,
   expectedWorkoutCount: number,
@@ -207,8 +227,9 @@ async function generatePlanAttempt(
   userPrompt: string,
 ): Promise<AttemptResult> {
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 16000,
+    model: CLAUDE_MODEL,
+    max_tokens: 24000,
+    thinking: THINKING_DISABLED,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
     tools: [SAVE_WORKOUT_PLAN_TOOL],
@@ -274,8 +295,10 @@ export const generateWorkoutPlan = onCall(
       templateType,
     } = parsedRequest.data;
 
-    // Load exercise database
     const db = admin.firestore();
+    await assertWithinDailyQuota(db, request.auth.uid, "generateWorkoutPlan", 5);
+
+    // Load exercise database
     const exercisesSnap = await db.collection("exercises").get();
     const exercises = exercisesSnap.docs.map((doc) => ({
       id: doc.id,
@@ -502,9 +525,13 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
         }
       }
 
+      // Server-authoritative identity fields: fresh plan id, owner uid,
+      // creation timestamp, and matching planId on every embedded workout.
+      const normalizedPlan = normalizePlan(plan, request.auth.uid);
+
       await writeUsageLog(true);
 
-      return plan;
+      return normalizedPlan;
     } catch (error: any) {
       console.error("generateWorkoutPlan failed", {
         name: error?.name,
@@ -516,7 +543,7 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
       if (error instanceof HttpsError) {
         throw error;
       }
-      throw new HttpsError("internal", error?.message || "Generation failed");
+      throw new HttpsError("internal", "Plan generation failed");
     }
   }
 );

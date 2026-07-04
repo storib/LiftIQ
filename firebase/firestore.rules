@@ -47,20 +47,28 @@ service cloud.firestore {
     function validWorkoutSession(userId) {
       return ownershipInvariant(userId)
         && request.resource.data.status in ['inProgress', 'completed', 'abandoned']
-        && request.resource.data.workoutName is string;
+        && request.resource.data.workoutName is string
+        && request.resource.data.startedAt is timestamp;
     }
 
-    function validProgressRecord(userId) {
-      return ownershipInvariant(userId)
-        && request.resource.data.exerciseId is string;
-    }
-
+    /// Mirrors the Swift PersonalRecord model exactly. The client only ever
+    /// creates 'weight' and 'estimated1RM' records (ProgressService.checkForPRs);
+    /// previousValue is optional and omitted when nil.
     function validPersonalRecord(userId) {
       return ownershipInvariant(userId)
+        && hasOnlyFields(['id', 'userId', 'exerciseId', 'exerciseName', 'type',
+                          'value', 'previousValue', 'achievedAt', 'sessionId'])
+        && request.resource.data.id is string
         && request.resource.data.exerciseId is string
-        && request.resource.data.type in ['weight', 'reps', 'volume', 'estimated1RM']
+        && request.resource.data.exerciseName is string
+        && request.resource.data.type in ['weight', 'estimated1RM']
         && request.resource.data.value is number
-        && request.resource.data.value > 0;
+        && request.resource.data.value > 0
+        && request.resource.data.value <= 1000
+        && (!('previousValue' in request.resource.data)
+            || request.resource.data.previousValue is number)
+        && request.resource.data.achievedAt is timestamp
+        && request.resource.data.sessionId is string;
     }
 
     function validBodyMeasurement(userId) {
@@ -117,21 +125,17 @@ service cloud.firestore {
       }
 
       // ── Progress Records ──
+      // Written exclusively by the computeProgressRecords Cloud Function via
+      // the Admin SDK (which bypasses rules). Clients only read.
 
       match /progressRecords/{recordId} {
         allow read: if isOwner(userId);
-
-        allow create: if isOwner(userId)
-          && validProgressRecord(userId);
-
-        allow update: if isOwner(userId)
-          && validProgressRecord(userId)
-          && request.resource.data.userId == resource.data.userId;
-
-        allow delete: if isOwner(userId);
+        allow create, update, delete: if false;
       }
 
       // ── Personal Records ──
+      // Client creates (ProgressService.checkForPRs) and deletes
+      // (ProgressService.deleteRecord). There is no client update path.
 
       match /personalRecords/{prId} {
         allow read: if isOwner(userId);
@@ -139,9 +143,7 @@ service cloud.firestore {
         allow create: if isOwner(userId)
           && validPersonalRecord(userId);
 
-        allow update: if isOwner(userId)
-          && validPersonalRecord(userId)
-          && request.resource.data.userId == resource.data.userId;
+        allow update: if false;
 
         allow delete: if isOwner(userId);
       }

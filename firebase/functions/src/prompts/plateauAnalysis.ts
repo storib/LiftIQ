@@ -13,15 +13,7 @@ export const PLATEAU_ANALYSIS_SYSTEM_PROMPT = `You are a strength and conditioni
 - Volume adjustment: increase or decrease weekly sets for that muscle group
 - Technique focus: suggest reducing weight to focus on form
 
-## Output Format
-Respond with a JSON object:
-{
-  "isPlateaued": boolean,
-  "confidence": "high" | "medium" | "low",
-  "analysis": "string explaining the findings",
-  "recommendation": "deload" | "swap" | "repSchemeChange" | "volumeAdjust" | "techniqueFocus",
-  "details": "string with specific programming changes"
-}
-Do not include any text before or after the JSON.`;
+## Output
+When your analysis is complete, call the save_plateau_analysis tool exactly once with your findings.`;
 
-export const PLATEAU_ANALYSIS_PROMPT_VERSION = "1.0.0";
+export const PLATEAU_ANALYSIS_PROMPT_VERSION = "1.1.0";

@@ -139,6 +139,8 @@ struct WorkoutSummaryView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel(moodAccessibilityLabel(mood))
+                                .accessibilityAddTraits(selectedMood == mood ? .isSelected : [])
                             }
                         }
                     }
@@ -220,6 +222,17 @@ struct WorkoutSummaryView: View {
         case 4: return "Good"
         case 5: return "Great"
         default: return ""
+        }
+    }
+
+    private func moodAccessibilityLabel(_ mood: Int) -> String {
+        switch mood {
+        case 1: return "Felt rough"
+        case 2: return "Felt meh"
+        case 3: return "Felt okay"
+        case 4: return "Felt good"
+        case 5: return "Felt great"
+        default: return "Mood \(mood)"
         }
     }
 }

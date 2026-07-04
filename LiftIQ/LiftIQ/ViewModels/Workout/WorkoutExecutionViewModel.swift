@@ -1,6 +1,8 @@
 import Foundation
 import Observation
+import UserNotifications
 
+@MainActor
 @Observable
 final class WorkoutExecutionViewModel: Identifiable {
     let id = UUID().uuidString
@@ -46,6 +48,10 @@ final class WorkoutExecutionViewModel: Identifiable {
     var newPR: PersonalRecord?
     var sessionPRs: [PersonalRecord] = []
 
+    // Session-scoped cache of each exercise's existing PRs so completing a
+    // set doesn't re-query Firestore on every checkmark tap.
+    private var prCache: [String: [PersonalRecord]] = [:]
+
     // MARK: - Navigation
 
     var showingSummary = false
@@ -68,9 +74,13 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Timers
 
+    // Both timers derive their displayed values from wall-clock dates so the
+    // countdown survives backgrounding (foreground Timers suspend).
     private var elapsedTimer: Timer?
     private var restTimer: Timer?
+    private var restEndDate: Date?
     private var hasStarted = false
+    private static let restNotificationId = "liftiq.rest-timer-complete"
 
     // MARK: - Init (new session from template)
 
@@ -180,9 +190,8 @@ final class WorkoutExecutionViewModel: Identifiable {
             // Persist the initial session
             try await workoutService.startSession(session)
 
-            // Load exercise details, previous logs, and recent logs (for progression).
+            // Load exercise details from the in-memory catalog.
             let exerciseIds = Set(session.exerciseLogs.map(\.exerciseId))
-            var recentLogsByExerciseId: [String: [ExerciseLog]] = [:]
             for exerciseId in exerciseIds {
                 if let exercise = exerciseService.getExercise(id: exerciseId) {
                     exerciseDetails[exerciseId] = exercise
@@ -191,11 +200,18 @@ final class WorkoutExecutionViewModel: Identifiable {
                         session.exerciseLogs[i].exerciseName = exercise.name
                     }
                 }
+            }
 
-                let recent = (try? await workoutService.getRecentExerciseLogs(
-                    userId: userId, exerciseId: exerciseId, limit: 5
-                )) ?? []
-                recentLogsByExerciseId[exerciseId] = recent
+            // One bounded history fetch serves previous logs and progression
+            // input for every exercise (sessions embed their logs, so a
+            // per-exercise query would re-download the same documents).
+            let recentLogsByExerciseId = (try? await workoutService.getRecentExerciseLogs(
+                userId: userId,
+                exerciseIds: exerciseIds,
+                excludingSessionId: session.id,
+                limit: 5
+            )) ?? [:]
+            for (exerciseId, recent) in recentLogsByExerciseId {
                 if let mostRecent = recent.first {
                     previousLogs[exerciseId] = mostRecent
                 }
@@ -228,12 +244,30 @@ final class WorkoutExecutionViewModel: Identifiable {
         guard exerciseLogIndex < session.exerciseLogs.count,
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
 
-        // Parse inputs
-        let weightDisplay = Double(weightInputs[exerciseLogIndex][setIndex]) ?? 0
-        let reps = Int(repsInputs[exerciseLogIndex][setIndex]) ?? 0
+        // Parse inputs, adopting the previous-session ghost values when the
+        // fields were left empty (the placeholders read as "repeat last time").
+        var weightDisplay = Double(weightInputs[exerciseLogIndex][setIndex]) ?? 0
+        var reps = Int(repsInputs[exerciseLogIndex][setIndex]) ?? 0
         let rpe = Double(rpeInputs[exerciseLogIndex][setIndex])
 
-        guard weightDisplay > 0 && reps > 0 else { return }
+        let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
+        if weightDisplay <= 0 || reps <= 0,
+           let prevLog = previousLogs[exerciseId], setIndex < prevLog.sets.count {
+            let prevSet = prevLog.sets[setIndex]
+            if weightDisplay <= 0 && prevSet.weightKg > 0 {
+                weightDisplay = UnitConversionService.convertWeight(prevSet.weightKg, to: unitSystem)
+                weightInputs[exerciseLogIndex][setIndex] = weightDisplay.formatted(decimals: 1)
+            }
+            if reps <= 0 && prevSet.reps > 0 {
+                reps = prevSet.reps
+                repsInputs[exerciseLogIndex][setIndex] = "\(prevSet.reps)"
+            }
+        }
+
+        guard weightDisplay > 0 && reps > 0 else {
+            Haptics.error()
+            return
+        }
 
         // Convert to kg for storage
         let weightKg = UnitConversionService.convertToKg(weightDisplay, from: unitSystem)
@@ -247,31 +281,42 @@ final class WorkoutExecutionViewModel: Identifiable {
         let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
         completedSetIds.insert(setId)
 
-        // Check for PR
+        // Feedback and rest start immediately; PR detection and persistence
+        // follow so a slow connection never delays the gym-floor loop.
+        Haptics.medium()
+        let restInfo = restDuration(forExerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
+        if restInfo.shouldTrigger {
+            startRestTimer(seconds: restInfo.seconds)
+        }
+
+        // Check for PR against the session-cached records
         let exerciseLog = session.exerciseLogs[exerciseLogIndex]
         let setLog = exerciseLog.sets[setIndex]
         if setLog.setType == .working {
             do {
+                let existing = try await existingPRs(
+                    for: exerciseLog.exerciseId,
+                    userId: userId,
+                    progressService: progressService
+                )
                 let prs = try await progressService.checkForPRs(
                     userId: userId,
                     exerciseId: exerciseLog.exerciseId,
                     exerciseName: exerciseLog.exerciseName,
                     setLog: setLog,
-                    sessionId: session.id
+                    sessionId: session.id,
+                    existingPRs: existing
                 )
                 if !prs.isEmpty {
+                    prCache[exerciseLog.exerciseId, default: []].append(contentsOf: prs)
                     session.exerciseLogs[exerciseLogIndex].sets[setIndex].isPersonalRecord = true
                     sessionPRs.append(contentsOf: prs)
                     newPR = prs.first
                     Haptics.success()
-                } else {
-                    Haptics.medium()
                 }
             } catch {
-                Haptics.medium()
+                // PR detection is best-effort; the set itself persists below.
             }
-        } else {
-            Haptics.medium()
         }
 
         // Persist session
@@ -281,12 +326,14 @@ final class WorkoutExecutionViewModel: Identifiable {
         } catch {
             errorMessage = "Failed to save: \(error.localizedDescription)"
         }
+    }
 
-        // Start rest timer
-        let restInfo = restDuration(forExerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
-        if restInfo.shouldTrigger {
-            startRestTimer(seconds: restInfo.seconds)
-        }
+    /// Returns (and lazily fetches) the exercise's pre-session PRs.
+    private func existingPRs(for exerciseId: String, userId: String, progressService: ProgressService) async throws -> [PersonalRecord] {
+        if let cached = prCache[exerciseId] { return cached }
+        let records = try await progressService.getExercisePRs(userId: userId, exerciseId: exerciseId)
+        prCache[exerciseId] = records
+        return records
     }
 
     func uncompleteSet(
@@ -317,6 +364,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
             let recordIds = Set(recordsToDelete.map(\.id))
             sessionPRs.removeAll { recordIds.contains($0.id) }
+            prCache[exerciseLog.exerciseId]?.removeAll { recordIds.contains($0.id) }
             if let currentPR = newPR, recordIds.contains(currentPR.id) {
                 newPR = nil
             }
@@ -430,9 +478,13 @@ final class WorkoutExecutionViewModel: Identifiable {
         previousLogs.removeValue(forKey: oldExerciseId)
         progressionSuggestions.removeValue(forKey: oldExerciseId)
         do {
-            let recent = try await workoutService.getRecentExerciseLogs(
-                userId: userId, exerciseId: newExercise.id, limit: 5
+            let recentByExercise = try await workoutService.getRecentExerciseLogs(
+                userId: userId,
+                exerciseIds: [newExercise.id],
+                excludingSessionId: session.id,
+                limit: 5
             )
+            let recent = recentByExercise[newExercise.id] ?? []
             if let mostRecent = recent.first {
                 previousLogs[newExercise.id] = mostRecent
             }
@@ -462,37 +514,91 @@ final class WorkoutExecutionViewModel: Identifiable {
     func startRestTimer(seconds: Int) {
         guard seconds > 0 else { return }
         restTimer?.invalidate()
+        restEndDate = Date().addingTimeInterval(TimeInterval(seconds))
         restSecondsRemaining = seconds
         restTotalSeconds = seconds
         restTimerActive = true
+        scheduleRestEndNotification(after: seconds)
 
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] timer in
             guard let self else { timer.invalidate(); return }
-            if self.restSecondsRemaining > 0 {
-                self.restSecondsRemaining -= 1
-            }
-            if self.restSecondsRemaining <= 0 {
-                timer.invalidate()
-                self.restTimerActive = false
-                Haptics.success()
+            MainActor.assumeIsolated {
+                self.tickRestTimer()
             }
         }
         RunLoop.main.add(timer, forMode: .common)
         restTimer = timer
     }
 
+    private func tickRestTimer() {
+        guard let endDate = restEndDate else {
+            restTimer?.invalidate()
+            return
+        }
+        let remaining = max(0, Int(endDate.timeIntervalSinceNow.rounded(.up)))
+        restSecondsRemaining = remaining
+        if remaining <= 0 {
+            restTimer?.invalidate()
+            restEndDate = nil
+            restTimerActive = false
+            Haptics.success()
+        }
+    }
+
     func skipRestTimer() {
         restTimer?.invalidate()
+        restEndDate = nil
         restSecondsRemaining = 0
         restTimerActive = false
+        cancelRestEndNotification()
     }
 
     func adjustRestTimer(by seconds: Int) {
-        restSecondsRemaining = max(0, restSecondsRemaining + seconds)
-        restTotalSeconds = max(restTotalSeconds, restSecondsRemaining)
-        if restSecondsRemaining <= 0 {
+        guard let endDate = restEndDate else { return }
+        let newEnd = endDate.addingTimeInterval(TimeInterval(seconds))
+        let remaining = max(0, Int(newEnd.timeIntervalSinceNow.rounded(.up)))
+        if remaining <= 0 {
             skipRestTimer()
+            return
         }
+        restEndDate = newEnd
+        restSecondsRemaining = remaining
+        restTotalSeconds = max(restTotalSeconds, remaining)
+        scheduleRestEndNotification(after: remaining)
+    }
+
+    /// Re-syncs displayed timer values from the wall clock. Called when the
+    /// app returns to the foreground, since Timers suspend in the background.
+    func refreshTimersFromWallClock() {
+        elapsedSeconds = max(0, Int(Date().timeIntervalSince(session.startedAt)))
+        if restTimerActive {
+            tickRestTimer()
+        }
+    }
+
+    // MARK: - Rest-End Notification
+
+    private func scheduleRestEndNotification(after seconds: Int) {
+        guard seconds > 0 else { return }
+        let identifier = Self.restNotificationId
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Rest complete"
+            content.body = "Time for your next set."
+            content.sound = .default
+            let trigger = UNTimeIntervalNotificationTrigger(
+                timeInterval: TimeInterval(seconds),
+                repeats: false
+            )
+            UNUserNotificationCenter.current()
+                .add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+        }
+    }
+
+    private func cancelRestEndNotification() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [Self.restNotificationId])
     }
 
     // MARK: - Finish / Abandon
@@ -533,6 +639,8 @@ final class WorkoutExecutionViewModel: Identifiable {
         elapsedTimer = nil
         restTimer?.invalidate()
         restTimer = nil
+        restEndDate = nil
+        cancelRestEndNotification()
     }
 
     // MARK: - Computed Properties
@@ -657,10 +765,15 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     private func startElapsedTimer() {
         elapsedTimer?.invalidate()
+        // Derives from startedAt instead of counting ticks, and deliberately
+        // does NOT touch `session` — mutating it here re-rendered every
+        // exercise card once per second for the whole workout.
+        // `durationSeconds` is stamped at each persistence point instead.
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] timer in
             guard let self else { timer.invalidate(); return }
-            self.elapsedSeconds += 1
-            self.session.durationSeconds = self.elapsedSeconds
+            MainActor.assumeIsolated {
+                self.elapsedSeconds = max(0, Int(Date().timeIntervalSince(self.session.startedAt)))
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         elapsedTimer = timer

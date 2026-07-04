@@ -9,14 +9,47 @@ import {
   PlateauAnalysisRequestSchema,
   PlateauAnalysisSchema,
 } from "./validators/schemas";
+import { CLAUDE_MODEL_SMALL } from "./models";
+import { assertWithinDailyQuota } from "./rateLimit";
 import * as admin from "firebase-admin";
 
 if (!admin.apps.length) admin.initializeApp();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
+// Forced tool use (tool_choice type:"tool") mirrors generateWorkoutPlan: the
+// model must return structured input for this tool, so there is no raw-text
+// JSON.parse path to break on preamble or truncated prose.
+const SAVE_PLATEAU_ANALYSIS_TOOL = {
+  name: "save_plateau_analysis",
+  description:
+    "Save the plateau analysis result. Call this tool exactly once with the complete analysis.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      isPlateaued: { type: "boolean" },
+      confidence: { type: "string", enum: ["high", "medium", "low"] },
+      analysis: {
+        type: "string",
+        description: "Explanation of the findings",
+      },
+      recommendation: {
+        type: "string",
+        enum: ["deload", "swap", "repSchemeChange", "volumeAdjust", "techniqueFocus"],
+      },
+      details: {
+        type: "string",
+        description: "Specific programming changes",
+      },
+    },
+    required: [
+      "isPlateaued", "confidence", "analysis", "recommendation", "details",
+    ],
+  },
+};
+
 export const analyzePlateau = onCall(
-  { secrets: [anthropicApiKey], enforceAppCheck: true },
+  { secrets: [anthropicApiKey], maxInstances: 5, enforceAppCheck: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in");
@@ -30,6 +63,9 @@ export const analyzePlateau = onCall(
     const { exercise, history, userProfile, currentProgramWeek } =
       parsedRequest.data;
 
+    const db = admin.firestore();
+    await assertWithinDailyQuota(db, request.auth.uid, "analyzePlateau", 20);
+
     const userPrompt = `Analyze this exercise performance data:
 
 Exercise: ${exercise}
@@ -37,27 +73,36 @@ Current program week: ${currentProgramWeek}
 User profile: ${JSON.stringify(userProfile)}
 
 Performance history (most recent first):
-${JSON.stringify(history, null, 2)}
+${JSON.stringify(history)}
 
-Determine if the user has plateaued and recommend adjustments.`;
+Determine if the user has plateaued and recommend adjustments, then call the save_plateau_analysis tool.`;
 
     try {
       const client = new Anthropic({ apiKey: anthropicApiKey.value() });
 
+      // Haiku call: no `thinking` parameter at all.
       const message = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
+        model: CLAUDE_MODEL_SMALL,
+        max_tokens: 2000,
         system: PLATEAU_ANALYSIS_SYSTEM_PROMPT,
         messages: [{ role: "user", content: userPrompt }],
+        tools: [SAVE_PLATEAU_ANALYSIS_TOOL],
+        tool_choice: { type: "tool", name: SAVE_PLATEAU_ANALYSIS_TOOL.name },
       });
 
-      const content = message.content[0];
-      if (content.type !== "text") {
+      const toolBlock = message.content.find(
+        (block): block is Anthropic.ToolUseBlock =>
+          block.type === "tool_use" &&
+          block.name === SAVE_PLATEAU_ANALYSIS_TOOL.name,
+      );
+      if (!toolBlock) {
+        console.error("analyzePlateau: no save_plateau_analysis tool_use block", {
+          stopReason: message.stop_reason,
+        });
         throw new HttpsError("internal", "Unexpected response type");
       }
 
-      const rawAnalysis = JSON.parse(content.text);
-      const parsedAnalysis = PlateauAnalysisSchema.safeParse(rawAnalysis);
+      const parsedAnalysis = PlateauAnalysisSchema.safeParse(toolBlock.input);
       if (!parsedAnalysis.success) {
         throw new HttpsError(
           "internal",
@@ -65,7 +110,6 @@ Determine if the user has plateaued and recommend adjustments.`;
         );
       }
 
-      const db = admin.firestore();
       await db.collection("aiUsageLogs").add({
         userId: request.auth.uid,
         function: "analyzePlateau",
@@ -77,7 +121,13 @@ Determine if the user has plateaued and recommend adjustments.`;
 
       return parsedAnalysis.data;
     } catch (error: any) {
-      throw new HttpsError("internal", error.message || "Analysis failed");
+      if (error instanceof HttpsError) throw error;
+      console.error("analyzePlateau failed", {
+        name: error?.name,
+        message: error?.message,
+        status: error?.status,
+      });
+      throw new HttpsError("internal", "Analysis failed");
     }
   }
 );

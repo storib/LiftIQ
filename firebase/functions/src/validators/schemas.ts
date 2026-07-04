@@ -48,43 +48,71 @@ export const GenerateWorkoutPlanRequestSchema = z.object({
   templateType: TemplateTypeSchema,
 }).strict();
 
+// Field names/shapes match what AIService.swift sends for suggestExerciseSwap:
+// currentExercise {id, name, primaryMuscle, movementPattern}, availableEquipment
+// raw values, and the workout's other exercise IDs.
 export const ExerciseSwapRequestSchema = z.object({
   currentExercise: z.object({
-    id: z.string().min(1),
+    id: z.string().min(1).max(200),
     name: z.string().min(1).max(200),
     primaryMuscle: MuscleGroupSchema,
     movementPattern: MovementPatternSchema,
   }).strict(),
   availableEquipment: z.array(EquipmentSchema).min(1).max(11),
-  otherExercisesInWorkout: z.array(z.string().min(1)).max(50),
+  otherExercisesInWorkout: z.array(z.string().min(1).max(200)).max(30),
 }).strict();
 
 export const ExerciseSwapSuggestionSchema = z.object({
-  exerciseId: z.string().min(1),
+  exerciseId: z.string().min(1).max(200),
   rationale: z.string().min(1).max(500),
+}).strict();
+
+// Shape of the forced save_exercise_swaps tool input.
+export const ExerciseSwapResponseSchema = z.object({
+  suggestions: z.array(ExerciseSwapSuggestionSchema).min(1).max(5),
+}).strict();
+
+// One data point of exercise history, mirroring the ProgressRecord fields the
+// client stores per exercise/session. There is no client caller of
+// analyzePlateau today; this bounds the shape for when one is added.
+export const PlateauHistoryEntrySchema = z.object({
+  date: z.string().min(1).max(40),
+  estimated1RM: z.number().min(0).max(1000),
+  bestSetWeight: z.number().min(0).max(1000),
+  bestSetReps: z.number().int().min(0).max(100),
+  totalVolume: z.number().min(0).max(1000000),
+  totalSets: z.number().int().min(0).max(100),
+  rpe: z.number().min(0).max(10).optional(),
+}).strict();
+
+export const PlateauUserProfileSchema = z.object({
+  experienceLevel: ExperienceLevelSchema,
+  goals: z.array(GoalSchema).min(1).max(4),
+  trainingDaysPerWeek: z.number().int().min(1).max(7).optional(),
+  bodyWeightKg: z.number().min(20).max(500).optional(),
 }).strict();
 
 export const PlateauAnalysisRequestSchema = z.object({
   exercise: z.string().min(1).max(200),
-  history: z.array(z.record(z.unknown())).min(1).max(30),
-  userProfile: z.record(z.unknown()),
+  history: z.array(PlateauHistoryEntrySchema).min(1).max(30),
+  userProfile: PlateauUserProfileSchema,
   currentProgramWeek: z.number().int().min(1).max(52),
 }).strict();
 
 export const PlannedExerciseSchema = z.object({
   id: z.string(),
   exerciseId: z.string(),
-  order: z.number(),
-  sets: z.number().min(1).max(10),
-  repsMin: z.number().min(1).max(50),
-  repsMax: z.number().min(1).max(50),
-  rirTarget: z.number().nullable().optional(),
+  order: z.number().int(),
+  sets: z.number().int().min(1).max(10),
+  repsMin: z.number().int().min(1).max(50),
+  repsMax: z.number().int().min(1).max(50),
+  rirTarget: z.number().int().nullable().optional(),
   rpeTarget: z.number().nullable().optional(),
-  restSeconds: z.number().min(0).max(600),
+  restSeconds: z.number().int().min(0).max(600),
   warmUpSets: z.array(z.object({
     id: z.string(),
     percentageOf1RM: z.number(),
-    reps: z.number(),
+    reps: z.number().int(),
     label: z.string(),
   })).nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -98,16 +126,16 @@ export const ExerciseGroupSchema = z.object({
   id: z.string(),
   groupType: GroupTypeSchema,
   exercises: z.array(PlannedExerciseSchema),
-  restBetweenRoundsSeconds: z.number().nullable().optional(),
+  restBetweenRoundsSeconds: z.number().int().nullable().optional(),
 });
 
 export const WorkoutTemplateSchema = z.object({
   id: z.string(),
   planId: z.string(),
-  dayNumber: z.number(),
+  dayNumber: z.number().int(),
   name: z.string(),
   targetMuscleGroups: z.array(MuscleGroupSchema),
-  estimatedDurationMinutes: z.number(),
+  estimatedDurationMinutes: z.number().int(),
   exerciseGroups: z.array(ExerciseGroupSchema),
   notes: z.string().nullable().optional(),
 });
@@ -118,11 +146,11 @@ export const WorkoutPlanSchema = z.object({
   name: z.string(),
   templateType: TemplateTypeSchema,
   goal: GoalSchema,
-  weekCount: z.number().min(1).max(16),
-  currentWeek: z.number().min(1),
-  workoutsPerWeek: z.number().min(1).max(7),
+  weekCount: z.number().int().min(1).max(16),
+  currentWeek: z.number().int().min(1),
+  workoutsPerWeek: z.number().int().min(1).max(7),
   workouts: z.array(WorkoutTemplateSchema),
-  deloadWeek: z.number().nullable().optional(),
+  deloadWeek: z.number().int().nullable().optional(),
   isActive: z.boolean(),
   createdAt: z.string().datetime(),
   aiGenerated: z.boolean(),

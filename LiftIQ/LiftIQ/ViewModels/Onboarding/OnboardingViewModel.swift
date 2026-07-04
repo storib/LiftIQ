@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 @Observable
 final class OnboardingViewModel {
     var currentStep = 0
@@ -32,6 +33,9 @@ final class OnboardingViewModel {
     // State
     var isLoading = false
     var errorMessage: String?
+    /// Set when the user declines AI consent so the final step can finish
+    /// onboarding honestly instead of promising a generated program.
+    var declinedAIConsent = false
 
     var canAdvance: Bool {
         switch currentStep {

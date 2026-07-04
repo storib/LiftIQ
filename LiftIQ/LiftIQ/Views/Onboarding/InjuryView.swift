@@ -37,6 +37,7 @@ struct InjuryView: View {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(.secondary)
                             }
+                            .accessibilityLabel("Remove \(injury.bodyPart) injury")
                         }
                         .padding()
                         .background(Color(.secondarySystemBackground))

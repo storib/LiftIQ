@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 @Observable
 final class WorkoutService {
     private let planRepository: WorkoutPlanRepository
@@ -30,9 +31,10 @@ final class WorkoutService {
 
     func savePlan(_ plan: WorkoutPlan) async throws {
         if plan.isActive {
-            try await planRepository.deactivateAllPlans(userId: plan.userId)
+            try await planRepository.saveAndActivate(plan)
+        } else {
+            try await planRepository.savePlan(plan)
         }
-        try await planRepository.savePlan(plan)
         try await loadPlans(userId: plan.userId)
     }
 
@@ -74,13 +76,25 @@ final class WorkoutService {
         activeSession = nil
     }
 
-    func getPreviousExerciseLog(userId: String, exerciseId: String) async throws -> ExerciseLog? {
-        let sessions = try await sessionRepository.getSessionsForExercise(userId: userId, exerciseId: exerciseId, limit: 1)
-        return sessions.first?.exerciseLogs.first { $0.exerciseId == exerciseId }
-    }
-
-    func getRecentExerciseLogs(userId: String, exerciseId: String, limit: Int = 5) async throws -> [ExerciseLog] {
-        let sessions = try await sessionRepository.getSessionsForExercise(userId: userId, exerciseId: exerciseId, limit: limit)
-        return sessions.compactMap { $0.exerciseLogs.first { $0.exerciseId == exerciseId } }
+    /// Fetches recent history once and derives per-exercise logs in memory.
+    /// Sessions embed their logs, so one bounded query serves every exercise;
+    /// querying per exercise would re-download the same documents.
+    /// `excludingSessionId` keeps the in-flight session out of its own history.
+    func getRecentExerciseLogs(
+        userId: String,
+        exerciseIds: Set<String>,
+        excludingSessionId: String? = nil,
+        limit: Int = 5
+    ) async throws -> [String: [ExerciseLog]] {
+        let sessions = try await sessionRepository.getSessions(userId: userId, limit: 100)
+            .filter { $0.id != excludingSessionId }
+        var logs: [String: [ExerciseLog]] = [:]
+        for exerciseId in exerciseIds {
+            let recent = sessions.compactMap { session in
+                session.exerciseLogs.first { $0.exerciseId == exerciseId }
+            }
+            logs[exerciseId] = Array(recent.prefix(limit))
+        }
+        return logs
     }
 }

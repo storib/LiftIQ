@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 @Observable
 final class ProgressService {
     private let progressRepository: ProgressRecordRepository
@@ -36,8 +37,16 @@ final class ProgressService {
         try await prRepository.deleteRecord(userId: record.userId, recordId: record.id)
     }
 
-    func checkForPRs(userId: String, exerciseId: String, exerciseName: String, setLog: SetLog, sessionId: String) async throws -> [PersonalRecord] {
-        let existingPRs = try await prRepository.getRecords(userId: userId, exerciseId: exerciseId)
+    /// Fetches an exercise's existing PRs. PR values only ever increase, so
+    /// the most recent records of each type contain the current bests and a
+    /// bounded query is safe.
+    func getExercisePRs(userId: String, exerciseId: String) async throws -> [PersonalRecord] {
+        try await prRepository.getRecords(userId: userId, exerciseId: exerciseId, limit: 50)
+    }
+
+    /// Compares a completed set against `existingPRs` (typically the caller's
+    /// session-scoped cache) and persists any new records. No Firestore reads.
+    func checkForPRs(userId: String, exerciseId: String, exerciseName: String, setLog: SetLog, sessionId: String, existingPRs: [PersonalRecord]) async throws -> [PersonalRecord] {
         var newPRs: [PersonalRecord] = []
 
         let bestWeight = existingPRs.filter { $0.type == .weight }.max(by: { $0.value < $1.value })

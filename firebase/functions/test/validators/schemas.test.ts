@@ -5,6 +5,8 @@ import {
   PlannedExerciseSchema,
   EquipmentSchema,
   ExerciseSwapRequestSchema,
+  ExerciseSwapResponseSchema,
+  PlateauAnalysisRequestSchema,
 } from "../../src/validators/schemas";
 
 const validRequest = {
@@ -161,6 +163,40 @@ describe("PlannedExerciseSchema", () => {
     expect(PlannedExerciseSchema.safeParse({ ...validPlanned, sets: 0 }).success).toBe(false);
     expect(PlannedExerciseSchema.safeParse({ ...validPlanned, sets: 11 }).success).toBe(false);
   });
+
+  it("rejects non-integer restSeconds (Swift decodes Int)", () => {
+    expect(
+      PlannedExerciseSchema.safeParse({ ...validPlanned, restSeconds: 90.5 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects non-integer sets, repsMin, repsMax, and order", () => {
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, sets: 3.5 }).success).toBe(false);
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, repsMin: 6.1 }).success).toBe(false);
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, repsMax: 9.9 }).success).toBe(false);
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, order: 1.5 }).success).toBe(false);
+  });
+
+  it("rejects non-integer rirTarget but accepts integer or null", () => {
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, rirTarget: 1.5 }).success).toBe(false);
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, rirTarget: 2 }).success).toBe(true);
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, rirTarget: null }).success).toBe(true);
+  });
+
+  it("still accepts fractional rpeTarget (Swift Double)", () => {
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, rpeTarget: 8.5 }).success).toBe(true);
+  });
+
+  it("rejects non-integer warm-up reps but accepts fractional percentageOf1RM", () => {
+    const withWarmUps = (warmUpSets: unknown) =>
+      PlannedExerciseSchema.safeParse({ ...validPlanned, warmUpSets });
+    expect(
+      withWarmUps([{ id: "wu1", percentageOf1RM: 0.5, reps: 5.5, label: "warm" }]).success,
+    ).toBe(false);
+    expect(
+      withWarmUps([{ id: "wu1", percentageOf1RM: 0.5, reps: 5, label: "warm" }]).success,
+    ).toBe(true);
+  });
 });
 
 describe("WorkoutPlanSchema", () => {
@@ -203,6 +239,85 @@ describe("WorkoutPlanSchema", () => {
       WorkoutPlanSchema.safeParse({ ...validPlan, weekCount: 17 }).success,
     ).toBe(false);
   });
+
+  it("rejects non-integer weekCount, currentWeek, workoutsPerWeek, and deloadWeek", () => {
+    expect(WorkoutPlanSchema.safeParse({ ...validPlan, weekCount: 6.5 }).success).toBe(false);
+    expect(WorkoutPlanSchema.safeParse({ ...validPlan, currentWeek: 1.5 }).success).toBe(false);
+    expect(WorkoutPlanSchema.safeParse({ ...validPlan, workoutsPerWeek: 4.5 }).success).toBe(false);
+    expect(WorkoutPlanSchema.safeParse({ ...validPlan, deloadWeek: 5.5 }).success).toBe(false);
+    expect(WorkoutPlanSchema.safeParse({ ...validPlan, deloadWeek: 5 }).success).toBe(true);
+  });
+
+  it("rejects a plan whose nested exercise has fractional restSeconds", () => {
+    const plan = {
+      ...validPlan,
+      workouts: [
+        {
+          id: "w1",
+          planId: "plan-1",
+          dayNumber: 1,
+          name: "Upper",
+          targetMuscleGroups: ["chest"],
+          estimatedDurationMinutes: 60,
+          exerciseGroups: [
+            {
+              id: "g1",
+              groupType: "straight",
+              exercises: [
+                {
+                  id: "e1",
+                  exerciseId: "bench",
+                  order: 1,
+                  sets: 3,
+                  repsMin: 8,
+                  repsMax: 10,
+                  restSeconds: 90.5,
+                  isOptional: false,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(WorkoutPlanSchema.safeParse(plan).success).toBe(false);
+  });
+
+  it("rejects non-integer dayNumber, estimatedDurationMinutes, and restBetweenRoundsSeconds", () => {
+    const makeWorkout = (overrides: Record<string, unknown>) => ({
+      ...validPlan,
+      workouts: [
+        {
+          id: "w1",
+          planId: "plan-1",
+          dayNumber: 1,
+          name: "Upper",
+          targetMuscleGroups: ["chest"],
+          estimatedDurationMinutes: 60,
+          exerciseGroups: [],
+          ...overrides,
+        },
+      ],
+    });
+    expect(WorkoutPlanSchema.safeParse(makeWorkout({ dayNumber: 1.5 })).success).toBe(false);
+    expect(
+      WorkoutPlanSchema.safeParse(makeWorkout({ estimatedDurationMinutes: 60.5 })).success,
+    ).toBe(false);
+    expect(
+      WorkoutPlanSchema.safeParse(
+        makeWorkout({
+          exerciseGroups: [
+            {
+              id: "g1",
+              groupType: "superset",
+              exercises: [],
+              restBetweenRoundsSeconds: 90.5,
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
 });
 
 describe("ExerciseSwapRequestSchema", () => {
@@ -235,6 +350,129 @@ describe("ExerciseSwapRequestSchema", () => {
       ExerciseSwapRequestSchema.safeParse({
         ...validSwap,
         currentExercise: { ...validSwap.currentExercise, movementPattern: "wiggle" },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("PlateauAnalysisRequestSchema", () => {
+  const validHistoryEntry = {
+    date: "2026-06-01T10:00:00Z",
+    estimated1RM: 120.5,
+    bestSetWeight: 100,
+    bestSetReps: 6,
+    totalVolume: 1800,
+    totalSets: 3,
+  };
+
+  const validPlateauRequest = {
+    exercise: "Bench Press",
+    history: [validHistoryEntry, { ...validHistoryEntry, rpe: 8.5 }],
+    userProfile: {
+      experienceLevel: "intermediate",
+      goals: ["strength"],
+      trainingDaysPerWeek: 4,
+      bodyWeightKg: 82.5,
+    },
+    currentProgramWeek: 3,
+  };
+
+  it("accepts a valid plateau analysis request", () => {
+    expect(PlateauAnalysisRequestSchema.safeParse(validPlateauRequest).success).toBe(true);
+  });
+
+  it("accepts a minimal user profile", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        userProfile: { experienceLevel: "beginner", goals: ["hypertrophy"] },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects history entries with unknown fields", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        history: [{ ...validHistoryEntry, injected: "hack" }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects out-of-range weights in history", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        history: [{ ...validHistoryEntry, bestSetWeight: 5000 }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects empty history", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        history: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects more than 30 history entries", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        history: Array.from({ length: 31 }, () => validHistoryEntry),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects arbitrary userProfile fields", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        userProfile: { ...validPlateauRequest.userProfile, email: "a@b.c" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects program week outside 1..52", () => {
+    expect(
+      PlateauAnalysisRequestSchema.safeParse({
+        ...validPlateauRequest,
+        currentProgramWeek: 53,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("ExerciseSwapResponseSchema", () => {
+  it("accepts 1-5 well-formed suggestions", () => {
+    expect(
+      ExerciseSwapResponseSchema.safeParse({
+        suggestions: [
+          { exerciseId: "incline-db-press", rationale: "Same pattern, dumbbell variant." },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an empty suggestions array", () => {
+    expect(ExerciseSwapResponseSchema.safeParse({ suggestions: [] }).success).toBe(false);
+  });
+
+  it("rejects more than five suggestions", () => {
+    const suggestion = { exerciseId: "x", rationale: "y" };
+    expect(
+      ExerciseSwapResponseSchema.safeParse({
+        suggestions: Array.from({ length: 6 }, () => suggestion),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects suggestions missing a rationale", () => {
+    expect(
+      ExerciseSwapResponseSchema.safeParse({
+        suggestions: [{ exerciseId: "x" }],
       }).success,
     ).toBe(false);
   });

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 @Observable
 final class DashboardViewModel {
     var isLoading = false

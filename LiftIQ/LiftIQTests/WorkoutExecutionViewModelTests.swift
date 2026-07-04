@@ -1,6 +1,7 @@
 import XCTest
 @testable import LiftIQ
 
+@MainActor
 final class WorkoutExecutionViewModelTests: XCTestCase {
 
     // MARK: - Helpers

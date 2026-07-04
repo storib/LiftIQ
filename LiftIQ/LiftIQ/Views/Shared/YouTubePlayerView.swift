@@ -17,7 +17,23 @@ struct YouTubePlayerView: UIViewRepresentable {
         return webView
     }
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        var loadedVideoId: String?
+        var loadedAutoplay: Bool?
+    }
+
     func updateUIView(_ webView: WKWebView, context: Context) {
+        // updateUIView runs on every SwiftUI update of an ancestor; reloading
+        // the embed unconditionally restarts the video mid-playback.
+        guard context.coordinator.loadedVideoId != videoId ||
+              context.coordinator.loadedAutoplay != autoplay else { return }
+        context.coordinator.loadedVideoId = videoId
+        context.coordinator.loadedAutoplay = autoplay
+
         let autoplayParam = autoplay ? 1 : 0
         let html = """
         <!DOCTYPE html>

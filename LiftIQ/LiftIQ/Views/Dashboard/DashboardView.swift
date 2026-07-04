@@ -5,6 +5,10 @@ struct DashboardView: View {
     @State private var viewModel = DashboardViewModel()
     @State private var workoutExecutionVM: WorkoutExecutionViewModel?
 
+    private var unitSystem: UnitSystem {
+        dependencies.authService.currentUser?.profile.unitSystem ?? .imperial
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -80,24 +84,20 @@ struct DashboardView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                     .padding(.horizontal)
-                } else if dependencies.workoutService.activePlan == nil {
+                } else if dependencies.workoutService.activePlan == nil && !viewModel.isLoading {
                     // No active plan
                     VStack(spacing: 12) {
-                        Image(systemName: "plus.circle")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                        Text("No active program")
-                            .font(.headline)
-                        Text("Create a workout plan to get started")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        EmptyStateView(
+                            icon: "plus.circle",
+                            title: "No active program",
+                            message: "Create a workout plan to get started"
+                        )
                         NavigationLink("Browse Programs") {
                             TemplateBrowserView()
                         }
                         .buttonStyle(.borderedProminent)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
                     .padding(.horizontal)
                 }
 
@@ -144,10 +144,11 @@ struct DashboardView: View {
                         subtitle: "workouts",
                         icon: "figure.strengthtraining.traditional"
                     )
+                    let weeklyVolume = UnitConversionService.convertWeight(viewModel.weeklyVolume, to: unitSystem)
                     StatCardView(
                         title: "Volume",
-                        value: viewModel.weeklyVolume > 0 ? "\(Int(viewModel.weeklyVolume / 1000))k" : "0",
-                        subtitle: "kg lifted",
+                        value: weeklyVolume > 0 ? "\(Int(weeklyVolume / 1000))k" : "0",
+                        subtitle: "\(UnitConversionService.weightLabel(for: unitSystem)) lifted",
                         icon: "scalemass.fill"
                     )
                 }
@@ -173,7 +174,7 @@ struct DashboardView: View {
                                 VStack(alignment: .trailing, spacing: 4) {
                                     Text(Formatters.durationString(from: session.durationSeconds))
                                         .font(.subheadline)
-                                    Text("\(Int(session.totalVolumeKg)) kg")
+                                    Text("\(Int(UnitConversionService.convertWeight(session.totalVolumeKg, to: unitSystem))) \(UnitConversionService.weightLabel(for: unitSystem))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -190,6 +191,11 @@ struct DashboardView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Dashboard")
+        .refreshable {
+            if let userId = dependencies.authService.currentUserId {
+                await viewModel.load(workoutService: dependencies.workoutService, userId: userId)
+            }
+        }
         .fullScreenCover(item: $workoutExecutionVM) { vm in
             WorkoutExecutionView(viewModel: vm)
                 .environment(dependencies)
