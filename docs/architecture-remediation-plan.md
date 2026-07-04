@@ -75,6 +75,10 @@ Tapping complete with empty fields silently no-ops (`SetRowView.swift:37-68`, `c
 - **Confirmation on plan delete** (swipe-to-delete in `WorkoutPlanListView`); make plan activate/deactivate a single `WriteBatch`.
 - **Error-handling policy:** adopt the existing `ErrorView`/`EmptyStateView`; add `.refreshable` to Dashboard/Progress/Plans; gate Dashboard empty state on `isLoading`.
 
+## Known tradeoff (accepted, with designed fix)
+
+- **Client PR deletion is best-effort.** Rollback paths (uncomplete/remove/swap/abandon) delete personalRecords docs with `try?`; Firestore's offline queue makes real loss rare, but a server-side rejection could strand a record. Designed fix when wanted: extend the session-write trigger to reconcile — abandoned session → delete PRs with its `sessionId`; completed-session write → delete PRs whose `sessionId` matches but whose id no set's `personalRecordIds` references. Idempotent; no tombstones needed.
+
 ## Phase 3 — Post-launch
 
 - **Protocol seams + fakes:** protocols at the Service layer, injected via `AppDependencies`; in-memory fakes; unit tests for `start`/`completeSet`/PR flows. Fix DI stragglers (`AuthService` self-constructs `UserRepository`/`Functions`; VM ignores `AppDependencies.progressionService`).
