@@ -7,11 +7,13 @@ enum AuthErrorMapper {
     enum Flow {
         case signIn
         case signUp
+        case resetPassword
 
         var label: String {
             switch self {
             case .signIn: return "Sign-in"
             case .signUp: return "Sign-up"
+            case .resetPassword: return "Password reset"
             }
         }
     }
@@ -42,8 +44,12 @@ enum AuthErrorMapper {
             return "Password is too weak. Use at least 6 characters."
         case .networkError:
             return "Network error. Check your connection and try again."
+        case .tooManyRequests:
+            return "Too many attempts. Please wait a few minutes and try again."
+        case .invalidRecipientEmail, .missingEmail:
+            return "Please enter a valid email address."
         case .operationNotAllowed:
-            return "Email/Password \(flow == .signIn ? "sign-in" : "sign-up") is not enabled. Enable it in the Firebase Console under Authentication \u{2192} Sign-in method."
+            return "Email/Password authentication is not enabled. Enable it in the Firebase Console under Authentication \u{2192} Sign-in method."
         default:
             return "\(flow.label) failed (code \(nsError.code)): \(error.localizedDescription)"
         }

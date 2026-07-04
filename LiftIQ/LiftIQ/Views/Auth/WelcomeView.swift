@@ -3,9 +3,7 @@ import SwiftUI
 struct WelcomeView: View {
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
-                Spacer()
-
+            VStack(spacing: 24) {
                 VStack(spacing: 8) {
                     Text("LiftIQ")
                         .font(.system(size: 48, weight: .bold, design: .rounded))
@@ -13,15 +11,9 @@ struct WelcomeView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
+                .padding(.top, 40)
 
-                VStack(alignment: .leading, spacing: 20) {
-                    FeatureRow(icon: "brain.head.profile", title: "AI-Powered Programs", description: "Personalized workout plans tailored to your goals")
-                    FeatureRow(icon: "chart.line.uptrend.xyaxis", title: "Track Progress", description: "See your strength gains with detailed analytics")
-                    FeatureRow(icon: "arrow.up.right.circle", title: "Smart Progression", description: "Automatic weight and rep suggestions each session")
-                }
-                .padding(.horizontal)
-
-                Spacer()
+                TutorialCarousel()
 
                 VStack(spacing: 12) {
                     NavigationLink {
@@ -51,28 +43,87 @@ struct WelcomeView: View {
     }
 }
 
-struct FeatureRow: View {
+/// Swipeable "how it works" tour shown before sign-up.
+struct TutorialCarousel: View {
+    @State private var currentPage = 0
+
+    private let slides: [TutorialSlide] = [
+        TutorialSlide(
+            icon: "brain.head.profile",
+            title: "AI-Powered Programs",
+            description: "Tell LiftIQ your goals, schedule, and equipment — get a personalized training plan in seconds."
+        ),
+        TutorialSlide(
+            icon: "timer",
+            title: "Guided Workouts",
+            description: "Log sets with one tap, see last session's numbers as you go, and let the rest timer run even in the background."
+        ),
+        TutorialSlide(
+            icon: "chart.line.uptrend.xyaxis",
+            title: "Track Progress",
+            description: "Estimated 1RM trends and weekly volume charts for every exercise, built automatically from your workouts."
+        ),
+        TutorialSlide(
+            icon: "trophy",
+            title: "PRs & Smart Progression",
+            description: "Automatic weight and rep suggestions each session, with a celebration every time you set a personal record."
+        )
+    ]
+
+    var body: some View {
+        VStack(spacing: 16) {
+            TabView(selection: $currentPage) {
+                ForEach(Array(slides.enumerated()), id: \.offset) { index, slide in
+                    TutorialSlideView(slide: slide)
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            HStack(spacing: 8) {
+                ForEach(slides.indices, id: \.self) { index in
+                    Capsule()
+                        .fill(index == currentPage ? Color.accentColor : Color.gray.opacity(0.3))
+                        .frame(width: index == currentPage ? 20 : 8, height: 8)
+                        .animation(.easeInOut(duration: 0.2), value: currentPage)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Page \(currentPage + 1) of \(slides.count)")
+        }
+    }
+}
+
+struct TutorialSlide {
     let icon: String
     let title: String
     let description: String
+}
+
+struct TutorialSlideView: View {
+    let slide: TutorialSlide
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
+        VStack(spacing: 16) {
+            Image(systemName: slide.icon)
+                .font(.system(size: 44))
                 .foregroundStyle(Color.accentColor)
-                .frame(width: 44, height: 44)
+                .frame(width: 96, height: 96)
                 .background(Color.accentColor.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(description)
-                    .font(.caption)
+            VStack(spacing: 8) {
+                Text(slide.title)
+                    .font(.title3.weight(.semibold))
+                Text(slide.description)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(.horizontal, 32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 

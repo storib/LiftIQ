@@ -29,6 +29,7 @@
 		29A29FE46D54642553A1EB94 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = EB28A0A7FD8C320D74E3C657 /* GoogleService-Info.plist */; };
 		2D737E3F8B6A56AF402FF71A /* SetType.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7C69EE26498FE58A713710 /* SetType.swift */; };
 		32EFA9958BD643F8727BB84F /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36940A00370528B0CA5FCFC /* WorkoutTemplate.swift */; };
+		3453E8A85B4034E0B5D44EC0 /* AuthValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C332D1C634E0BEC86FFD1B8 /* AuthValidationTests.swift */; };
 		37BD939D48AE0500785E0C43 /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 2E19ECD0D0247D63CE7B1E4C /* Algorithms */; };
 		38A8280A954949D6F92257CB /* BodyMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EC70C6C110448CC9BE9F4E /* BodyMetricsView.swift */; };
 		396E3380FDBBF4C92F0A2B86 /* WorkoutPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3AA00D2CF298C42EA9AC7 /* WorkoutPlan.swift */; };
@@ -56,6 +57,7 @@
 		6F9CD0F9358E8262648586FA /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 174A5F33B9718E52FBFDD653 /* FirebaseAuth */; };
 		705C69DEB3355F493F3F9729 /* AuthErrorMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE39571A32D49FB3AB1693E /* AuthErrorMapper.swift */; };
 		70DC4FC58784B0D26B6C96C3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 0DB8B74B0399C621022F0D09 /* FirebaseMessaging */; };
+		7299D25D9B772F62CB3531FE /* ForgotPasswordViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30DD8B04EAFE2E52D70A900 /* ForgotPasswordViewModel.swift */; };
 		747EB766CFE765F8BA5955A1 /* ServiceFakes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19CC40B3CB4977949FE622C3 /* ServiceFakes.swift */; };
 		760ADF288722798166833644 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718FE96393B32F4CCF38CA13 /* ProfileView.swift */; };
 		79F0F803C8B58CDD94548585 /* Epley.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6912B9ED87127594DDADBC51 /* Epley.swift */; };
@@ -98,6 +100,7 @@
 		DF7DF43B095D35765273768F /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28DB683111DDF572B81BA7F2 /* ScheduleView.swift */; };
 		E127A6C181DA1F0294B6710C /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F553DB4B2EBB2FC5D0901F3 /* WelcomeView.swift */; };
 		E35CAAEBEBA9D51939509DBB /* InjuryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95FBB2D5F9E276A73774E9E1 /* InjuryView.swift */; };
+		E3618B4D0F949D923846FDE8 /* EmailValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E210BDB2520A0AF68D9E1DD6 /* EmailValidator.swift */; };
 		E3E6EAD1995726A1B9F05C8A /* RestTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D3FA12C37989E976697C0F /* RestTimerView.swift */; };
 		E6F24EB483B291C7D60F469D /* WorkoutExecutionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E351EDF1293097B2188333 /* WorkoutExecutionView.swift */; };
 		EDF7751B59074E0E1D02BC58 /* MuscleGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F1AECA4C518F460EED8BB7 /* MuscleGroup.swift */; };
@@ -146,6 +149,7 @@
 		28F062ABE21B69910D49784D /* WorkoutPlanListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanListViewModel.swift; sourceTree = "<group>"; };
 		2937040EDB90A1574D503DFF /* EquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentView.swift; sourceTree = "<group>"; };
 		2BC3AA00D2CF298C42EA9AC7 /* WorkoutPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlan.swift; sourceTree = "<group>"; };
+		2C332D1C634E0BEC86FFD1B8 /* AuthValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidationTests.swift; sourceTree = "<group>"; };
 		304780F3675E3BC6A553B215 /* Double+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Double+Extensions.swift"; sourceTree = "<group>"; };
 		31501F8B320E526FB3F99080 /* GroupType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupType.swift; sourceTree = "<group>"; };
 		328338124C6DB8B6C37E2676 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
@@ -195,6 +199,7 @@
 		B990E75935B6488FB4B6B6A0 /* Date+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extensions.swift"; sourceTree = "<group>"; };
 		BCC9BE28F185EABB9A5E4FA5 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
 		C17BC13A69177C73A1F3A97A /* SignUpViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpViewModel.swift; sourceTree = "<group>"; };
+		C30DD8B04EAFE2E52D70A900 /* ForgotPasswordViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordViewModel.swift; sourceTree = "<group>"; };
 		C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInViewModel.swift; sourceTree = "<group>"; };
 		CEE39571A32D49FB3AB1693E /* AuthErrorMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthErrorMapper.swift; sourceTree = "<group>"; };
@@ -203,6 +208,7 @@
 		DB024AB47D9CF72FF23FB072 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		DEA4FA555BC840F6E476F60D /* WorkoutSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSummaryView.swift; sourceTree = "<group>"; };
 		E153F2A93D1319576F4F805C /* ProgressRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRecord.swift; sourceTree = "<group>"; };
+		E210BDB2520A0AF68D9E1DD6 /* EmailValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailValidator.swift; sourceTree = "<group>"; };
 		E377EF98BB5CBE51CAB521B5 /* OnboardingSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSummaryView.swift; sourceTree = "<group>"; };
 		E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseService.swift; sourceTree = "<group>"; };
 		E6D0A795D08254815C4A6916 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
@@ -320,6 +326,7 @@
 			children = (
 				CEE39571A32D49FB3AB1693E /* AuthErrorMapper.swift */,
 				EC3C07CA8A4B0CEF03B2AD90 /* Constants.swift */,
+				E210BDB2520A0AF68D9E1DD6 /* EmailValidator.swift */,
 				6912B9ED87127594DDADBC51 /* Epley.swift */,
 				84E8BAB63F18E0631F463B7F /* Formatters.swift */,
 				DB024AB47D9CF72FF23FB072 /* Haptics.swift */,
@@ -493,6 +500,7 @@
 		B6AA7BAF94BA31E34A15775D /* LiftIQTests */ = {
 			isa = PBXGroup;
 			children = (
+				2C332D1C634E0BEC86FFD1B8 /* AuthValidationTests.swift */,
 				AC26FD6065A526663C86080B /* ProgressionServiceTests.swift */,
 				19CC40B3CB4977949FE622C3 /* ServiceFakes.swift */,
 				F36989BE05A85EB8C0573BF7 /* WorkoutExecutionViewModelTests.swift */,
@@ -558,6 +566,7 @@
 		E81E5321378ECF30064655DE /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+				C30DD8B04EAFE2E52D70A900 /* ForgotPasswordViewModel.swift */,
 				C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */,
 				C17BC13A69177C73A1F3A97A /* SignUpViewModel.swift */,
 			);
@@ -749,6 +758,7 @@
 				D9F783BA08309579772DCE78 /* DashboardViewModel.swift in Sources */,
 				60FDEB8EF11881C61596A868 /* Date+Extensions.swift in Sources */,
 				064FA7DEB76B64AFED51E1D0 /* Double+Extensions.swift in Sources */,
+				E3618B4D0F949D923846FDE8 /* EmailValidator.swift in Sources */,
 				79F0F803C8B58CDD94548585 /* Epley.swift in Sources */,
 				C8FF1350A4E3E04CBE82CEB6 /* Equipment.swift in Sources */,
 				5FE0CE1EB196036B023EA9A7 /* EquipmentView.swift in Sources */,
@@ -763,6 +773,7 @@
 				684D95D721CF7D18525E7542 /* ExperienceLevel.swift in Sources */,
 				8F776B89B35CE50C8E95E2BD /* ExperienceLevelView.swift in Sources */,
 				DF32A32ABEA7A34ADBF7AB69 /* ForgotPasswordView.swift in Sources */,
+				7299D25D9B772F62CB3531FE /* ForgotPasswordViewModel.swift in Sources */,
 				55170B8F06D8ED324AFE4D3E /* Formatters.swift in Sources */,
 				22A089B97ADCF26595942DF4 /* Goal.swift in Sources */,
 				CF9316AF89E45AC2F0015708 /* GoalSelectionView.swift in Sources */,
@@ -827,6 +838,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3453E8A85B4034E0B5D44EC0 /* AuthValidationTests.swift in Sources */,
 				B4CB21A5723C7645ED86DB6F /* ProgressionServiceTests.swift in Sources */,
 				747EB766CFE765F8BA5955A1 /* ServiceFakes.swift in Sources */,
 				270947228DAFB4602EBE752A /* WorkoutExecutionViewModelTests.swift in Sources */,
