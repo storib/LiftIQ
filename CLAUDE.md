@@ -13,9 +13,9 @@ cd LiftIQ && xcodebuild test -project LiftIQ.xcodeproj -scheme LiftIQ -destinati
 # Cloud Functions
 cd firebase/functions && npm install
 cd firebase/functions && npm run build
-cd firebase/functions && npm test
+cd firebase/functions && npx vitest run --exclude "**/firestore.rules.test.ts"   # fast path, no emulator
 
-# Firestore rules tests require Java + emulator
+# Firestore rules tests require Java + emulator (CI runs them; this machine has no Java)
 cd firebase && firebase emulators:exec --only firestore "cd functions && npm test"
 ```
 
@@ -24,14 +24,14 @@ cd firebase && firebase emulators:exec --only firestore "cd functions && npm tes
 App code lives under `LiftIQ/LiftIQ/`:
 
 ```text
-App/            Firebase setup, DI container, tab shell
-Models/         Codable structs and enums
-Services/       @Observable business logic and Firebase calls
-Repositories/   Firestore CRUD, one repository per collection
-ViewModels/     @Observable view state and validation
+App/            Firebase setup, DI container (AppDependencies), tab shell
+Models/         Codable structs and enums; WorkoutSession.create factory
+Services/       @MainActor @Observable business logic; protocols in ServiceProtocols.swift
+Repositories/   Firestore CRUD, one repository per collection, nonisolated
+ViewModels/     @MainActor @Observable view state; RestTimerController
 Views/          SwiftUI only
 Extensions/     Date, Double, Color, View helpers
-Utilities/      Constants, Formatters, Epley, Haptics
+Utilities/      Constants, Formatters, Epley, Haptics, AuthErrorMapper
 Resources/      Assets and PrivacyInfo.xcprivacy
 ```
 
@@ -39,28 +39,36 @@ Backend code lives under `firebase/functions/src/`:
 
 ```text
 *.ts            Cloud Functions for AI, account deletion, progress, seed
+models.ts       Claude model IDs: CLAUDE_MODEL (sonnet), CLAUDE_MODEL_SMALL (haiku)
+rateLimit.ts    Per-user daily AI quotas counted from aiUsageLogs
 prompts/        Versioned Claude prompts
 validators/     Zod request/response schemas
 data/           exercises.json seed data
 test/           Vitest + Firestore rules tests
 ```
 
+`docs/architecture-remediation-plan.md` records the 2026-07 architecture review and the fixes made for it.
+
 ## Patterns
 
-- Use `@Observable`; do not introduce `ObservableObject` or `@Published`.
-- Inject `AppDependencies` with `.environment(dependencies)` and read it via `@Environment(AppDependencies.self)`.
-- Keep Views UI-only. Put validation/orchestration in ViewModels, business logic in Services, Firestore details in Repositories.
-- User data is under `/users/{uid}`. `WorkoutSession` embeds `ExerciseLog` and `SetLog`. Global `/exercises` is client read-only.
-- Store all weights in kg. Convert only at display/input boundaries via `UnitSystem` and formatting helpers. New users default to imperial.
-- Client AI calls go only through `AIService` and Firebase Functions. API keys never ship in the app.
-- Personal-data AI features require `AIConsentManager`/`AIConsentSheet`; bump consent version when shared data changes.
-- `generateWorkoutPlan` uses Anthropic tool use (`save_workout_plan`) plus Zod validation and shape checks. Keep prompt/schema/client models in sync.
-- Workout completion triggers `computeProgressRecords`; deterministic progression stays on-device in `ProgressionService`.
+- `@Observable` + `@MainActor` on every ViewModel and stateful Service; repositories stay nonisolated. No `ObservableObject` or `@Published`.
+- Inject `AppDependencies` with `.environment(dependencies)`. It exposes concrete service types (SwiftUI observation needs them); ViewModels take `any WorkoutServicing` / `ProgressServicing` / `ExerciseServicing` so tests can substitute the fakes in `LiftIQTests/ServiceFakes.swift`.
+- `WorkoutExecutionViewModel` takes services + userId at init. Set inputs are a `[SetLog.id: SetInput]` dictionary — never index the inputs. Rest timer and its local notification live in `RestTimerController`; both timers derive from wall-clock dates so backgrounding can't drift them.
+- Keep Views UI-only. Validation/orchestration in ViewModels, business logic in Services, Firestore details in Repositories.
+- Store all weights in kg. Convert only at display/input boundaries via `UnitConversionService`. New users default to imperial.
+- Epley e1RM has one client implementation (`Utilities/Epley.swift`; reps <= 1 returns the weight). The server copy in `computeProgressRecords.ts` must stay identical — parity tests exist on both sides.
+- Client AI calls go only through `AIService` and Firebase Functions; API keys never ship in the app. Personal-data AI features require `AIConsentManager`/`AIConsentSheet`; bump consent version when shared data changes.
+- All AI functions use forced tool use + Zod validation (SDK 0.39 has no structured outputs). The server stamps plan id/userId/createdAt (`normalizePlan`) — never trust model-generated IDs. Keep prompt/schema/client models in sync.
+- Every AI function writes an aiUsageLogs entry and checks `assertWithinDailyQuota` before calling Anthropic.
+- `progressRecords` are written only by `computeProgressRecords` (Admin SDK); rules deny client writes. Clients write `personalRecords` (rules-validated), sessions, and plans. Plan activation is a single `WriteBatch`.
+- Workout completion triggers `computeProgressRecords` (recomputes on any completed write, deletes records with the session); deterministic progression stays on-device in `ProgressionService`.
 
 ## Current UX
 
-- Onboarding collects profile, equipment presets/customization, optional AI consent, and can generate an active plan.
-- Program day exercise rows can start `WorkoutExecutionView` deep-linked to that exercise.
+- Onboarding: profile, equipment presets, optional AI consent, then a generated active plan. Declining consent ends in "Finish Setup" with pointers to templates; page swipe cannot skip validation.
+- Workout execution: tapping ✓ on empty fields adopts the ghost previous-session values; rest timer keeps time in the background and fires a local notification; PRs appear as a non-blocking top toast; keyboard has a prev/next/Done toolbar; controls have 44pt targets and VoiceOver labels.
+- Progress tab: Swift Charts — estimated-1RM line and weekly volume bars per exercise, from progressRecords.
+- Program day rows deep-link into `WorkoutExecutionView`. Resuming an interrupted session rebuilds superset rest and progression suggestions from the plan.
 - User default rest is `UserProfile.defaultRestSeconds` with a 60s fallback; AI/planned rest values win.
 - Equipment presets live in `EquipmentView.swift` as `EquipmentPreset`. Include `bodyweight` when a preset should match pull-up-bar/bodyweight exercises.
 
@@ -70,12 +78,14 @@ test/           Vitest + Firestore rules tests
 /users/{userId}                        LiftIQUser
 /users/{userId}/workoutPlans/{id}      WorkoutPlan with embedded WorkoutTemplates
 /users/{userId}/workoutSessions/{id}   WorkoutSession with embedded ExerciseLogs + SetLogs
-/users/{userId}/progressRecords/{id}   ProgressRecord per exercise/session
-/users/{userId}/personalRecords/{id}   PersonalRecord
-/users/{userId}/bodyMeasurements/{id}  BodyMeasurement
-/exercises/{id}                        Exercise, global read-only client data
-/aiUsageLogs/{id}                      Server-only usage logs
+/users/{userId}/progressRecords/{id}   ProgressRecord per exercise/session — server-write-only
+/users/{userId}/personalRecords/{id}   PersonalRecord — client-written, rules-validated
+/users/{userId}/bodyMeasurements/{id}  Rules exist; the client stack was removed as dead code
+/exercises/{id}                        Exercise, global read-only, served cache-first on the client
+/aiUsageLogs/{id}                      Server-only usage logs; also the rate-limit ledger
 ```
+
+Rate limiting needs a composite index on `aiUsageLogs (userId, function, createdAt)`.
 
 ## Gotchas
 
@@ -84,8 +94,11 @@ test/           Vitest + Firestore rules tests
 - `Tab()` is iOS 18+; this app targets iOS 17, so use `.tabItem { Label(...) }` with `.tag(...)`.
 - `.foregroundStyle(.accentColor)` can fail in ternaries; use `Color.accentColor`.
 - `lazy var` does not work with `@Observable`; prefer `let` dependencies.
+- Claude model IDs live only in `firebase/functions/src/models.ts`. Sonnet 5 runs adaptive thinking when `thinking` is omitted — keep it explicitly disabled there; Haiku calls must omit `thinking` entirely.
+- `generateWorkoutPlan`'s system blocks are prompt-cached: keep them byte-stable. Timestamps and per-user values belong in the user message, after the cache breakpoint.
 - Firestore rules tests must run through `firebase emulators:exec`, not plain Vitest.
 - Release checks fail on missing privacy manifest, placeholder Firebase config, `print()`, `NSLog`, or likely hardcoded secrets.
 - Editing `firebase/functions/src/data/exercises.json` does not update Firestore. Redeploy Functions if needed, then rerun `seedExerciseDatabase` with `ADMIN_SEED_KEY`.
 - Firebase Functions require Node 20 and secrets `ANTHROPIC_API_KEY` and `ADMIN_SEED_KEY`.
 - Callable AI/account functions enforce App Check; debug builds need the App Check debug provider flow.
+- `deleteAccount` also purges the user's aiUsageLogs; extend it if new user-keyed collections appear outside `/users/{uid}`.
