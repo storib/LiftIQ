@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var defaultRestSeconds: Int = 60
     @State private var customRestEnabled = false
     @State private var saveRestTask: Task<Void, Never>?
+    @State private var settingsError: String?
 
     var body: some View {
         List {
@@ -56,6 +57,8 @@ struct ProfileView: View {
                                     .monospacedDigit()
                             }
                         }
+                    } else {
+                        LabeledContent("Rest Duration", value: "Program default")
                     }
                 } header: {
                     Text("Workout Settings")
@@ -63,6 +66,16 @@ struct ProfileView: View {
                     Text(customRestEnabled
                         ? "Your rest duration applies to every exercise, overriding the rest times in your program."
                         : "Rest follows your program's per-exercise values, with 60s when an exercise doesn't specify one.")
+                }
+            }
+
+            if dependencies.healthKitService.isAvailable {
+                Section {
+                    Toggle("Sync to Apple Health", isOn: healthSyncBinding)
+                } header: {
+                    Text("Apple Health")
+                } footer: {
+                    Text("Saves completed workouts to Apple Health as strength training, with start time and duration.")
                 }
             }
 
@@ -116,7 +129,22 @@ struct ProfileView: View {
             scheduleRestSave(newValue)
         }
         .onChange(of: customRestEnabled) { _, enabled in
-            scheduleRestSave(enabled ? defaultRestSeconds : nil)
+            // Toggling is a deliberate action — persist immediately rather
+            // than debouncing, so a quick exit can't drop the change.
+            saveRestTask?.cancel()
+            let value = enabled ? defaultRestSeconds : nil
+            saveRestTask = Task { await persistDefaultRest(value) }
+        }
+        .onDisappear {
+            flushPendingRestSave()
+        }
+        .alert("Couldn't Save Setting", isPresented: Binding(
+            get: { settingsError != nil },
+            set: { if !$0 { settingsError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(settingsError ?? "")
         }
         .alert("Delete Account?", isPresented: $showingDeleteConfirmation) {
             Button("Continue", role: .destructive) {
@@ -156,6 +184,25 @@ struct ProfileView: View {
         }
     }
 
+    private var healthSyncBinding: Binding<Bool> {
+        Binding(
+            get: { dependencies.healthKitService.isSyncEnabled },
+            set: { enabled in
+                if enabled {
+                    Task {
+                        do {
+                            try await dependencies.healthKitService.enableSync()
+                        } catch {
+                            settingsError = error.localizedDescription
+                        }
+                    }
+                } else {
+                    dependencies.healthKitService.disableSync()
+                }
+            }
+        )
+    }
+
     private func restLabel(_ seconds: Int) -> String {
         if seconds < 60 { return "\(seconds)s" }
         let minutes = seconds / 60
@@ -172,6 +219,14 @@ struct ProfileView: View {
         }
     }
 
+    /// Persists a debounced change right away (leaving the screen mid-debounce
+    /// used to silently drop the new rest duration).
+    private func flushPendingRestSave() {
+        saveRestTask?.cancel()
+        let value = customRestEnabled ? defaultRestSeconds : nil
+        saveRestTask = Task { await persistDefaultRest(value) }
+    }
+
     /// nil means "follow the program's rest values"; a value overrides them.
     private func persistDefaultRest(_ seconds: Int?) async {
         guard var profile = dependencies.authService.currentUser?.profile,
@@ -180,7 +235,11 @@ struct ProfileView: View {
         do {
             try await dependencies.authService.updateProfile(profile)
         } catch {
-            // Quiet failure: revert local state to last persisted value on next appear
+            settingsError = "Your rest timer setting couldn't be saved. Check your connection and try again."
+            if let saved = dependencies.authService.currentUser?.profile {
+                defaultRestSeconds = saved.effectiveDefaultRestSeconds
+                customRestEnabled = saved.defaultRestSeconds != nil
+            }
         }
     }
 

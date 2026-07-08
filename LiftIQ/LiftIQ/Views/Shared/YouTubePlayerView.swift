@@ -34,30 +34,18 @@ struct YouTubePlayerView: UIViewRepresentable {
         context.coordinator.loadedVideoId = videoId
         context.coordinator.loadedAutoplay = autoplay
 
-        let autoplayParam = autoplay ? 1 : 0
-        let html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-        <style>
-            * { margin: 0; padding: 0; }
-            html, body { width: 100%; height: 100%; background: #000; }
-            iframe { width: 100%; height: 100%; border: none; }
-        </style>
-        </head>
-        <body>
-        <iframe
-            src="https://www.youtube.com/embed/\(videoId)?playsinline=1&autoplay=\(autoplayParam)&rel=0&modestbranding=1"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen>
-        </iframe>
-        </body>
-        </html>
-        """
-        // A nil baseURL gives the embed no HTTP referer, which YouTube rejects
-        // with "Error 153 — video player configuration error". Loading against
-        // youtube.com provides a valid origin so playback is allowed.
-        webView.loadHTMLString(html, baseURL: URL(string: "https://www.youtube.com"))
+        // Load the embed page as a real network navigation. Synthesized HTML
+        // (loadHTMLString), even with a remote baseURL, gives the player no
+        // genuine referer/origin, which YouTube rejects with "Error 153 —
+        // video player configuration error". The embed page sizes its player
+        // to the viewport, so no wrapper markup is needed.
+        var components = URLComponents(string: "https://www.youtube-nocookie.com/embed/\(videoId)")
+        components?.queryItems = [
+            URLQueryItem(name: "playsinline", value: "1"),
+            URLQueryItem(name: "autoplay", value: autoplay ? "1" : "0"),
+            URLQueryItem(name: "rel", value: "0"),
+        ]
+        guard let url = components?.url else { return }
+        webView.load(URLRequest(url: url))
     }
 }

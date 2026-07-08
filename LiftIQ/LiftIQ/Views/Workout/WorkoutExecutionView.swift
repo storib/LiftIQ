@@ -7,6 +7,9 @@ struct WorkoutExecutionView: View {
     @Bindable var viewModel: WorkoutExecutionViewModel
 
     @FocusState private var focusedSetField: SetFieldFocus?
+    // Sticky for the session: a user who tucks the timer away wants it to
+    // stay out of the way on later rests too.
+    @State private var restTimerMinimized = false
 
     private static let supersetColors: [Color] = [.blue, .purple, .orange, .teal, .pink, .indigo]
 
@@ -46,7 +49,7 @@ struct WorkoutExecutionView: View {
                             exerciseList
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, viewModel.restTimer.isActive ? 280 : 20)
+                        .padding(.bottom, restTimerBottomPadding)
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: viewModel.isLoading) { _, isLoading in
@@ -75,6 +78,7 @@ struct WorkoutExecutionView: View {
                     RestTimerView(
                         secondsRemaining: viewModel.restTimer.secondsRemaining,
                         totalSeconds: viewModel.restTimer.totalSeconds,
+                        isMinimized: $restTimerMinimized,
                         onSkip: { viewModel.skipRestTimer() },
                         onAdjust: { viewModel.adjustRestTimer(by: $0) }
                     )
@@ -191,6 +195,11 @@ struct WorkoutExecutionView: View {
                 viewModel.refreshTimersFromWallClock()
             }
         }
+    }
+
+    private var restTimerBottomPadding: CGFloat {
+        guard viewModel.restTimer.isActive else { return 20 }
+        return restTimerMinimized ? 96 : 280
     }
 
     // MARK: - Toolbar

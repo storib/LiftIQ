@@ -35,9 +35,31 @@ struct DashboardView: View {
                 // Next recommended workout — advances as plan days complete
                 if let workout = viewModel.todayWorkout {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Up Next")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text("Up Next")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if let plan = dependencies.workoutService.activePlan, plan.workouts.count > 1 {
+                                Menu {
+                                    ForEach(plan.workouts) { template in
+                                        Button {
+                                            viewModel.todayWorkout = template
+                                        } label: {
+                                            if template.id == workout.id {
+                                                Label("Day \(template.dayNumber) · \(template.name)", systemImage: "checkmark")
+                                            } else {
+                                                Text("Day \(template.dayNumber) · \(template.name)")
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Label("Change", systemImage: "arrow.triangle.2.circlepath")
+                                        .font(.caption.weight(.medium))
+                                }
+                                .accessibilityLabel("Choose a different workout")
+                            }
+                        }
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text(workout.name)

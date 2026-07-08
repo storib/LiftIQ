@@ -6,6 +6,7 @@ final class WorkoutService {
     private let planRepository: WorkoutPlanRepository
     private let sessionRepository: WorkoutSessionRepository
     private let prRepository: PersonalRecordRepository
+    private let healthKitService: any HealthKitServicing
 
     var activePlan: WorkoutPlan?
     var plans: [WorkoutPlan] = []
@@ -15,11 +16,13 @@ final class WorkoutService {
     init(
         planRepository: WorkoutPlanRepository,
         sessionRepository: WorkoutSessionRepository,
-        prRepository: PersonalRecordRepository
+        prRepository: PersonalRecordRepository,
+        healthKitService: any HealthKitServicing
     ) {
         self.planRepository = planRepository
         self.sessionRepository = sessionRepository
         self.prRepository = prRepository
+        self.healthKitService = healthKitService
     }
 
     func loadPlans(userId: String) async throws {
@@ -74,6 +77,8 @@ final class WorkoutService {
         try await sessionRepository.saveSession(completed)
         activeSession = nil
         try await loadRecentSessions(userId: session.userId)
+        // Best-effort mirror into Apple Health; never fails completion.
+        await healthKitService.exportSession(completed)
         return completed
     }
 
@@ -86,6 +91,7 @@ final class WorkoutService {
             try? await prRepository.deleteRecord(userId: session.userId, recordId: recordId)
         }
         try await sessionRepository.deleteSession(userId: session.userId, sessionId: session.id)
+        await healthKitService.deleteExportedSession(sessionId: session.id)
         recentSessions.removeAll { $0.id == session.id }
         if activeSession?.id == session.id {
             activeSession = nil

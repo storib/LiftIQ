@@ -22,8 +22,14 @@ targets:
       - path: LiftIQ
       - path: GoogleService-Info.plist
         buildPhase: resources
+    entitlements:
+      path: LiftIQ/LiftIQ.entitlements
+      properties:
+        com.apple.developer.healthkit: true
     settings:
       base:
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "LiftIQ checks which workouts it has already saved to Apple Health."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "LiftIQ saves your completed workouts to Apple Health."
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

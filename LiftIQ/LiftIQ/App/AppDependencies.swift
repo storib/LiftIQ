@@ -9,6 +9,7 @@ final class AppDependencies {
     let progressService: ProgressService
     let aiService: AIService
     let progressionService: ProgressionService
+    let healthKitService: HealthKitService
 
     init() {
         let userRepo = UserRepository()
@@ -19,7 +20,8 @@ final class AppDependencies {
         let prRepo = PersonalRecordRepository()
 
         self.authService = AuthService(userRepository: userRepo)
-        self.workoutService = WorkoutService(planRepository: planRepo, sessionRepository: sessionRepo, prRepository: prRepo)
+        self.healthKitService = HealthKitService()
+        self.workoutService = WorkoutService(planRepository: planRepo, sessionRepository: sessionRepo, prRepository: prRepo, healthKitService: healthKitService)
         self.exerciseService = ExerciseService(repository: exerciseRepo)
         self.progressService = ProgressService(progressRepository: progressRepo, prRepository: prRepo)
         self.aiService = AIService()

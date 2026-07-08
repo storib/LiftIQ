@@ -5,6 +5,7 @@ struct WorkoutHistoryView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel = WorkoutHistoryViewModel()
     @State private var sessionPendingDeletion: WorkoutSession?
+    @State private var workoutExecutionVM: WorkoutExecutionViewModel?
 
     private var unitSystem: UnitSystem {
         dependencies.authService.currentUser?.profile.unitSystem ?? .imperial
@@ -62,6 +63,23 @@ struct WorkoutHistoryView: View {
                 try? await dependencies.workoutService.loadPlans(userId: userId)
             }
         }
+        .fullScreenCover(item: $workoutExecutionVM) { vm in
+            WorkoutExecutionView(viewModel: vm)
+                .environment(dependencies)
+        }
+    }
+
+    private func startWorkout(_ template: WorkoutTemplate) {
+        guard let userId = dependencies.authService.currentUserId else { return }
+        workoutExecutionVM = WorkoutExecutionViewModel(
+            template: template,
+            userId: userId,
+            planId: dependencies.workoutService.activePlan?.id,
+            workoutService: dependencies.workoutService,
+            exerciseService: dependencies.exerciseService,
+            progressService: dependencies.progressService,
+            progressionService: dependencies.progressionService
+        )
     }
 
     private var weekHeader: some View {
@@ -130,18 +148,30 @@ struct WorkoutHistoryView: View {
             }
 
             if let planned {
-                HStack(spacing: 12) {
-                    Image(systemName: "calendar.badge.clock")
-                        .foregroundStyle(Color.accentColor)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(planned.name)
-                            .font(.subheadline.weight(.semibold))
-                        Text("Planned \u{2022} ~\(planned.estimatedDurationMinutes) min")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                Button {
+                    startWorkout(planned)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "calendar.badge.clock")
+                            .foregroundStyle(Color.accentColor)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(planned.name)
+                                .font(.subheadline.weight(.semibold))
+                            Text("Planned \u{2022} ~\(planned.estimatedDurationMinutes) min")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .opacity(0.75)
+                        Spacer()
+                        Image(systemName: "play.circle.fill")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(Color.accentColor)
                     }
+                    .contentShape(Rectangle())
                 }
-                .opacity(0.75)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Start \(planned.name)")
             }
         } header: {
             HStack {

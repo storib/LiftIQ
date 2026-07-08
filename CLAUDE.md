@@ -66,12 +66,13 @@ test/           Vitest + Firestore rules tests
 ## Current UX
 
 - Onboarding: profile, equipment presets, optional AI consent, then a generated active plan. Declining consent ends in "Finish Setup" with pointers to templates; page swipe cannot skip validation.
-- Workout execution: tapping ✓ on empty fields adopts the ghost previous-session values; rest timer keeps time in the background and fires a local notification; PRs appear as a non-blocking top toast; keyboard has a prev/next/Done toolbar; controls have 44pt targets and VoiceOver labels.
-- Dashboard "Up Next" recommends the plan day after the most recently completed session (`DashboardViewModel.nextWorkout`, cycles at rotation end) — it is not weekday-based. Welcome screen has a swipeable tutorial carousel; sign-up validates live with a strength meter.
-- History: Dashboard Recent Activity rows open `SessionDetailView` (edit set weights/reps of finished sessions, delete with confirmation); "See All" opens `WorkoutHistoryView`, a weekly calendar of past sessions plus projected upcoming plan days. `WorkoutService.deleteSession` best-effort deletes the session's PRs client-side; progressRecords cleanup is server-side.
+- Workout execution: tapping ✓ on empty fields adopts the ghost previous-session values; rest timer keeps time in the background and fires a local notification; the timer card minimizes to a compact pill (sticky for the session); PRs appear as a non-blocking top toast; keyboard has a prev/next/Done toolbar; controls have 44pt targets and VoiceOver labels.
+- Dashboard "Up Next" recommends the plan day after the most recently completed session (`DashboardViewModel.nextWorkout`, cycles at rotation end) — it is not weekday-based. A "Change" menu on the card lets the user pick any plan day instead. Welcome screen has a swipeable tutorial carousel; sign-up validates live with a strength meter.
+- History: Dashboard Recent Activity rows open `SessionDetailView` (edit set weights/reps of finished sessions, delete with confirmation); "See All" opens `WorkoutHistoryView`, a weekly calendar of past sessions plus projected upcoming plan days; planned rows are tappable and start that workout. `WorkoutService.deleteSession` best-effort deletes the session's PRs client-side; progressRecords cleanup is server-side.
 - Progress tab: Swift Charts — estimated-1RM line and weekly volume bars per exercise, from progressRecords.
 - Program day rows deep-link into `WorkoutExecutionView`. Resuming an interrupted session rebuilds superset rest and progression suggestions from the plan.
-- User default rest is `UserProfile.defaultRestSeconds` with a 60s fallback; AI/planned rest values win.
+- Rest precedence: a set `UserProfile.defaultRestSeconds` (Profile → Custom Rest Timer) overrides everything; when nil, AI/planned per-exercise rest wins with a 60s fallback. Rest end plays `SoundEffects.restComplete()` + haptic in the foreground; the local notification only sounds in the background (no foreground-presentation delegate — adding one would double-ring).
+- `HealthKitService` mirrors completed sessions to Apple Health (`.traditionalStrengthTraining`, `HKMetadataKeyExternalUUID` = session id) when the Profile toggle is on (device-local UserDefaults, not the user profile). Export on `completeSession` and cleanup on `deleteSession` are best-effort and must never block those flows.
 - Equipment presets live in `EquipmentView.swift` as `EquipmentPreset`. Include `bodyweight` when a preset should match pull-up-bar/bodyweight exercises.
 
 ## Firestore
@@ -104,3 +105,5 @@ Rate limiting needs a composite index on `aiUsageLogs (userId, function, created
 - Firebase Functions require Node 20 and secrets `ANTHROPIC_API_KEY` and `ADMIN_SEED_KEY`.
 - Callable AI/account functions enforce App Check; debug builds need the App Check debug provider flow.
 - `deleteAccount` also purges the user's aiUsageLogs; extend it if new user-keyed collections appear outside `/users/{uid}`.
+- YouTube embeds must load as a real `URLRequest` to `youtube-nocookie.com/embed/<id>` — `loadHTMLString` (even with a remote baseURL) gives the player no genuine origin and YouTube rejects it with Error 153.
+- The HealthKit entitlement and `NSHealth*UsageDescription` strings live in `project.yml` (entitlements file is generated); re-run `xcodegen generate` after touching them. Device builds need the HealthKit capability on the App ID.

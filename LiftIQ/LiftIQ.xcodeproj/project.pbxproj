@@ -36,10 +36,12 @@
 		3A36CCB2BC2DC32DF2DE1E6C /* WorkoutSessionRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32933FADAFE72D81E81E048A /* WorkoutSessionRepository.swift */; };
 		3C446C9FDB00C37C5B1FAC70 /* YouTubePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FE93EC0608669383B8C6358 /* YouTubePlayerView.swift */; };
 		3E0DD3EC403587B8D3DB41FD /* SignUpViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17BC13A69177C73A1F3A97A /* SignUpViewModel.swift */; };
+		404233436B5AEE5FB017D3E7 /* SoundEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9DB8C1F80E548101237059D /* SoundEffects.swift */; };
 		41BEC68B51571E1B5A9C95B9 /* ProgressDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE0487AF69A4DA30250706D /* ProgressDashboardView.swift */; };
 		44BB332D8434D0030365EAC8 /* GroupType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31501F8B320E526FB3F99080 /* GroupType.swift */; };
 		450B1EC93293CD123D7F61AE /* SignInViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */; };
 		450BCDD9E1EEE54670AB69A4 /* WorkoutExecutionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3150E73160CC7E2ED7AB527 /* WorkoutExecutionViewModel.swift */; };
+		4577EC64D0FC3A24C4F0DC9B /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3869ED121F51638089582469 /* HealthKitService.swift */; };
 		48180E07478F94750287C778 /* ProgressRecordRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5D6F092764E6DF2C205FE /* ProgressRecordRepository.swift */; };
 		492E0C79E2E8D74C0B80A227 /* ExerciseGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49941799A7BE10390B77E3F1 /* ExerciseGroup.swift */; };
 		4D2A41B56D06066B0EAA951B /* SetRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EB9F7B50F6FE21DBDC7759D /* SetRowView.swift */; };
@@ -163,6 +165,7 @@
 		3494E9E70D3F92F8787CA5F9 /* Equipment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Equipment.swift; sourceTree = "<group>"; };
 		357673A38056905C25E9FD3E /* WorkoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutService.swift; sourceTree = "<group>"; };
 		38007758FDDE81B717260FC0 /* WorkoutDayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutDayDetailView.swift; sourceTree = "<group>"; };
+		3869ED121F51638089582469 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
 		3AEC9A89784E0884D0D3B3CE /* PersonalRecordRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecordRepository.swift; sourceTree = "<group>"; };
 		433B1E9C2E813BD1C5B4EFF0 /* ProgressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressService.swift; sourceTree = "<group>"; };
 		4958070EC6D6287CDAE3A84D /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -212,6 +215,7 @@
 		C30DD8B04EAFE2E52D70A900 /* ForgotPasswordViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordViewModel.swift; sourceTree = "<group>"; };
 		C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		C938A8AFF17520EC991EE0B9 /* SignInViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInViewModel.swift; sourceTree = "<group>"; };
+		C9DB8C1F80E548101237059D /* SoundEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEffects.swift; sourceTree = "<group>"; };
 		CEE39571A32D49FB3AB1693E /* AuthErrorMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthErrorMapper.swift; sourceTree = "<group>"; };
 		D078599944DDC696093B9573 /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
 		D69C818DD299F972B877B29E /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
@@ -219,6 +223,7 @@
 		DEA4FA555BC840F6E476F60D /* WorkoutSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSummaryView.swift; sourceTree = "<group>"; };
 		E153F2A93D1319576F4F805C /* ProgressRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRecord.swift; sourceTree = "<group>"; };
 		E210BDB2520A0AF68D9E1DD6 /* EmailValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailValidator.swift; sourceTree = "<group>"; };
+		E350E3523AEAD010662F0C19 /* LiftIQ.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiftIQ.entitlements; sourceTree = "<group>"; };
 		E377EF98BB5CBE51CAB521B5 /* OnboardingSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSummaryView.swift; sourceTree = "<group>"; };
 		E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseService.swift; sourceTree = "<group>"; };
 		E6D0A795D08254815C4A6916 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
@@ -350,6 +355,7 @@
 				6912B9ED87127594DDADBC51 /* Epley.swift */,
 				84E8BAB63F18E0631F463B7F /* Formatters.swift */,
 				DB024AB47D9CF72FF23FB072 /* Haptics.swift */,
+				C9DB8C1F80E548101237059D /* SoundEffects.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -454,6 +460,7 @@
 		A41B9B2A2BEC09E7E06795D3 /* LiftIQ */ = {
 			isa = PBXGroup;
 			children = (
+				E350E3523AEAD010662F0C19 /* LiftIQ.entitlements */,
 				2F734CC69B6C15305ADDF0EF /* App */,
 				892E61D95F6B2A71BA22AE69 /* Extensions */,
 				9C09F220FF971AD259285773 /* Models */,
@@ -610,6 +617,7 @@
 				0DE7750F35E46F614AFABFA6 /* AIService.swift */,
 				00A7036C394D2FD6A75D02A5 /* AuthService.swift */,
 				E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */,
+				3869ED121F51638089582469 /* HealthKitService.swift */,
 				7451F27AA7383E1D6F6AB319 /* ProgressionService.swift */,
 				433B1E9C2E813BD1C5B4EFF0 /* ProgressService.swift */,
 				EB76C4D732C40629E6D3F7F8 /* ServiceProtocols.swift */,
@@ -810,6 +818,7 @@
 				CF9316AF89E45AC2F0015708 /* GoalSelectionView.swift in Sources */,
 				44BB332D8434D0030365EAC8 /* GroupType.swift in Sources */,
 				0BDFD00DB51DB1E06865234F /* Haptics.swift in Sources */,
+				4577EC64D0FC3A24C4F0DC9B /* HealthKitService.swift in Sources */,
 				E35CAAEBEBA9D51939509DBB /* InjuryView.swift in Sources */,
 				B586F500AD923315D9B6E42C /* LiftIQApp.swift in Sources */,
 				04EEB988ABE794F6FA54DA9B /* LoadingView.swift in Sources */,
@@ -842,6 +851,7 @@
 				450B1EC93293CD123D7F61AE /* SignInViewModel.swift in Sources */,
 				D8C56CB069C112E4F4395C57 /* SignUpView.swift in Sources */,
 				3E0DD3EC403587B8D3DB41FD /* SignUpViewModel.swift in Sources */,
+				404233436B5AEE5FB017D3E7 /* SoundEffects.swift in Sources */,
 				59E9B28DF8867F77385AA3D6 /* TemplateBrowserView.swift in Sources */,
 				80981136311E32C1F0D14450 /* TemplateType.swift in Sources */,
 				C9700F677F412BDFD306AB0A /* UnitConversionService.swift in Sources */,
@@ -946,10 +956,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LiftIQ/LiftIQ.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "LiftIQ saves your completed workouts to Apple Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1036,10 +1049,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LiftIQ/LiftIQ.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "LiftIQ saves your completed workouts to Apple Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

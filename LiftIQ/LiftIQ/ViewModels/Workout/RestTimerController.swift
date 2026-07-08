@@ -96,6 +96,12 @@ final class RestTimerController {
             timer?.invalidate()
             self.endDate = nil
             isActive = false
+            // Foreground completion: iOS suppresses the pending local
+            // notification (no foreground-presentation delegate), so ring
+            // in-app. Cancel the notification to avoid a near-simultaneous
+            // double chime and a stale entry in Notification Center.
+            cancelRestEndNotification()
+            SoundEffects.restComplete()
             Haptics.success()
         }
     }
@@ -121,7 +127,8 @@ final class RestTimerController {
     }
 
     private func cancelRestEndNotification() {
-        UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: [Self.restNotificationId])
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.restNotificationId])
+        center.removeDeliveredNotifications(withIdentifiers: [Self.restNotificationId])
     }
 }

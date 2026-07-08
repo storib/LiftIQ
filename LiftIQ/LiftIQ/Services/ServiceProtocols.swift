@@ -67,6 +67,18 @@ protocol ExerciseServicing: AnyObject {
     func getExercises(forEquipment equipment: Set<Equipment>) -> [Exercise]
 }
 
+@MainActor
+protocol HealthKitServicing: AnyObject {
+    var isAvailable: Bool { get }
+    var isSyncEnabled: Bool { get }
+
+    func enableSync() async throws
+    func disableSync()
+    func exportSession(_ session: WorkoutSession) async
+    func deleteExportedSession(sessionId: String) async
+}
+
 extension WorkoutService: WorkoutServicing {}
+extension HealthKitService: HealthKitServicing {}
 extension ProgressService: ProgressServicing {}
 extension ExerciseService: ExerciseServicing {}
