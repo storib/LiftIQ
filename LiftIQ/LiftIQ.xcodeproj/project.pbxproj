@@ -925,7 +925,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.LiftIQTests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -943,7 +943,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.LiftIQTests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -972,7 +972,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.liftiq;
 				PRODUCT_NAME = LiftIQ;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1065,7 +1065,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.liftiq;
 				PRODUCT_NAME = LiftIQ;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1084,7 +1084,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.LiftIQUITests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1102,7 +1102,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.liftiq.LiftIQUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.LiftIQUITests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
