@@ -26,6 +26,10 @@ targets:
       path: LiftIQ/LiftIQ.entitlements
       properties:
         com.apple.developer.healthkit: true
+        # Release builds attest via App Attest (LiftIQAppCheckProviderFactory);
+        # "production" is correct for TestFlight/App Store. Debug builds use
+        # the App Check debug provider and ignore this.
+        com.apple.developer.devicecheck.appattest-environment: production
     settings:
       base:
         INFOPLIST_KEY_NSHealthShareUsageDescription: "LiftIQ checks which workouts it has already saved to Apple Health."
