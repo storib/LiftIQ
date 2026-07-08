@@ -32,6 +32,9 @@ targets:
         com.apple.developer.devicecheck.appattest-environment: production
     settings:
       base:
+        # Only standard HTTPS/ATS encryption is used, which is export-exempt;
+        # this pre-answers the App Store Connect compliance prompt per upload.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_NSHealthShareUsageDescription: "LiftIQ checks which workouts it has already saved to Apple Health."
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "LiftIQ saves your completed workouts to Apple Health."
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES

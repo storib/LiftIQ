@@ -961,6 +961,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "LiftIQ saves your completed workouts to Apple Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1054,6 +1055,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "LiftIQ saves your completed workouts to Apple Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
