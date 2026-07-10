@@ -105,8 +105,11 @@ Rate limiting needs a composite index on `aiUsageLogs (userId, function, created
 - `generateWorkoutPlan`'s system blocks are prompt-cached: keep them byte-stable. Timestamps and per-user values belong in the user message, after the cache breakpoint.
 - Firestore rules tests must run through `firebase emulators:exec`, not plain Vitest.
 - Release checks fail on missing privacy manifest, placeholder Firebase config, `print()`, `NSLog`, or likely hardcoded secrets.
-- Editing `firebase/functions/src/data/exercises.json` does not update Firestore. Redeploy Functions if needed, then rerun `seedExerciseDatabase` with `ADMIN_SEED_KEY`.
-- Firebase Functions require Node 20 and secrets `ANTHROPIC_API_KEY` and `ADMIN_SEED_KEY`.
+- Editing `firebase/functions/src/data/exercises.json` does not update Firestore. Redeploy Functions (the JSON is bundled at deploy time), then reseed:
+  `curl -X POST -H "x-admin-key: $(firebase functions:secrets:access ADMIN_SEED_KEY --project trainai-3d40a)" https://us-central1-trainai-3d40a.cloudfunctions.net/seedExerciseDatabase`
+  The client serves exercises cache-first — force-quit the app after reseeding to see changes.
+- Exercise `youtubeVideoId`s must be verified against YouTube's oEmbed endpoint (`https://www.youtube.com/oembed?url=...watch%3Fv%3D<id>`; 404 = dead, 401 = embedding disabled) — 50 of the original seed IDs were hallucinated and never existed.
+- Firebase Functions require Node 20 and secrets `ANTHROPIC_API_KEY` and `ADMIN_SEED_KEY`. Node 20 was deprecated 2026-04-30 and is decommissioned 2026-10-30 — upgrade the runtime (and the outdated `firebase-functions` package) before then.
 - Callable AI/account functions enforce App Check; debug builds need the App Check debug provider flow.
 - `deleteAccount` also purges the user's aiUsageLogs; extend it if new user-keyed collections appear outside `/users/{uid}`.
 - YouTube embeds must load as a real `URLRequest` to `youtube-nocookie.com/embed/<id>` — `loadHTMLString` (even with a remote baseURL) gives the player no genuine origin and YouTube rejects it with Error 153.
