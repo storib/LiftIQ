@@ -223,7 +223,7 @@ struct WorkoutSummaryView: View {
 
     private var moodCard: some View {
         VStack(spacing: 16) {
-            Text("How did it feel?")
+            Text("How hard was it?")
                 .font(.headline)
 
             VStack(spacing: 6) {
@@ -246,7 +246,7 @@ struct WorkoutSummaryView: View {
                     in: 1...5,
                     step: 1
                 ) {
-                    Text("How did it feel?")
+                    Text("How hard was it?")
                 } onEditingChanged: { _ in
                     if !hasRatedMood {
                         hasRatedMood = true
@@ -263,9 +263,9 @@ struct WorkoutSummaryView: View {
                 .accessibilityValue(hasRatedMood ? moodLabel(displayedMood) : "Not rated")
 
                 HStack {
-                    Text("Rough")
+                    Text("Meh")
                     Spacer()
-                    Text("Great")
+                    Text("Brutal")
                 }
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.tertiary)
@@ -295,9 +295,9 @@ struct WorkoutSummaryView: View {
 
     private var moodTint: Color {
         switch displayedMood {
-        case 1, 2: return Color.liftWarning
-        case 3: return Color.accentColor
-        default: return Color.liftSuccess
+        case 1, 2: return Color.accentColor
+        case 3, 4: return Color.liftSuccess
+        default: return Color.liftWarning
         }
     }
 
@@ -351,8 +351,10 @@ struct WorkoutSummaryView: View {
     // MARK: - Helpers
 
     private var completedSetsCount: Int {
+        // completedAt marks completion (bodyweight sets finish at weight 0);
+        // the weight/reps fallback covers sets saved before it was stamped.
         session.exerciseLogs.reduce(0) { total, log in
-            total + log.sets.filter { $0.weightKg > 0 && $0.reps > 0 }.count
+            total + log.sets.filter { $0.completedAt != nil || ($0.weightKg > 0 && $0.reps > 0) }.count
         }
     }
 
@@ -369,13 +371,15 @@ struct WorkoutSummaryView: View {
         }
     }
 
+    // Difficulty ascends from 1 (too easy) to 5 (overreached); 3-4 is the
+    // productive zone, which is why the tint rewards the middle of the scale.
     private func moodLabel(_ mood: Int) -> String {
         switch mood {
-        case 1: return "Rough"
-        case 2: return "Meh"
+        case 1: return "Meh"
+        case 2: return "Manageable"
         case 3: return "Solid"
-        case 4: return "Good"
-        case 5: return "Great"
+        case 4: return "Tough"
+        case 5: return "Brutal"
         default: return ""
         }
     }

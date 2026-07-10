@@ -113,9 +113,7 @@ struct ExerciseCardView: View {
 
                 // Set rows
                 ForEach(Array(exerciseLog.sets.enumerated()), id: \.element.id) { setIndex, setLog in
-                    let prevSet = previousLog.flatMap { log in
-                        setIndex < log.sets.count ? log.sets[setIndex] : nil
-                    }
+                    let prevSet = viewModel.previousSet(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
                     let prevWeight: Double? = prevSet.map {
                         UnitConversionService.convertWeight($0.weightKg, to: viewModel.unitSystem)
                     }
@@ -130,6 +128,7 @@ struct ExerciseCardView: View {
                         rpeText: $viewModel.setInputs[setId: setLog.id].rpe,
                         previousWeight: prevWeight,
                         previousReps: prevSet?.reps,
+                        isBodyweight: exerciseDetail?.isBodyweight ?? false,
                         unitSystem: viewModel.unitSystem,
                         isCompleted: viewModel.completedSetIds.contains(setLog.id),
                         isPersonalRecord: setLog.isPersonalRecord,

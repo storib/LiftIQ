@@ -37,19 +37,21 @@ final class ProgressService {
 
     /// Compares a completed set against `existingPRs` (typically the caller's
     /// session-scoped cache) and persists any new records. No Firestore reads.
+    /// Weighted sets earn weight/e1RM records; unweighted (bodyweight) sets
+    /// earn reps records instead — zero-value weight PRs would be rejected by
+    /// the Firestore rules and read as broken in the UI.
     func checkForPRs(userId: String, exerciseId: String, exerciseName: String, setLog: SetLog, sessionId: String, existingPRs: [PersonalRecord]) async throws -> [PersonalRecord] {
         var newPRs: [PersonalRecord] = []
 
-        let bestWeight = existingPRs.filter { $0.type == .weight }.max(by: { $0.value < $1.value })
-        if bestWeight == nil || setLog.weightKg > (bestWeight?.value ?? 0) {
+        func record(type: PRType, value: Double, previous: Double?) async throws {
             let pr = PersonalRecord(
                 id: UUID().uuidString,
                 userId: userId,
                 exerciseId: exerciseId,
                 exerciseName: exerciseName,
-                type: .weight,
-                value: setLog.weightKg,
-                previousValue: bestWeight?.value,
+                type: type,
+                value: value,
+                previousValue: previous,
                 achievedAt: Date(),
                 sessionId: sessionId
             )
@@ -57,21 +59,21 @@ final class ProgressService {
             newPRs.append(pr)
         }
 
-        let best1RM = existingPRs.filter { $0.type == .estimated1RM }.max(by: { $0.value < $1.value })
-        if best1RM == nil || setLog.estimated1RM > (best1RM?.value ?? 0) {
-            let pr = PersonalRecord(
-                id: UUID().uuidString,
-                userId: userId,
-                exerciseId: exerciseId,
-                exerciseName: exerciseName,
-                type: .estimated1RM,
-                value: setLog.estimated1RM,
-                previousValue: best1RM?.value,
-                achievedAt: Date(),
-                sessionId: sessionId
-            )
-            try await prRepository.saveRecord(pr)
-            newPRs.append(pr)
+        if setLog.weightKg > 0 {
+            let bestWeight = existingPRs.filter { $0.type == .weight }.max(by: { $0.value < $1.value })
+            if setLog.weightKg > (bestWeight?.value ?? 0) {
+                try await record(type: .weight, value: setLog.weightKg, previous: bestWeight?.value)
+            }
+
+            let best1RM = existingPRs.filter { $0.type == .estimated1RM }.max(by: { $0.value < $1.value })
+            if setLog.estimated1RM > (best1RM?.value ?? 0) {
+                try await record(type: .estimated1RM, value: setLog.estimated1RM, previous: best1RM?.value)
+            }
+        } else if setLog.reps > 0 {
+            let bestReps = existingPRs.filter { $0.type == .reps }.max(by: { $0.value < $1.value })
+            if Double(setLog.reps) > (bestReps?.value ?? 0) {
+                try await record(type: .reps, value: Double(setLog.reps), previous: bestReps?.value)
+            }
         }
 
         return newPRs

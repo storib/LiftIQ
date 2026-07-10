@@ -2,7 +2,13 @@ import SwiftUI
 
 struct WorkoutPlanDetailView: View {
     @Environment(AppDependencies.self) private var dependencies
-    let plan: WorkoutPlan
+    // Local copy so an applied AI modification refreshes this screen in place.
+    @State private var plan: WorkoutPlan
+    @State private var showingAIModify = false
+
+    init(plan: WorkoutPlan) {
+        _plan = State(initialValue: plan)
+    }
 
     var body: some View {
         List {
@@ -54,5 +60,23 @@ struct WorkoutPlanDetailView: View {
             }
         }
         .navigationTitle(plan.name)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingAIModify = true
+                } label: {
+                    Label("Modify with AI", systemImage: "wand.and.stars")
+                }
+                .accessibilityLabel("Modify plan with AI")
+            }
+        }
+        .sheet(isPresented: $showingAIModify) {
+            AIModifySheet(
+                plan: plan,
+                workout: nil,
+                onApplyPlan: { updated in plan = updated }
+            )
+            .environment(dependencies)
+        }
     }
 }

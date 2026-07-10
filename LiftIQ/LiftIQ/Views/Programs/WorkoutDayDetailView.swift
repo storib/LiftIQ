@@ -4,7 +4,21 @@ struct WorkoutDayDetailView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var workoutExecutionVM: WorkoutExecutionViewModel?
     @State private var selectedExercise: Exercise?
-    let workout: WorkoutTemplate
+    @State private var showingAIModify = false
+    // The day as displayed/started. An AI "just this workout" modification
+    // replaces it here without touching the saved plan.
+    @State private var workout: WorkoutTemplate
+    @State private var isTemporarilyModified = false
+
+    init(workout: WorkoutTemplate) {
+        _workout = State(initialValue: workout)
+    }
+
+    /// The saved plan this day belongs to, when it's loaded — enables the
+    /// "entire plan" scope in the AI modify sheet.
+    private var parentPlan: WorkoutPlan? {
+        dependencies.workoutService.plans.first { $0.id == workout.planId }
+    }
 
     private var flatIndexByPlannedId: [String: Int] {
         var map: [String: Int] = [:]
@@ -25,6 +39,14 @@ struct WorkoutDayDetailView: View {
                     .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
             }
             .listRowBackground(Color.clear)
+
+            if isTemporarilyModified {
+                Section {
+                    Label("AI-modified for this session only — your saved plan is unchanged.", systemImage: "wand.and.stars")
+                        .font(.caption)
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
 
             ForEach(workout.exerciseGroups) { group in
                 Section {
@@ -100,8 +122,39 @@ struct WorkoutDayDetailView: View {
             }
         }
         .navigationTitle(workout.name)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingAIModify = true
+                } label: {
+                    Label("Modify with AI", systemImage: "wand.and.stars")
+                }
+                .accessibilityLabel("Modify workout with AI")
+            }
+        }
+        .sheet(isPresented: $showingAIModify) {
+            AIModifySheet(
+                plan: parentPlan,
+                workout: workout,
+                onApplyWorkout: { modified in
+                    workout = modified
+                    isTemporarilyModified = true
+                },
+                onApplyPlan: { updated in
+                    if let day = updated.workouts.first(where: { $0.id == workout.id }) {
+                        workout = day
+                        isTemporarilyModified = false
+                    }
+                }
+            )
+            .environment(dependencies)
+        }
         .task {
             try? await dependencies.exerciseService.loadExercises()
+            // Resolve the parent plan so the AI sheet can offer plan-wide edits.
+            if parentPlan == nil, let userId = dependencies.authService.currentUserId {
+                try? await dependencies.workoutService.loadPlans(userId: userId)
+            }
         }
         .sheet(item: $selectedExercise) { exercise in
             NavigationStack {

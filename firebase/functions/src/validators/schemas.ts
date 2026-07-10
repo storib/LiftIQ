@@ -32,7 +32,7 @@ export const TemplateTypeSchema = z.enum([
   "ppl", "upperLower", "fullBody", "broSplit", "custom",
 ]);
 
-const InjurySchema = z.object({
+export const InjurySchema = z.object({
   bodyPart: z.string().min(1).max(100),
   severity: z.string().min(1).max(50),
   notes: z.string().max(500),
@@ -156,6 +156,33 @@ export const WorkoutPlanSchema = z.object({
   aiGenerated: z.boolean(),
   aiPromptContext: z.string().nullable().optional(),
 });
+
+// modifyWorkout request: scope "plan" edits the whole plan permanently
+// (requires `plan`); scope "workout" edits one day for a single session
+// (requires `workout`; `plan` may ride along as optional context).
+export const ModifyWorkoutRequestSchema = z.object({
+  scope: z.enum(["plan", "workout"]),
+  instruction: z.string().min(1).max(1000),
+  plan: WorkoutPlanSchema.nullable().optional(),
+  workout: WorkoutTemplateSchema.nullable().optional(),
+  availableEquipment: z.array(EquipmentSchema).min(1).max(11),
+  injuries: z.array(InjurySchema).max(20).optional().default([]),
+  experienceLevel: ExperienceLevelSchema,
+}).strict().refine(
+  (req) => (req.scope === "plan" ? !!req.plan : !!req.workout),
+  { message: "scope 'plan' requires plan; scope 'workout' requires workout" },
+);
+
+// Forced tool inputs for modifyWorkout.
+export const ModifiedPlanResponseSchema = z.object({
+  changeSummary: z.string().min(1).max(2000),
+  plan: WorkoutPlanSchema,
+}).strict();
+
+export const ModifiedWorkoutResponseSchema = z.object({
+  changeSummary: z.string().min(1).max(2000),
+  workout: WorkoutTemplateSchema,
+}).strict();
 
 export const PlateauAnalysisSchema = z.object({
   isPlateaued: z.boolean(),

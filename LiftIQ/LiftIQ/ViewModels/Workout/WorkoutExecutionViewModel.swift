@@ -145,9 +145,12 @@ final class WorkoutExecutionViewModel: Identifiable {
         self.session = existingSession
         self.elapsedSeconds = max(0, Int(Date().timeIntervalSince(existingSession.startedAt)))
         initializeInputs()
-        // Mark sets that have real data as completed
+        // Mark sets that have real data as completed. completedAt is the
+        // authoritative marker (bodyweight sets complete at weight 0); the
+        // weight/reps fallback covers sets saved before it was stamped.
         for exerciseLog in session.exerciseLogs {
-            for setLog in exerciseLog.sets where setLog.weightKg > 0 && setLog.reps > 0 {
+            for setLog in exerciseLog.sets
+            where setLog.completedAt != nil || (setLog.weightKg > 0 && setLog.reps > 0) {
                 completedSetIds.insert(setLog.id)
             }
         }
@@ -250,8 +253,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
         let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
         if weightDisplay <= 0 || reps <= 0,
-           let prevLog = previousLogs[exerciseId], setIndex < prevLog.sets.count {
-            let prevSet = prevLog.sets[setIndex]
+           let prevSet = previousSet(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
             if weightDisplay <= 0 && prevSet.weightKg > 0 {
                 weightDisplay = UnitConversionService.convertWeight(prevSet.weightKg, to: unitSystem)
                 input.weight = weightDisplay.formatted(decimals: 1)
@@ -263,7 +265,10 @@ final class WorkoutExecutionViewModel: Identifiable {
             setInputs[setId] = input
         }
 
-        guard weightDisplay > 0 && reps > 0 else {
+        // Bodyweight movements are loaded by the lifter, so reps alone
+        // complete the set; an entered weight is added load.
+        let isBodyweight = exerciseDetails[exerciseId]?.isBodyweight ?? false
+        guard reps > 0 && (weightDisplay > 0 || isBodyweight) else {
             Haptics.error()
             return
         }
@@ -392,12 +397,9 @@ final class WorkoutExecutionViewModel: Identifiable {
     func addSet(exerciseLogIndex: Int) {
         guard exerciseLogIndex < session.exerciseLogs.count else { return }
 
-        let currentSets = session.exerciseLogs[exerciseLogIndex].sets
-        let newSetNumber = (currentSets.last?.setNumber ?? 0) + 1
-
         let newSet = SetLog(
             id: UUID().uuidString,
-            setNumber: newSetNumber,
+            setNumber: 0, // renumberSets assigns the real number
             setType: .working,
             weightKg: 0,
             reps: 0,
@@ -407,6 +409,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         )
         session.exerciseLogs[exerciseLogIndex].sets.append(newSet)
         setInputs[newSet.id] = SetInput()
+        renumberSets(exerciseLogIndex: exerciseLogIndex)
     }
 
     func removeSet(exerciseLogIndex: Int, setIndex: Int) async {
@@ -422,16 +425,27 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[exerciseLogIndex].sets.remove(at: setIndex)
         setInputs.removeValue(forKey: setId)
 
-        // Renumber
-        for i in session.exerciseLogs[exerciseLogIndex].sets.indices {
-            session.exerciseLogs[exerciseLogIndex].sets[i].setNumber = i + 1
-        }
+        renumberSets(exerciseLogIndex: exerciseLogIndex)
     }
 
     func updateSetType(exerciseLogIndex: Int, setIndex: Int, newType: SetType) {
         guard exerciseLogIndex < session.exerciseLogs.count,
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].setType = newType
+        renumberSets(exerciseLogIndex: exerciseLogIndex)
+    }
+
+    /// setNumber counts within each set type (warm-ups W1...Wn, working
+    /// 1...N) so relabeling or removing a set keeps working sets reading
+    /// 1...N in the UI.
+    private func renumberSets(exerciseLogIndex: Int) {
+        var counts: [SetType: Int] = [:]
+        for i in session.exerciseLogs[exerciseLogIndex].sets.indices {
+            let type = session.exerciseLogs[exerciseLogIndex].sets[i].setType
+            let next = (counts[type] ?? 0) + 1
+            counts[type] = next
+            session.exerciseLogs[exerciseLogIndex].sets[i].setNumber = next
+        }
     }
 
     // MARK: - Exercise Swap
@@ -673,26 +687,68 @@ final class WorkoutExecutionViewModel: Identifiable {
         return nil
     }
 
+    /// Previous-session set matching this one by set type and position within
+    /// that type. Index-based matching would bleed working weights into
+    /// warm-up rows whenever the two sessions' warm-up counts differ.
+    func previousSet(exerciseLogIndex: Int, setIndex: Int) -> SetLog? {
+        guard exerciseLogIndex < session.exerciseLogs.count else { return nil }
+        let log = session.exerciseLogs[exerciseLogIndex]
+        guard setIndex < log.sets.count,
+              let prevLog = previousLogs[log.exerciseId] else { return nil }
+        let type = log.sets[setIndex].setType
+        let positionInType = log.sets[..<setIndex].count { $0.setType == type }
+        let prevOfType = prevLog.sets.filter { $0.setType == type }
+        guard positionInType < prevOfType.count else { return nil }
+        return prevOfType[positionInType]
+    }
+
     private func prefillFromSuggestions() {
+        let warmUpSpecs = WarmUpPlanner.specs(forGroups: templateGroups)
+
         for i in session.exerciseLogs.indices {
             let exerciseId = session.exerciseLogs[i].exerciseId
             let suggestion = progressionSuggestions[exerciseId]
-            let prevLog = previousLogs[exerciseId]
+
+            // The working weight the warm-up ramp builds toward.
+            var workingKg: Double = 0
+            if let s = suggestion, s.suggestedWeight > 0 {
+                workingKg = s.suggestedWeight
+            } else if let prev = previousLogs[exerciseId] {
+                workingKg = prev.sets.first { $0.setType == .working && $0.weightKg > 0 }?.weightKg ?? 0
+            }
 
             for j in session.exerciseLogs[i].sets.indices {
-                guard session.exerciseLogs[i].sets[j].weightKg == 0 else { continue }
+                let set = session.exerciseLogs[i].sets[j]
+                guard set.weightKg == 0 else { continue }
 
-                // Priority: suggestion's weight > previous session's weight at same set index > empty
-                var weightKg: Double = 0
-                if let s = suggestion, s.suggestedWeight > 0 {
-                    weightKg = s.suggestedWeight
-                } else if let prev = prevLog, j < prev.sets.count {
-                    weightKg = prev.sets[j].weightKg
-                }
-
-                if weightKg > 0 {
-                    let displayWeight = UnitConversionService.convertWeight(weightKg, to: unitSystem)
-                    setInputs[session.exerciseLogs[i].sets[j].id, default: SetInput()].weight = displayWeight.formatted(decimals: 1)
+                if set.setType == .warmUp {
+                    let specs = warmUpSpecs[exerciseId] ?? []
+                    let position = session.exerciseLogs[i].sets[..<j].count { $0.setType == .warmUp }
+                    guard position < specs.count else { continue }
+                    let spec = specs[position]
+                    var input = setInputs[set.id] ?? SetInput()
+                    if input.reps.isEmpty && spec.reps > 0 {
+                        input.reps = "\(spec.reps)"
+                    }
+                    if input.weight.isEmpty && workingKg > 0 && spec.percentageOf1RM > 0 {
+                        let display = UnitConversionService.convertWeight(workingKg * spec.percentageOf1RM, to: unitSystem)
+                        // Plate-friendly rounding; skip if it collapses to 0.
+                        let rounded = (display / 2.5).rounded() * 2.5
+                        if rounded > 0 {
+                            input.weight = rounded.formatted(decimals: 1)
+                        }
+                    }
+                    setInputs[set.id] = input
+                } else if set.setType == .working {
+                    // Priority: suggestion's weight > previous session's matching set > empty
+                    var weightKg = workingKg
+                    if weightKg == 0, let prevSet = previousSet(exerciseLogIndex: i, setIndex: j) {
+                        weightKg = prevSet.weightKg
+                    }
+                    if weightKg > 0 {
+                        let displayWeight = UnitConversionService.convertWeight(weightKg, to: unitSystem)
+                        setInputs[set.id, default: SetInput()].weight = displayWeight.formatted(decimals: 1)
+                    }
                 }
             }
         }
@@ -723,6 +779,12 @@ final class WorkoutExecutionViewModel: Identifiable {
             let isLastSet = setIndex == exerciseLog.sets.count - 1
             let allCompleted = exerciseLog.sets.allSatisfy { completedSetIds.contains($0.id) }
             if isLastSet && allCompleted { return (false, 0) }
+
+            // Warm-ups take a short breather, not the plan's working rest.
+            // The user's explicit override still rules everywhere.
+            if setIndex < exerciseLog.sets.count, exerciseLog.sets[setIndex].setType == .warmUp {
+                return (true, userRestOverride ?? min(userDefaultRestSeconds, 60))
+            }
 
             guard let groupIndex = exerciseGroupMap[exerciseLogIndex],
                   groupIndex < templateGroups.count else {

@@ -17,7 +17,7 @@ struct AIConsentSheet: View {
                             .font(.title2.bold())
                             .multilineTextAlignment(.center)
 
-                        Text("We send some of your training info to Anthropic (Claude) to generate your plan. It isn't used to train their models.")
+                        Text("We send some of your training info to Anthropic (Claude) to generate and modify your plan. It isn't used to train their models.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -31,7 +31,8 @@ struct AIConsentSheet: View {
                         items: [
                             "Goals, experience, and equipment",
                             "Training schedule and session length",
-                            "Injuries and exercise history"
+                            "Injuries and exercise history",
+                            "Your workout plan and any change requests you type"
                         ]
                     )
 

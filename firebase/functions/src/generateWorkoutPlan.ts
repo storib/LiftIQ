@@ -24,7 +24,9 @@ const MUSCLE_GROUPS = [
   "traps", "lats", "rearDelts", "sideDelts", "frontDelts",
 ];
 
-const SAVE_WORKOUT_PLAN_TOOL = {
+// Exported so modifyWorkout can reuse the plan/workout JSON schema in its own
+// forced tools — the two functions must always agree on the plan shape.
+export const SAVE_WORKOUT_PLAN_TOOL = {
   name: "save_workout_plan",
   description:
     "Save the complete workout plan. Call this tool exactly once with the full plan that satisfies the schema.",

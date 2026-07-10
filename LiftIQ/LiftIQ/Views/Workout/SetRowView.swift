@@ -10,6 +10,7 @@ struct SetRowView: View {
     @Binding var rpeText: String
     let previousWeight: Double?
     let previousReps: Int?
+    let isBodyweight: Bool
     let unitSystem: UnitSystem
     let isCompleted: Bool
     let isPersonalRecord: Bool
@@ -48,6 +49,15 @@ struct SetRowView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .accessibilityHidden(true)
+                } else if weightText.isEmpty && isBodyweight {
+                    // Bodyweight movements need no load; typing a weight
+                    // records *added* load (dip belt, vest).
+                    Text("BW")
+                        .foregroundStyle(.tertiary)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .accessibilityHidden(true)
                 }
                 TextField("", text: $weightText)
                     .keyboardType(.decimalPad)
@@ -55,7 +65,7 @@ struct SetRowView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .focused(focusedField, equals: focusTarget(.weight))
-                    .accessibilityLabel("Weight")
+                    .accessibilityLabel(isBodyweight ? "Added weight, optional" : "Weight")
             }
             .frame(width: 60)
             .padding(.horizontal, 8)

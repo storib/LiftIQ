@@ -6,7 +6,9 @@ enum AIConsentManager {
 
     /// Current consent version. Bump this when the data sharing scope changes
     /// to re-prompt users who previously consented under an older version.
-    static let currentConsentVersion = 1
+    /// v2: AI workout modification also shares the current plan contents and
+    /// the user's free-text modification request.
+    static let currentConsentVersion = 2
 
     static var hasConsented: Bool {
         UserDefaults.standard.bool(forKey: consentKey)

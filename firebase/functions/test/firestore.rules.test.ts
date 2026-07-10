@@ -243,6 +243,18 @@ describe("users/{userId}/personalRecords/{prId}", () => {
     );
   });
 
+  it("allows a reps PR (bodyweight sets)", async () => {
+    const db = authedDb(USER_A);
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-reps")
+        .set({ ...validPR, id: "pr-reps", type: "reps", value: 12, previousValue: 10 })
+    );
+  });
+
   it("denies PR with a type the client never writes", async () => {
     const db = authedDb(USER_A);
     await assertFails(
@@ -250,8 +262,8 @@ describe("users/{userId}/personalRecords/{prId}", () => {
         .collection("users")
         .doc(USER_A)
         .collection("personalRecords")
-        .doc("pr-reps")
-        .set({ ...validPR, id: "pr-reps", type: "reps" })
+        .doc("pr-volume")
+        .set({ ...validPR, id: "pr-volume", type: "volume" })
     );
   });
 

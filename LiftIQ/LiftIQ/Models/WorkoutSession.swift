@@ -57,14 +57,30 @@ struct SetLog: Codable, Identifiable, Hashable {
 
 extension WorkoutSession {
     /// Builds a fresh in-progress session from a template, one exercise log
-    /// per planned exercise in group order, with all sets zeroed.
+    /// per planned exercise in group order, with all sets zeroed. Warm-up
+    /// sets (from the plan, or synthesized by WarmUpPlanner for the opening
+    /// exercises) precede the working sets; setNumber counts within each set
+    /// type so working sets always read 1...N.
     static func create(from template: WorkoutTemplate, userId: String, planId: String?) -> WorkoutSession {
         var exerciseLogs: [ExerciseLog] = []
         var order = 0
+        let warmUpSpecs = WarmUpPlanner.specs(forGroups: template.exerciseGroups)
 
         for group in template.exerciseGroups {
             for planned in group.exercises {
                 var sets: [SetLog] = []
+                for (warmUpIndex, _) in (warmUpSpecs[planned.exerciseId] ?? []).enumerated() {
+                    sets.append(SetLog(
+                        id: UUID().uuidString,
+                        setNumber: warmUpIndex + 1,
+                        setType: .warmUp,
+                        weightKg: 0,
+                        reps: 0,
+                        rpe: nil,
+                        isPersonalRecord: false,
+                        completedAt: nil
+                    ))
+                }
                 for setNum in 1...planned.sets {
                     sets.append(SetLog(
                         id: UUID().uuidString,

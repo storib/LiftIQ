@@ -51,8 +51,9 @@ service cloud.firestore {
         && request.resource.data.startedAt is timestamp;
     }
 
-    /// Mirrors the Swift PersonalRecord model exactly. The client only ever
-    /// creates 'weight' and 'estimated1RM' records (ProgressService.checkForPRs);
+    /// Mirrors the Swift PersonalRecord model exactly. The client creates
+    /// 'weight' and 'estimated1RM' records for weighted sets and 'reps'
+    /// records for bodyweight sets (ProgressService.checkForPRs);
     /// previousValue is optional and omitted when nil.
     function validPersonalRecord(userId) {
       return ownershipInvariant(userId)
@@ -61,7 +62,7 @@ service cloud.firestore {
         && request.resource.data.id is string
         && request.resource.data.exerciseId is string
         && request.resource.data.exerciseName is string
-        && request.resource.data.type in ['weight', 'estimated1RM']
+        && request.resource.data.type in ['weight', 'estimated1RM', 'reps']
         && request.resource.data.value is number
         && request.resource.data.value > 0
         && request.resource.data.value <= 1000
