@@ -169,6 +169,27 @@ final class WorkoutRecommendationTests: XCTestCase {
         XCTAssertEqual(vm.todayWorkout?.id, "day1")
     }
 
+    @MainActor
+    func testDashboardWeekRollsOverOnReload() async {
+        let calendar = Calendar(identifier: .gregorian)
+        let lastWeek = calendar.date(from: DateComponents(year: 2026, month: 7, day: 5, hour: 9))!
+        let today = calendar.date(from: DateComponents(year: 2026, month: 7, day: 11, hour: 8))!
+        let vm = DashboardViewModel(referenceDate: lastWeek, calendar: calendar)
+        let healthService = FakeHealthKitService()
+        healthService.isActivityImportEnabled = true
+
+        await vm.load(
+            workoutService: FakeWorkoutService(),
+            healthKitService: healthService,
+            userId: "user-1",
+            referenceDate: today
+        )
+
+        XCTAssertEqual(vm.weekDays.first, today.startOfWeek(using: calendar))
+        XCTAssertEqual(vm.selectedDate, calendar.startOfDay(for: today))
+        XCTAssertEqual(healthService.fetchRanges.last?.start, today.startOfWeek(using: calendar))
+    }
+
     // MARK: - History deletion
 
     @MainActor

@@ -12,7 +12,7 @@ final class DashboardViewModel {
     private(set) var externalActivities: [ExternalActivity] = []
 
     private let calendar: Calendar
-    private let weekStart: Date
+    private var weekStart: Date
 
     init(referenceDate: Date = Date(), calendar: Calendar = .current) {
         self.calendar = calendar
@@ -27,8 +27,18 @@ final class DashboardViewModel {
     func load(
         workoutService: any WorkoutServicing,
         healthKitService: any HealthKitServicing,
-        userId: String
+        userId: String,
+        referenceDate: Date = Date()
     ) async {
+        // The dashboard view (and this view model) can stay alive across a
+        // week boundary; snap the strip to the current week on every reload
+        // so it can't disagree with the freshly computed weekly stats.
+        let currentWeekStart = referenceDate.startOfWeek(using: calendar)
+        if currentWeekStart != weekStart {
+            weekStart = currentWeekStart
+            selectedDate = calendar.startOfDay(for: referenceDate)
+        }
+
         isLoading = true
         do {
             try await workoutService.loadPlans(userId: userId)
