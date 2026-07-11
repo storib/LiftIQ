@@ -33,13 +33,40 @@ struct WorkoutExecutionView: View {
                 .background(Color.liftCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
 
-                // Unit toggle
-                Picker("Unit", selection: $viewModel.unitSystem) {
-                    Text("kg").tag(UnitSystem.metric)
-                    Text("lb").tag(UnitSystem.imperial)
+                // Session controls
+                HStack(spacing: 12) {
+                    Picker("Unit", selection: $viewModel.unitSystem) {
+                        Text("kg").tag(UnitSystem.metric)
+                        Text("lb").tag(UnitSystem.imperial)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 120)
+
+                    Spacer()
+
+                    if viewModel.workoutForAIModification != nil {
+                        Button {
+                            focusedSetField = nil
+                            viewModel.showingAIModify = true
+                        } label: {
+                            Label("Modify with AI", systemImage: "wand.and.stars")
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .padding(.horizontal, 12)
+                                .frame(minHeight: 44)
+                        }
+                        .foregroundStyle(Color.accentColor)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(Color.accentColor.opacity(0.22), lineWidth: 1)
+                        }
+                        .accessibilityLabel("Modify workout with AI")
+                    }
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 120)
+                .padding(.horizontal)
                 .padding(.vertical, 8)
 
                 // Exercise list
@@ -247,13 +274,6 @@ struct WorkoutExecutionView: View {
             // Finish + menu
             HStack(spacing: 12) {
                 Menu {
-                    if viewModel.workoutForAIModification != nil {
-                        Button {
-                            viewModel.showingAIModify = true
-                        } label: {
-                            Label("Modify with AI", systemImage: "wand.and.stars")
-                        }
-                    }
                     Button(role: .destructive) {
                         viewModel.showingAbandonConfirmation = true
                     } label: {

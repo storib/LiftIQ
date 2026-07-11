@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ExerciseCardView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     @Bindable var viewModel: WorkoutExecutionViewModel
     let exerciseLogIndex: Int
     let groupColor: Color?
@@ -187,7 +189,18 @@ struct ExerciseCardView: View {
         }
         .background(Color.liftCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(
+                    colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.035),
+                    lineWidth: 1
+                )
+        }
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.38 : 0.07),
+            radius: colorScheme == .dark ? 12 : 8,
+            y: colorScheme == .dark ? 5 : 3
+        )
     }
 
     // MARK: - Subviews

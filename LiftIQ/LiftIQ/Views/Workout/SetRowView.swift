@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SetRowView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let exerciseLogIndex: Int
     let setIndex: Int
     let setNumber: Int
@@ -41,37 +43,35 @@ struct SetRowView: View {
             }
 
             // Weight input
-            ZStack(alignment: .leading) {
-                if weightText.isEmpty, let prev = previousWeight, prev > 0 {
-                    Text(prev.formatted())
-                        .foregroundStyle(.tertiary)
+            inputSurface(width: 60, field: .weight) {
+                ZStack {
+                    if weightText.isEmpty, let prev = previousWeight, prev > 0 {
+                        Text(prev.formatted())
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .accessibilityHidden(true)
+                    } else if weightText.isEmpty && isBodyweight {
+                        // Bodyweight movements need no load; typing a weight
+                        // records *added* load (dip belt, vest).
+                        Text("BW")
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .accessibilityHidden(true)
+                    }
+                    TextField("", text: $weightText)
+                        .keyboardType(.decimalPad)
                         .font(.subheadline)
+                        .multilineTextAlignment(.center)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                        .accessibilityHidden(true)
-                } else if weightText.isEmpty && isBodyweight {
-                    // Bodyweight movements need no load; typing a weight
-                    // records *added* load (dip belt, vest).
-                    Text("BW")
-                        .foregroundStyle(.tertiary)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .accessibilityHidden(true)
+                        .focused(focusedField, equals: focusTarget(.weight))
+                        .accessibilityLabel(isBodyweight ? "Added weight, optional" : "Weight")
                 }
-                TextField("", text: $weightText)
-                    .keyboardType(.decimalPad)
-                    .font(.subheadline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .focused(focusedField, equals: focusTarget(.weight))
-                    .accessibilityLabel(isBodyweight ? "Added weight, optional" : "Weight")
             }
-            .frame(width: 60)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color(.tertiarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             Text(UnitConversionService.weightLabel(for: unitSystem))
                 .font(.caption2)
@@ -81,43 +81,39 @@ struct SetRowView: View {
                 .frame(width: 18)
 
             // Reps input
-            ZStack(alignment: .leading) {
-                if repsText.isEmpty, let prev = previousReps, prev > 0 {
-                    Text("\(prev)")
-                        .foregroundStyle(.tertiary)
+            inputSurface(width: 44, field: .reps) {
+                ZStack {
+                    if repsText.isEmpty, let prev = previousReps, prev > 0 {
+                        Text("\(prev)")
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .accessibilityHidden(true)
+                    }
+                    TextField("", text: $repsText)
+                        .keyboardType(.numberPad)
                         .font(.subheadline)
+                        .multilineTextAlignment(.center)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                        .accessibilityHidden(true)
+                        .focused(focusedField, equals: focusTarget(.reps))
+                        .accessibilityLabel("Reps")
                 }
-                TextField("", text: $repsText)
-                    .keyboardType(.numberPad)
-                    .font(.subheadline)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .focused(focusedField, equals: focusTarget(.reps))
-                    .accessibilityLabel("Reps")
             }
-            .frame(width: 44)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color(.tertiarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // RPE input (only for working sets)
             if setType == .working {
-                TextField("RPE", text: $rpeText)
-                    .keyboardType(.decimalPad)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .frame(width: 36)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 6)
-                    .background(Color(.tertiarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .focused(focusedField, equals: focusTarget(.rpe))
-                    .accessibilityLabel("RPE")
+                inputSurface(width: 36, horizontalPadding: 6, field: .rpe) {
+                    TextField("RPE", text: $rpeText)
+                        .keyboardType(.decimalPad)
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .focused(focusedField, equals: focusTarget(.rpe))
+                        .accessibilityLabel("RPE")
+                }
             } else {
                 Spacer()
                     .frame(width: 48)
@@ -165,6 +161,50 @@ struct SetRowView: View {
 
     private func focusTarget(_ field: SetFieldFocus.Field) -> SetFieldFocus {
         SetFieldFocus(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex, field: field)
+    }
+
+    private func inputSurface<Content: View>(
+        width: CGFloat,
+        horizontalPadding: CGFloat = 8,
+        field: SetFieldFocus.Field,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let isFocused = focusedField.wrappedValue == focusTarget(field)
+        return content()
+            .frame(width: width)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, 6)
+            .background(inputBackground(isFocused: isFocused))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(inputBorder(isFocused: isFocused), lineWidth: isFocused ? 1.5 : 1)
+            }
+            .shadow(
+                color: inputShadow(isFocused: isFocused),
+                radius: isFocused ? 4 : 2,
+                y: isFocused ? 2 : 1
+            )
+            .animation(.easeOut(duration: 0.16), value: isFocused)
+    }
+
+    private func inputBackground(isFocused: Bool) -> Color {
+        if isFocused { return Color.accentColor.opacity(colorScheme == .dark ? 0.16 : 0.08) }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color(.tertiarySystemBackground)
+    }
+
+    private func inputBorder(isFocused: Bool) -> Color {
+        if isFocused { return Color.accentColor.opacity(0.8) }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.13)
+            : Color.black.opacity(0.06)
+    }
+
+    private func inputShadow(isFocused: Bool) -> Color {
+        if isFocused { return Color.accentColor.opacity(colorScheme == .dark ? 0.24 : 0.14) }
+        return Color.black.opacity(colorScheme == .dark ? 0.32 : 0.08)
     }
 
     private var checkboxAccessibilityValue: String {
