@@ -5,6 +5,9 @@ import SwiftUI
 final class OnboardingViewModel {
     var currentStep = 0
     let totalSteps = 8
+    /// Direction of the last step change; drives the container's slide
+    /// transition (true = new step slides in from the trailing edge).
+    private(set) var advancing = true
 
     // Step 1: Experience
     var experienceLevel: ExperienceLevel = .beginner
@@ -57,12 +60,14 @@ final class OnboardingViewModel {
 
     func next() {
         if currentStep < totalSteps - 1 {
+            advancing = true
             withAnimation { currentStep += 1 }
         }
     }
 
     func back() {
         if currentStep > 0 {
+            advancing = false
             withAnimation { currentStep -= 1 }
         }
     }

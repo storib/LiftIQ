@@ -19,29 +19,19 @@ struct OnboardingContainerView: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
 
-            // Content
-            TabView(selection: $viewModel.currentStep) {
-                OnboardingWelcomeStep()
-                    .tag(0)
-                ExperienceLevelView(viewModel: viewModel)
-                    .tag(1)
-                GoalSelectionView(viewModel: viewModel)
-                    .tag(2)
-                EquipmentView(viewModel: viewModel)
-                    .tag(3)
-                ScheduleView(viewModel: viewModel)
-                    .tag(4)
-                InjuryView(viewModel: viewModel)
-                    .tag(5)
-                BodyMetricsView(viewModel: viewModel)
-                    .tag(6)
-                OnboardingSummaryView(viewModel: viewModel)
-                    .tag(7)
+            // Content — deliberately not a paging TabView. Steps advance only
+            // through the validated Next button, and suppressing the page
+            // swipe required a high-priority drag gesture that also swallowed
+            // drags meant for controls inside the steps (the schedule slider).
+            ZStack {
+                currentStepView
+                    .id(viewModel.currentStep)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: viewModel.advancing ? .trailing : .leading),
+                        removal: .move(edge: viewModel.advancing ? .leading : .trailing)
+                    ))
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            // Steps advance only through the validated Next button; swiping
-            // could skip past steps that fail validation.
-            .highPriorityGesture(DragGesture())
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.easeInOut, value: viewModel.currentStep)
 
             // Navigation buttons
@@ -107,6 +97,20 @@ struct OnboardingContainerView: View {
                 }
             )
             .presentationDetents([.large])
+        }
+    }
+
+    @ViewBuilder
+    private var currentStepView: some View {
+        switch viewModel.currentStep {
+        case 0: OnboardingWelcomeStep()
+        case 1: ExperienceLevelView(viewModel: viewModel)
+        case 2: GoalSelectionView(viewModel: viewModel)
+        case 3: EquipmentView(viewModel: viewModel)
+        case 4: ScheduleView(viewModel: viewModel)
+        case 5: InjuryView(viewModel: viewModel)
+        case 6: BodyMetricsView(viewModel: viewModel)
+        default: OnboardingSummaryView(viewModel: viewModel)
         }
     }
 
