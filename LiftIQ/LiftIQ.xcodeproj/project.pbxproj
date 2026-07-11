@@ -720,6 +720,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					24F58CCDD0A2E2AF859DEB23 = {
+						DevelopmentTeam = 93G47TS4YJ;
 						ProvisioningStyle = Automatic;
 					};
 					900777259F81D4507825A447 = {
@@ -972,6 +973,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93G47TS4YJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
@@ -1066,6 +1068,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 93G47TS4YJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";

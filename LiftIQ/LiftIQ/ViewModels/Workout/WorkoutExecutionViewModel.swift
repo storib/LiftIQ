@@ -78,7 +78,38 @@ final class WorkoutExecutionViewModel: Identifiable {
     var showingSummary = false
     var showingExerciseSwap = false
     var showingAbandonConfirmation = false
+    var showingAIModify = false
     var swapTargetExerciseLogIndex: Int?
+
+    /// Template the session was started from (rebuilt on resume). It supplies
+    /// the plan-only fields for `workoutForAIModification`; nil when the
+    /// originating plan is gone, which hides that entry point.
+    private(set) var template: WorkoutTemplate?
+
+    /// The current session projected back into its template shape for the AI
+    /// modify request. This keeps one-off swaps and working-set edits made
+    /// before opening the sheet from being silently replaced by the original
+    /// plan state.
+    var workoutForAIModification: WorkoutTemplate? {
+        guard var current = template else { return nil }
+        var logIndex = 0
+
+        for groupIndex in current.exerciseGroups.indices {
+            for exerciseIndex in current.exerciseGroups[groupIndex].exercises.indices {
+                guard session.exerciseLogs.indices.contains(logIndex) else { return nil }
+                let log = session.exerciseLogs[logIndex]
+                current.exerciseGroups[groupIndex].exercises[exerciseIndex].exerciseId = log.exerciseId
+                current.exerciseGroups[groupIndex].exercises[exerciseIndex].sets = max(
+                    1,
+                    log.sets.count { $0.setType == .working }
+                )
+                logIndex += 1
+            }
+        }
+
+        current.name = session.workoutName
+        return current
+    }
 
     // MARK: - Group Mapping (for superset rest logic)
 
@@ -123,6 +154,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         self.progressionService = progressionService
         self.userId = userId
         self.session = WorkoutSession.create(from: template, userId: userId, planId: planId)
+        self.template = template
         self.templateGroups = template.exerciseGroups
         buildGroupMap(from: template.exerciseGroups)
         initializeInputs()
@@ -232,6 +264,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         guard let plan = workoutService.plans.first(where: { $0.id == planId }),
               let template = plan.workouts.first(where: { $0.id == session.workoutTemplateId })
         else { return }
+        self.template = template
         templateGroups = template.exerciseGroups
         buildGroupMap(from: template.exerciseGroups)
     }
@@ -519,6 +552,167 @@ final class WorkoutExecutionViewModel: Identifiable {
         swapTargetExerciseLogIndex = nil
     }
 
+    // MARK: - AI Mid-Workout Modification
+
+    /// Applies an AI-modified template to the live session without losing
+    /// completed work: exercises the modification keeps retain their logs
+    /// (completed sets, PR ids, typed inputs) with only their uncompleted
+    /// set shape reconciled to the new template; exercises it removes stay in
+    /// the session when they hold completed sets (so the logged work and its
+    /// PRs survive) and are dropped otherwise; new exercises get fresh logs
+    /// with warm-ups, history ghosts, and progression prefills.
+    func applyModifiedWorkout(_ modified: WorkoutTemplate) async {
+        // Fresh logs supply new exercises' warm-ups and set counts.
+        let fresh = WorkoutSession.create(from: modified, userId: userId, planId: session.planId)
+
+        var unmatched = session.exerciseLogs
+        var mergedLogs: [ExerciseLog] = []
+
+        for freshLog in fresh.exerciseLogs {
+            if let matchIndex = unmatched.firstIndex(where: { $0.exerciseId == freshLog.exerciseId }) {
+                var kept = unmatched.remove(at: matchIndex)
+                kept.groupType = freshLog.groupType
+                reconcileSets(in: &kept, toMatch: freshLog)
+                mergedLogs.append(kept)
+            } else {
+                var added = freshLog
+                added.sessionId = session.id
+                if let exercise = exerciseService.getExercise(id: added.exerciseId) {
+                    added.exerciseName = exercise.name
+                    exerciseDetails[added.exerciseId] = exercise
+                }
+                mergedLogs.append(added)
+            }
+        }
+
+        // Removed exercises keep only the work already done. Appending them
+        // after the modified template's exercises keeps the group map (which
+        // pairs logs with template groups by position) aligned; unmapped logs
+        // render and rest as straight sets.
+        for var orphan in unmatched {
+            orphan.sets.removeAll { !completedSetIds.contains($0.id) }
+            guard !orphan.sets.isEmpty else { continue }
+            orphan.groupType = .straight
+            mergedLogs.append(orphan)
+        }
+
+        for i in mergedLogs.indices {
+            mergedLogs[i].order = i
+        }
+        session.exerciseLogs = mergedLogs
+        session.workoutName = modified.name
+        template = modified
+        templateGroups = modified.exerciseGroups
+        buildGroupMap(from: modified.exerciseGroups)
+        for i in session.exerciseLogs.indices {
+            renumberSets(exerciseLogIndex: i)
+        }
+
+        // Keep typed inputs for surviving sets; new sets start empty and are
+        // prefilled below. Dropped sets' inputs (and set ids) go with them.
+        var inputs: [String: SetInput] = [:]
+        for log in session.exerciseLogs {
+            for set in log.sets {
+                inputs[set.id] = setInputs[set.id] ?? SetInput()
+            }
+        }
+        setInputs = inputs
+        completedSetIds.formIntersection(Set(inputs.keys))
+
+        // The modified rep ranges may change progression advice even for a
+        // retained exercise. One bounded session query refreshes every active
+        // exercise and also clears state belonging to removed exercises.
+        let activeExerciseIds = Set(fresh.exerciseLogs.map(\.exerciseId))
+        previousLogs = previousLogs.filter { activeExerciseIds.contains($0.key) }
+        progressionSuggestions.removeAll()
+        if !activeExerciseIds.isEmpty {
+            do {
+                let recentByExercise = try await workoutService.getRecentExerciseLogs(
+                    userId: userId,
+                    exerciseIds: activeExerciseIds,
+                    excludingSessionId: session.id,
+                    limit: 5
+                )
+                for exerciseId in activeExerciseIds {
+                    if let mostRecent = recentByExercise[exerciseId]?.first {
+                        previousLogs[exerciseId] = mostRecent
+                    } else {
+                        previousLogs.removeValue(forKey: exerciseId)
+                    }
+                }
+                computeSuggestions(recentLogs: recentByExercise)
+            } catch {
+                // History and progression are best effort; the workout edit
+                // and the user's existing inputs still apply without them.
+            }
+        }
+        prefillFromSuggestions()
+
+        session.durationSeconds = elapsedSeconds
+        do {
+            try await workoutService.updateSession(session)
+        } catch {
+            errorMessage = "Failed to save changes: \(error.localizedDescription)"
+        }
+    }
+
+    /// Aligns a retained log with the modified template without touching
+    /// completed work. This matters when a straight exercise moves into a
+    /// superset: its uncompleted warm-ups must not shift the working rounds.
+    private func reconcileSets(in log: inout ExerciseLog, toMatch freshLog: ExerciseLog) {
+        reconcileSetType(
+            .warmUp,
+            in: &log,
+            target: freshLog.sets.count { $0.setType == .warmUp },
+            insertBeforeOtherTypes: true
+        )
+        reconcileSetType(
+            .working,
+            in: &log,
+            target: freshLog.sets.count { $0.setType == .working },
+            insertBeforeOtherTypes: false
+        )
+    }
+
+    private func reconcileSetType(
+        _ type: SetType,
+        in log: inout ExerciseLog,
+        target: Int,
+        insertBeforeOtherTypes: Bool
+    ) {
+        var count = log.sets.count { $0.setType == type }
+
+        var index = log.sets.count - 1
+        while count > target, index >= 0 {
+            let set = log.sets[index]
+            if set.setType == type && !completedSetIds.contains(set.id) {
+                log.sets.remove(at: index)
+                count -= 1
+            }
+            index -= 1
+        }
+
+        while count < target {
+            let set = SetLog(
+                id: UUID().uuidString,
+                setNumber: 0, // renumberSets assigns the real number
+                setType: type,
+                weightKg: 0,
+                reps: 0,
+                rpe: nil,
+                isPersonalRecord: false,
+                completedAt: nil
+            )
+            if insertBeforeOtherTypes,
+               let insertionIndex = log.sets.firstIndex(where: { $0.setType != type }) {
+                log.sets.insert(set, at: insertionIndex)
+            } else {
+                log.sets.append(set)
+            }
+            count += 1
+        }
+    }
+
     // MARK: - Rest Timer (delegated to RestTimerController)
 
     func startRestTimer(seconds: Int) {
@@ -741,6 +935,7 @@ final class WorkoutExecutionViewModel: Identifiable {
                     setInputs[set.id] = input
                 } else if set.setType == .working {
                     // Priority: suggestion's weight > previous session's matching set > empty
+                    guard (setInputs[set.id] ?? SetInput()).weight.isEmpty else { continue }
                     var weightKg = workingKg
                     if weightKg == 0, let prevSet = previousSet(exerciseLogIndex: i, setIndex: j) {
                         weightKg = prevSet.weightKg
@@ -803,14 +998,18 @@ final class WorkoutExecutionViewModel: Identifiable {
         // Find all exercise log indices in this group
         let groupLogIndices = exerciseGroupMap.filter { $0.value == groupIndex }.map(\.key).sorted()
 
-        // The current "round" is the set index (set 0 = round 0, etc.)
-        let round = setIndex
+        // Pair the same position within the same set type. Completed warm-ups
+        // can survive a mid-workout straight-to-superset edit without shifting
+        // working rounds against the partner exercise.
+        let setType = exerciseLog.sets[setIndex].setType
+        let round = exerciseLog.sets[..<setIndex].count { $0.setType == setType }
 
         // Check if all exercises in the group have completed this round
         for logIndex in groupLogIndices {
-            guard logIndex < session.exerciseLogs.count,
-                  round < session.exerciseLogs[logIndex].sets.count else { continue }
-            let setId = session.exerciseLogs[logIndex].sets[round].id
+            guard logIndex < session.exerciseLogs.count else { continue }
+            let matchingSets = session.exerciseLogs[logIndex].sets.filter { $0.setType == setType }
+            guard round < matchingSets.count else { continue }
+            let setId = matchingSets[round].id
             if !completedSetIds.contains(setId) {
                 return (false, 0) // Not all exercises done for this round
             }

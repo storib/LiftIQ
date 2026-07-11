@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <!--
+    YouTube embed wrapper for the iOS app's WKWebView.
+
+    YouTube's embedded player rejects requests without a valid HTTP Referer
+    ("Error 153 - video player configuration error"). A WKWebView that loads
+    the /embed/<id> URL directly performs a top-level navigation with no
+    referer at all, so playback fails. Loading THIS page instead gives the
+    player an iframe embedded in a genuine https origin; the referrer policy
+    below makes the iframe request carry that origin, which YouTube accepts.
+  -->
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>LiftIQ Exercise Video</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  </style>
+</head>
+<body>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var id = params.get("v") || "";
+      // Only ever embed a well-formed YouTube video id.
+      if (!/^[A-Za-z0-9_-]{11}$/.test(id)) { return; }
+      var autoplay = params.get("autoplay") === "1" ? "1" : "0";
+      var frame = document.createElement("iframe");
+      frame.src = "https://www.youtube-nocookie.com/embed/" + id +
+        "?playsinline=1&rel=0&autoplay=" + autoplay;
+      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.allowFullscreen = true;
+      document.body.appendChild(frame);
+    })();
+  </script>
+</body>
+</html>

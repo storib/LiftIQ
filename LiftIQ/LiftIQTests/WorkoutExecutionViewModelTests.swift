@@ -1080,6 +1080,275 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count, lastIndex)
     }
 
+    // MARK: - applyModifiedWorkout()
+
+    func testWorkoutForAIModificationReflectsLiveExerciseAndSetEdits() {
+        let vm = makeBenchVM(sets: 3)
+        defer { vm.stopTimers() }
+        vm.session.exerciseLogs[0].exerciseId = "incline-press"
+        vm.addSet(exerciseLogIndex: 0)
+
+        let current = vm.workoutForAIModification
+
+        XCTAssertEqual(current?.exerciseGroups[0].exercises[0].exerciseId, "incline-press")
+        XCTAssertEqual(current?.exerciseGroups[0].exercises[0].sets, 4)
+    }
+
+    func testApplyModifiedWorkoutGrowsWorkingSetsAndKeepsCompletedWork() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(sets: 3, workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 2, weight: "100", reps: "5") // first working set
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+        let completedSetId = vm.session.exerciseLogs[0].sets[2].id
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 5),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        // 2 original warm-ups survive; working sets grew 3 -> 5.
+        let sets = vm.session.exerciseLogs[0].sets
+        XCTAssertEqual(sets.count { $0.setType == .warmUp }, 2)
+        XCTAssertEqual(sets.count { $0.setType == .working }, 5)
+        // The completed set is untouched, id and all.
+        XCTAssertEqual(sets[2].id, completedSetId)
+        XCTAssertEqual(sets[2].weightKg, 100)
+        XCTAssertTrue(vm.completedSetIds.contains(completedSetId))
+        // Working sets renumber 1...5 within their type.
+        XCTAssertEqual(sets.filter { $0.setType == .working }.map(\.setNumber), [1, 2, 3, 4, 5])
+        // The change persisted (completeSet saved once before).
+        XCTAssertEqual(workout.updatedSessions.count, 2)
+        XCTAssertEqual(vm.template?.id, modified.id)
+    }
+
+    func testApplyModifiedWorkoutTrimsOnlyUncompletedWorkingSets() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(sets: 3, workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 2, weight: "100", reps: "5")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+        let completedSetId = vm.session.exerciseLogs[0].sets[2].id
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 1),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        // The two uncompleted working sets were trimmed; the completed one stays.
+        let working = vm.session.exerciseLogs[0].sets.filter { $0.setType == .working }
+        XCTAssertEqual(working.map(\.id), [completedSetId])
+        XCTAssertEqual(working[0].weightKg, 100)
+    }
+
+    func testApplyModifiedWorkoutKeepsRemovedExerciseWithCompletedWorkAsStraightSets() async {
+        let workout = FakeWorkoutService()
+        let progress = FakeProgressService()
+        progress.prTypesToDetect = [.weight]
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p2", exerciseId: "barbell-row", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template, workout: workout, progress: progress)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 2, weight: "100", reps: "5") // bench working set
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+        let benchPRIds = vm.session.exerciseLogs[0].sets[2].personalRecordIds ?? []
+        XCTAssertEqual(benchPRIds.count, 1)
+
+        // The AI removes bench-press entirely.
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p2", exerciseId: "barbell-row", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        // Row leads (template order); the completed bench work survives at the
+        // end, holding only its completed set, and its PR stamp is untouched.
+        XCTAssertEqual(vm.session.exerciseLogs.map(\.exerciseId), ["barbell-row", "bench-press"])
+        let orphan = vm.session.exerciseLogs[1]
+        XCTAssertEqual(orphan.sets.count, 1)
+        XCTAssertEqual(orphan.sets[0].weightKg, 100)
+        XCTAssertEqual(orphan.sets[0].personalRecordIds, benchPRIds)
+        XCTAssertEqual(orphan.groupType, .straight)
+        XCTAssertTrue(progress.deletedRecordIds.isEmpty)
+        XCTAssertEqual(vm.session.exerciseLogs.map(\.order), [0, 1])
+    }
+
+    func testApplyModifiedWorkoutDropsRemovedExerciseWithoutCompletedWork() async {
+        let workout = FakeWorkoutService()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p2", exerciseId: "barbell-row", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template, workout: workout)
+        defer { vm.stopTimers() }
+        let rowSetIds = vm.session.exerciseLogs[1].sets.map(\.id)
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        XCTAssertEqual(vm.session.exerciseLogs.map(\.exerciseId), ["bench-press"])
+        // The dropped sets' inputs went with them.
+        for setId in rowSetIds {
+            XCTAssertNil(vm.setInputs[setId])
+        }
+        XCTAssertEqual(workout.updatedSessions.count, 1)
+    }
+
+    func testApplyModifiedWorkoutAddsNewExerciseWithGhostsAndPrefill() async {
+        let workout = FakeWorkoutService()
+        workout.recentLogsByExerciseId["incline-press"] = [
+            makePriorLogAtMaxReps(exerciseId: "incline-press", repsMax: 10, weightKg: 40)
+        ]
+        let exercise = FakeExerciseService(exercises: [
+            makeExercise(id: "bench-press", name: "Bench Press"),
+            makeExercise(id: "incline-press", name: "Incline Press"),
+        ])
+        let vm = makeBenchVM(sets: 3, workout: workout, exercise: exercise)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p3", exerciseId: "incline-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        XCTAssertEqual(vm.session.exerciseLogs.map(\.exerciseId), ["bench-press", "incline-press"])
+        let added = vm.session.exerciseLogs[1]
+        XCTAssertEqual(added.exerciseName, "Incline Press")
+        XCTAssertEqual(added.sessionId, vm.session.id)
+        XCTAssertEqual(added.sets.count { $0.setType == .working }, 3)
+        // History ghost and progression state arrived for the new exercise.
+        XCTAssertNotNil(vm.previousLogs["incline-press"])
+        XCTAssertNotNil(vm.exerciseDetails["incline-press"])
+        // Prefill gave its first working set a weight (suggestion bumps 40kg).
+        let firstWorking = added.sets.first { $0.setType == .working }!
+        XCTAssertFalse((vm.setInputs[firstWorking.id] ?? SetInput()).weight.isEmpty)
+    }
+
+    func testApplyModifiedWorkoutRebuildsGroupContext() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(sets: 3, workout: workout)
+        defer { vm.stopTimers() }
+
+        // The AI pairs bench with a new row as a superset.
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p2", exerciseId: "barbell-row", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        XCTAssertEqual(vm.groupIndex(for: 0), 0)
+        XCTAssertEqual(vm.groupIndex(for: 1), 0)
+        XCTAssertEqual(vm.groupType(for: 0), .superset)
+        XCTAssertEqual(vm.session.exerciseLogs[0].groupType, .superset)
+        XCTAssertEqual(vm.session.workoutName, modified.name)
+    }
+
+    func testApplyModifiedWorkoutRemovesPendingWarmUpsWhenExerciseBecomesSuperset() async {
+        let workout = FakeWorkoutService()
+        let vm = makeBenchVM(sets: 3, workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 0, weight: "20", reps: "8")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 0)
+        let completedWarmUpId = vm.session.exerciseLogs[0].sets[0].id
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p2", exerciseId: "barbell-row", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        let bench = vm.session.exerciseLogs[0]
+        XCTAssertEqual(bench.sets.filter { $0.setType == .warmUp }.map(\.id), [completedWarmUpId])
+        XCTAssertEqual(bench.sets.count { $0.setType == .working }, 3)
+        XCTAssertTrue(vm.session.exerciseLogs[1].sets.allSatisfy { $0.setType == .working })
+
+        let benchWorkingIndex = bench.sets.firstIndex { $0.setType == .working }!
+        let benchWorkingId = bench.sets[benchWorkingIndex].id
+        let rowWorkingId = vm.session.exerciseLogs[1].sets[0].id
+        vm.completedSetIds.insert(benchWorkingId)
+        vm.completedSetIds.insert(rowWorkingId)
+        let rest = vm.restDuration(forExerciseLogIndex: 0, setIndex: benchWorkingIndex)
+        XCTAssertTrue(rest.shouldTrigger)
+        XCTAssertEqual(rest.seconds, 60)
+    }
+
+    func testApplyModifiedWorkoutPreservesTypedWeightDuringPrefill() async {
+        let workout = FakeWorkoutService()
+        workout.recentLogsByExerciseId["bench-press"] = [
+            makePriorLogAtMaxReps(exerciseId: "bench-press", repsMax: 10, weightKg: 40)
+        ]
+        let vm = makeBenchVM(sets: 3, workout: workout)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+        seedInput(vm, exercise: 0, set: 2, weight: "37.5", reps: "8")
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 4),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        XCTAssertEqual(input(vm, exercise: 0, set: 2).weight, "37.5")
+    }
+
+    func testApplyModifiedWorkoutRecomputesSuggestionForNewRepRange() async {
+        let workout = FakeWorkoutService()
+        let recent = makePriorLogAtMaxReps(
+            exerciseId: "bench-press",
+            repsMax: 10,
+            weightKg: 40
+        )
+        workout.recentLogsByExerciseId["bench-press"] = [recent]
+        let vm = makeBenchVM(sets: 3, workout: workout)
+        defer { vm.stopTimers() }
+        vm.computeSuggestions(recentLogs: ["bench-press": [recent]])
+        XCTAssertEqual(vm.progressionSuggestions["bench-press"]?.suggestedWeight, 42.5)
+
+        var planned = makePlanned(id: "p1", exerciseId: "bench-press", sets: 3)
+        planned.repsMax = 12
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(
+                id: "g1",
+                groupType: .straight,
+                exercises: [planned],
+                restBetweenRoundsSeconds: nil
+            ),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        XCTAssertEqual(vm.progressionSuggestions["bench-press"]?.suggestedWeight, 40)
+        XCTAssertEqual(vm.progressionSuggestions["bench-press"]?.suggestedRepsMax, 12)
+        XCTAssertEqual(workout.recentLogsRequests.last?.exerciseIds, ["bench-press"])
+    }
+
     // MARK: - Scroll target
 
     func testScrollToExerciseLogIndexIsNilByDefault() {

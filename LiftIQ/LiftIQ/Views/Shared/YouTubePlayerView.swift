@@ -34,16 +34,18 @@ struct YouTubePlayerView: UIViewRepresentable {
         context.coordinator.loadedVideoId = videoId
         context.coordinator.loadedAutoplay = autoplay
 
-        // Load the embed page as a real network navigation. Synthesized HTML
-        // (loadHTMLString), even with a remote baseURL, gives the player no
-        // genuine referer/origin, which YouTube rejects with "Error 153 —
-        // video player configuration error". The embed page sizes its player
-        // to the viewport, so no wrapper markup is needed.
-        var components = URLComponents(string: "https://www.youtube-nocookie.com/embed/\(videoId)")
+        // Load our Firebase-Hosted wrapper page, which iframes the video from
+        // a genuine https origin. YouTube requires a valid HTTP Referer on
+        // embed requests and rejects referer-less playback with "Error 153 —
+        // video player configuration error"; both a direct top-level load of
+        // /embed/<id> and synthesized HTML (loadHTMLString, even with a remote
+        // baseURL) fail that check. The wrapper's iframe request carries the
+        // hosting origin as referer, which YouTube accepts. Wrapper source:
+        // firebase/hosting/embed.html (deploy with `firebase deploy --only hosting`).
+        var components = URLComponents(string: "https://trainai-3d40a.web.app/embed.html")
         components?.queryItems = [
-            URLQueryItem(name: "playsinline", value: "1"),
+            URLQueryItem(name: "v", value: videoId),
             URLQueryItem(name: "autoplay", value: autoplay ? "1" : "0"),
-            URLQueryItem(name: "rel", value: "0"),
         ]
         guard let url = components?.url else { return }
         webView.load(URLRequest(url: url))

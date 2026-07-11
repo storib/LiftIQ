@@ -135,6 +135,24 @@ struct WorkoutExecutionView: View {
                 }
             }
         }
+        .sheet(isPresented: $viewModel.showingAIModify) {
+            if let template = viewModel.workoutForAIModification {
+                // Mid-workout edits are one-session only (plan: nil hides the
+                // "Entire plan" scope); permanent edits live on the plan/day
+                // detail screens. Applying merges into the live session
+                // without losing completed sets.
+                AIModifySheet(
+                    plan: nil,
+                    workout: template,
+                    onApplyWorkout: { modified in
+                        Task {
+                            await viewModel.applyModifiedWorkout(modified)
+                        }
+                    }
+                )
+                .environment(dependencies)
+            }
+        }
         .sheet(isPresented: $viewModel.showingExerciseSwap) {
             if let swapIndex = viewModel.swapTargetExerciseLogIndex {
                 let currentExercise = viewModel.exerciseDetails[viewModel.session.exerciseLogs[swapIndex].exerciseId]
@@ -229,6 +247,13 @@ struct WorkoutExecutionView: View {
             // Finish + menu
             HStack(spacing: 12) {
                 Menu {
+                    if viewModel.workoutForAIModification != nil {
+                        Button {
+                            viewModel.showingAIModify = true
+                        } label: {
+                            Label("Modify with AI", systemImage: "wand.and.stars")
+                        }
+                    }
                     Button(role: .destructive) {
                         viewModel.showingAbandonConfirmation = true
                     } label: {
