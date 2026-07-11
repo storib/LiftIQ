@@ -71,9 +71,13 @@ protocol ExerciseServicing: AnyObject {
 protocol HealthKitServicing: AnyObject {
     var isAvailable: Bool { get }
     var isSyncEnabled: Bool { get }
+    var isActivityImportEnabled: Bool { get }
 
     func enableSync() async throws
     func disableSync()
+    func enableActivityImport() async throws
+    func disableActivityImport()
+    func fetchExternalActivities(from startDate: Date, to endDate: Date) async throws -> [ExternalActivity]
     func exportSession(_ session: WorkoutSession) async
     func deleteExportedSession(sessionId: String) async
 }

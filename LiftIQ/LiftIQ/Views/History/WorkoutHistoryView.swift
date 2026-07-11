@@ -217,7 +217,7 @@ struct SessionRowContent: View {
                             .clipShape(Capsule())
                     }
                 }
-                Text(session.startedAt.relativeDescription)
+                Text(session.startedAt.formatted(.dateTime.weekday(.wide).month(.wide).day()))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -126,6 +126,49 @@ final class WorkoutRecommendationTests: XCTestCase {
         XCTAssertEqual(rotation.map(\.id), ["day3", "day1", "day2"])
     }
 
+    // MARK: - Dashboard week
+
+    @MainActor
+    func testDashboardWeekRunsMondayThroughSunday() {
+        let calendar = Calendar(identifier: .gregorian)
+        let referenceDate = calendar.date(from: DateComponents(year: 2026, month: 7, day: 11, hour: 12))!
+        let vm = DashboardViewModel(referenceDate: referenceDate, calendar: calendar)
+
+        XCTAssertEqual(vm.weekDays.count, 7)
+        XCTAssertEqual(calendar.component(.weekday, from: vm.weekDays.first!), 2)
+        XCTAssertEqual(calendar.component(.weekday, from: vm.weekDays.last!), 1)
+    }
+
+    @MainActor
+    func testExternalActivitiesGroupByDayWithoutAffectingLiftingStatsOrRotation() async {
+        let calendar = Calendar.current
+        let referenceDate = calendar.startOfDay(for: Date())
+        let workoutService = FakeWorkoutService()
+        workoutService.activePlan = makePlan(workouts: threeDay)
+
+        let healthService = FakeHealthKitService()
+        healthService.isActivityImportEnabled = true
+        let walk = ExternalActivity(
+            id: "walk-1",
+            kind: .walking,
+            startedAt: referenceDate.addingTimeInterval(9 * 3_600),
+            endedAt: referenceDate.addingTimeInterval(9.5 * 3_600),
+            sourceName: "Oura",
+            activeEnergyKilocalories: 180,
+            distanceMeters: 3_200
+        )
+        healthService.activities = [walk]
+
+        let vm = DashboardViewModel(referenceDate: referenceDate, calendar: calendar)
+        await vm.load(workoutService: workoutService, healthKitService: healthService, userId: "user-1")
+
+        XCTAssertEqual(vm.activities(on: referenceDate), [walk])
+        XCTAssertTrue(vm.sessions(on: referenceDate, from: workoutService.recentSessions).isEmpty)
+        XCTAssertEqual(vm.weeklySessionCount, 0)
+        XCTAssertEqual(vm.weeklyVolume, 0)
+        XCTAssertEqual(vm.todayWorkout?.id, "day1")
+    }
+
     // MARK: - History deletion
 
     @MainActor

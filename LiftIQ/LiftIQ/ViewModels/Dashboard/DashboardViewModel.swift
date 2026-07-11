@@ -8,8 +8,27 @@ final class DashboardViewModel {
     var streak: Int = 0
     var weeklyVolume: Double = 0
     var weeklySessionCount: Int = 0
+    var selectedDate: Date
+    private(set) var externalActivities: [ExternalActivity] = []
 
-    func load(workoutService: any WorkoutServicing, userId: String) async {
+    private let calendar: Calendar
+    private let weekStart: Date
+
+    init(referenceDate: Date = Date(), calendar: Calendar = .current) {
+        self.calendar = calendar
+        selectedDate = calendar.startOfDay(for: referenceDate)
+        weekStart = referenceDate.startOfWeek(using: calendar)
+    }
+
+    var weekDays: [Date] {
+        (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekStart) }
+    }
+
+    func load(
+        workoutService: any WorkoutServicing,
+        healthKitService: any HealthKitServicing,
+        userId: String
+    ) async {
         isLoading = true
         do {
             try await workoutService.loadPlans(userId: userId)
@@ -24,7 +43,34 @@ final class DashboardViewModel {
         } catch {
             // Handle silently for dashboard
         }
+
+        let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) ?? weekStart
+        do {
+            externalActivities = try await healthKitService.fetchExternalActivities(from: weekStart, to: weekEnd)
+        } catch {
+            externalActivities = []
+        }
         isLoading = false
+    }
+
+    func sessions(on day: Date, from sessions: [WorkoutSession]) -> [WorkoutSession] {
+        sessions
+            .filter { $0.status != .inProgress && calendar.isDate($0.startedAt, inSameDayAs: day) }
+            .sorted { $0.startedAt < $1.startedAt }
+    }
+
+    func activities(on day: Date) -> [ExternalActivity] {
+        externalActivities
+            .filter { calendar.isDate($0.startedAt, inSameDayAs: day) }
+            .sorted { $0.startedAt < $1.startedAt }
+    }
+
+    func hasSession(on day: Date, in sessions: [WorkoutSession]) -> Bool {
+        sessions.contains { $0.status != .inProgress && calendar.isDate($0.startedAt, inSameDayAs: day) }
+    }
+
+    func hasExternalActivity(on day: Date) -> Bool {
+        externalActivities.contains { calendar.isDate($0.startedAt, inSameDayAs: day) }
     }
 
     /// Recommends the plan day after the most recently completed one, cycling

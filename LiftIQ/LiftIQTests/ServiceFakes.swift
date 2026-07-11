@@ -245,3 +245,31 @@ final class FakeExerciseService: ExerciseServicing {
         exercises.filter { $0.equipment.allSatisfy { equipment.contains($0) } }
     }
 }
+
+// MARK: - FakeHealthKitService
+
+@MainActor
+final class FakeHealthKitService: HealthKitServicing {
+    var isAvailable = true
+    var isSyncEnabled = false
+    var isActivityImportEnabled = false
+    var activities: [ExternalActivity] = []
+    var fetchError: Error?
+
+    private(set) var fetchRanges: [(start: Date, end: Date)] = []
+
+    func enableSync() async throws { isSyncEnabled = true }
+    func disableSync() { isSyncEnabled = false }
+    func enableActivityImport() async throws { isActivityImportEnabled = true }
+    func disableActivityImport() { isActivityImportEnabled = false }
+
+    func fetchExternalActivities(from startDate: Date, to endDate: Date) async throws -> [ExternalActivity] {
+        fetchRanges.append((startDate, endDate))
+        if let fetchError { throw fetchError }
+        guard isActivityImportEnabled else { return [] }
+        return activities.filter { $0.startedAt >= startDate && $0.startedAt < endDate }
+    }
+
+    func exportSession(_ session: WorkoutSession) async {}
+    func deleteExportedSession(sessionId: String) async {}
+}

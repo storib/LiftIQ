@@ -25,7 +25,8 @@ extension Date {
     }
 
     func startOfWeek(using calendar: Calendar = .current) -> Date {
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
-        return calendar.date(from: components) ?? self
+        var mondayCalendar = calendar
+        mondayCalendar.firstWeekday = 2
+        return mondayCalendar.dateInterval(of: .weekOfYear, for: self)?.start ?? self
     }
 }

@@ -78,6 +78,7 @@
 		8F776B89B35CE50C8E95E2BD /* ExperienceLevelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCE5C9FCB7DFE0EE087A564 /* ExperienceLevelView.swift */; };
 		911B3B831E6F5F94411D8C54 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E938A2B86F7F81BA274741C1 /* FirebaseFirestore */; };
 		92BFD7A37FA1C680B645C377 /* ExerciseSwapSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62EED9D9CAC1DB0B50FD330 /* ExerciseSwapSheet.swift */; };
+		96BBFAFE470E0708784052CE /* ExternalActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE33D6EFCF9A6813D7E0F9F1 /* ExternalActivity.swift */; };
 		989EE37D9B6C4C12413982BF /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A7036C394D2FD6A75D02A5 /* AuthService.swift */; };
 		9AB3B0D569CAF273836C6EAB /* AIConsentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72142791C6D73216BB25BDA6 /* AIConsentSheet.swift */; };
 		A0C0BDF3F60E4BB3340D9D81 /* ProgressRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = E153F2A93D1319576F4F805C /* ProgressRecord.swift */; };
@@ -239,6 +240,7 @@
 		EB76C4D732C40629E6D3F7F8 /* ServiceProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProtocols.swift; sourceTree = "<group>"; };
 		EC3C07CA8A4B0CEF03B2AD90 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		ED01BB87C9043D9518812616 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EE33D6EFCF9A6813D7E0F9F1 /* ExternalActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalActivity.swift; sourceTree = "<group>"; };
 		EE5571BE6D9A26815CE34A8A /* ExerciseGuidanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseGuidanceView.swift; sourceTree = "<group>"; };
 		EF17088170F9D1FAC8467968 /* Goal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Goal.swift; sourceTree = "<group>"; };
 		EF71BCDB13EDC2CC55E5A385 /* PersonalRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecord.swift; sourceTree = "<group>"; };
@@ -453,6 +455,7 @@
 			children = (
 				0209D3B496F703764406C9D1 /* Exercise.swift */,
 				49941799A7BE10390B77E3F1 /* ExerciseGroup.swift */,
+				EE33D6EFCF9A6813D7E0F9F1 /* ExternalActivity.swift */,
 				EF71BCDB13EDC2CC55E5A385 /* PersonalRecord.swift */,
 				E153F2A93D1319576F4F805C /* ProgressRecord.swift */,
 				D69C818DD299F972B877B29E /* User.swift */,
@@ -822,6 +825,7 @@
 				92BFD7A37FA1C680B645C377 /* ExerciseSwapSheet.swift in Sources */,
 				684D95D721CF7D18525E7542 /* ExperienceLevel.swift in Sources */,
 				8F776B89B35CE50C8E95E2BD /* ExperienceLevelView.swift in Sources */,
+				96BBFAFE470E0708784052CE /* ExternalActivity.swift in Sources */,
 				DF32A32ABEA7A34ADBF7AB69 /* ForgotPasswordView.swift in Sources */,
 				7299D25D9B772F62CB3531FE /* ForgotPasswordViewModel.swift in Sources */,
 				55170B8F06D8ED324AFE4D3E /* Formatters.swift in Sources */,
@@ -976,7 +980,7 @@
 				DEVELOPMENT_TEAM = 93G47TS4YJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ reads workouts from Apple Health to show your weekly activity.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "LiftIQ saves your completed workouts to Apple Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -1071,7 +1075,7 @@
 				DEVELOPMENT_TEAM = 93G47TS4YJ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ checks which workouts it has already saved to Apple Health.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "LiftIQ reads workouts from Apple Health to show your weekly activity.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "LiftIQ saves your completed workouts to Apple Health.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

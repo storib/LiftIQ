@@ -72,10 +72,11 @@ struct ProfileView: View {
             if dependencies.healthKitService.isAvailable {
                 Section {
                     Toggle("Sync to Apple Health", isOn: healthSyncBinding)
+                    Toggle("Show Apple Health Activity", isOn: healthActivityBinding)
                 } header: {
                     Text("Apple Health")
                 } footer: {
-                    Text("Saves completed workouts to Apple Health as strength training, with start time and duration.")
+                    Text("Sync saves completed LiftIQ workouts. Activity access shows workouts shared with Apple Health by connected apps, including Oura and iHealth, and stays on this device.")
                 }
             }
 
@@ -198,6 +199,25 @@ struct ProfileView: View {
                     }
                 } else {
                     dependencies.healthKitService.disableSync()
+                }
+            }
+        )
+    }
+
+    private var healthActivityBinding: Binding<Bool> {
+        Binding(
+            get: { dependencies.healthKitService.isActivityImportEnabled },
+            set: { enabled in
+                if enabled {
+                    Task {
+                        do {
+                            try await dependencies.healthKitService.enableActivityImport()
+                        } catch {
+                            settingsError = error.localizedDescription
+                        }
+                    }
+                } else {
+                    dependencies.healthKitService.disableActivityImport()
                 }
             }
         )
