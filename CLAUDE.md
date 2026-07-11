@@ -77,6 +77,7 @@ test/           Vitest + Firestore rules tests
 - Program day rows deep-link into `WorkoutExecutionView`. Resuming an interrupted session rebuilds superset rest and progression suggestions from the plan.
 - Rest precedence: a set `UserProfile.defaultRestSeconds` (Profile → Custom Rest Timer) overrides everything; when nil, AI/planned per-exercise rest wins with a 60s fallback. Rest end plays `SoundEffects.restComplete()` + haptic in the foreground; the local notification only sounds in the background (no foreground-presentation delegate — adding one would double-ring).
 - `HealthKitService` has separate device-local toggles for exporting completed sessions and showing external Apple Health workouts. Exports use `.traditionalStrengthTraining` and `HKMetadataKeyExternalUUID` = session id; dashboard imports exclude LiftIQ's own source to prevent duplicates. Imported `ExternalActivity` values are never persisted or converted to `WorkoutSession`. Export on `completeSession` and cleanup on `deleteSession` are best-effort and must never block those flows.
+- External activity import reads `HKWorkout` records only. Oura/iHealth data appears when those apps write workouts to Apple Health; there is no direct Oura or iHealth API integration. HealthKit does not expose read-denial status, so a completed authorization request can legitimately return no activities.
 - Equipment presets live in `EquipmentView.swift` as `EquipmentPreset`. Include `bodyweight` when a preset should match pull-up-bar/bodyweight exercises.
 
 ## Firestore
