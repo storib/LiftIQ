@@ -461,7 +461,10 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
     };
 
     try {
-      const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+      // timeout must be set HERE, not per-request: the SDK's "streaming
+      // strongly recommended" guard for max_tokens > ~21k only checks the
+      // client-level timeout and throws before per-request options apply.
+      const client = new Anthropic({ apiKey: anthropicApiKey.value(), timeout: 170_000 });
 
       let plan: ReturnType<typeof WorkoutPlanSchema.parse> | null = null;
 

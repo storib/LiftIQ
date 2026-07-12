@@ -103,6 +103,7 @@ Rate limiting needs a composite index on `aiUsageLogs (userId, function, created
 - `.foregroundStyle(.accentColor)` can fail in ternaries; use `Color.accentColor`.
 - `lazy var` does not work with `@Observable`; prefer `let` dependencies.
 - Claude model IDs live only in `firebase/functions/src/models.ts`. Sonnet 5 runs adaptive thinking when `thinking` is omitted — keep it explicitly disabled there; Haiku calls must omit `thinking` entirely.
+- SDK 0.39 throws "Streaming is strongly recommended" for non-streaming calls with `max_tokens` > ~21k unless `timeout` is set on the `new Anthropic(...)` **constructor** — a per-request timeout does not help (the guard evaluates first). Diagnose any client-facing "internal error" via `npx firebase-tools functions:log --project trainai-3d40a` — the functions log full errors server-side.
 - `generateWorkoutPlan`'s system blocks are prompt-cached: keep them byte-stable. Timestamps and per-user values belong in the user message, after the cache breakpoint.
 - Firestore rules tests must run through `firebase emulators:exec`, not plain Vitest.
 - Release checks fail on missing privacy manifest, placeholder Firebase config, `print()`, `NSLog`, or likely hardcoded secrets.

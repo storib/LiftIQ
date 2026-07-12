@@ -237,7 +237,10 @@ Apply the request and call the ${tool.name} tool exactly once.`;
     };
 
     try {
-      const client = new Anthropic({ apiKey: anthropicApiKey.value() });
+      // timeout must be set HERE, not per-request: the SDK's "streaming
+      // strongly recommended" guard for max_tokens > ~21k only checks the
+      // client-level timeout and throws before per-request options apply.
+      const client = new Anthropic({ apiKey: anthropicApiKey.value(), timeout: 170_000 });
       const maxAttempts = 2;
       const allowedIds = new Set(availableExercises.map((ex) => ex.id));
 
