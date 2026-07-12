@@ -23,6 +23,15 @@
         { "fieldPath": "exerciseId", "order": "ASCENDING" },
         { "fieldPath": "achievedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "aiUsageLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "function", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
