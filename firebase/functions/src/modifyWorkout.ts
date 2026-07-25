@@ -41,7 +41,7 @@ const CHANGE_SUMMARY_SCHEMA = {
 const SAVE_MODIFIED_PLAN_TOOL = {
   name: "save_modified_plan",
   description:
-    "Save the complete modified workout plan. Call exactly once with every workout, including unchanged ones.",
+    "Save the complete modified workout plan. Call exactly once with every workout, including unchanged ones. If the request removed exercises or days, the complete plan simply contains fewer of them.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -55,7 +55,7 @@ const SAVE_MODIFIED_PLAN_TOOL = {
 const SAVE_MODIFIED_WORKOUT_TOOL = {
   name: "save_modified_workout",
   description:
-    "Save the single modified workout. Call exactly once with the complete workout.",
+    "Save the single modified workout. Call exactly once with the complete workout. If the request removed exercises, the complete workout simply contains fewer exercises.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -72,8 +72,22 @@ type Workout = ReturnType<typeof WorkoutTemplateSchema.parse>;
 // The server — not the model — is authoritative for identity fields. A
 // modification keeps the original plan's identity (same document, same
 // creation time, same activation state); only content comes from the model.
-// Pure and exported for tests.
+// Day ids matter too: the client maps running sessions back to plan days by
+// workout id, so a model that mints a fresh id for an existing day would
+// silently break "apply to this session too". When a modified day's id is not
+// one of the original ids, reclaim the original day occupying the same
+// dayNumber (if the model didn't keep that id elsewhere). workoutsPerWeek must
+// track the actual day count or history projections cycle removed/added days
+// wrong. Pure and exported for tests.
 export function normalizeModifiedPlan(original: Plan, modified: Plan, userId: string): Plan {
+  const originalIds = new Set(original.workouts.map((workout) => workout.id));
+  const modifiedIds = new Set(modified.workouts.map((workout) => workout.id));
+  const unclaimedByDayNumber = new Map(
+    original.workouts
+      .filter((workout) => !modifiedIds.has(workout.id))
+      .map((workout) => [workout.dayNumber, workout.id]),
+  );
+
   return {
     ...modified,
     id: original.id,
@@ -81,10 +95,18 @@ export function normalizeModifiedPlan(original: Plan, modified: Plan, userId: st
     createdAt: original.createdAt,
     isActive: original.isActive,
     aiGenerated: true,
-    workouts: modified.workouts.map((workout) => ({
-      ...workout,
-      planId: original.id,
-    })),
+    workoutsPerWeek: modified.workouts.length,
+    workouts: modified.workouts.map((workout) => {
+      let id = workout.id;
+      if (!originalIds.has(id)) {
+        const reclaimed = unclaimedByDayNumber.get(workout.dayNumber);
+        if (reclaimed) {
+          id = reclaimed;
+          unclaimedByDayNumber.delete(workout.dayNumber);
+        }
+      }
+      return { ...workout, id, planId: original.id };
+    }),
   };
 }
 

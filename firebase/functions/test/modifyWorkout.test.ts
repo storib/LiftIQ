@@ -77,6 +77,51 @@ describe("normalizeModifiedPlan", () => {
     expect(result.name).toBe("Chest-Free Plan");
     expect(result.workouts.every((w) => w.planId === "plan-1")).toBe(true);
   });
+
+  it("reclaims the original day id when the model mints a fresh one", () => {
+    // The client applies plan-scope edits to a running session by matching
+    // the day id; a model-invented id would silently skip that merge.
+    const modelPlan = {
+      ...plan,
+      workouts: [{ ...workout, id: "model-fresh-day-id", planId: plan.id }],
+    };
+
+    const result = normalizeModifiedPlan(plan, modelPlan, "auth-uid");
+
+    expect(result.workouts.map((w) => w.id)).toEqual(["wk-1"]);
+  });
+
+  it("keeps model ids for genuinely new days and never reassigns a kept id", () => {
+    const dayTwo = { ...workout, id: "wk-2", dayNumber: 2, name: "Upper B" };
+    const twoDayPlan = { ...plan, workoutsPerWeek: 2, workouts: [workout, dayTwo] };
+    const modelPlan = {
+      ...twoDayPlan,
+      workouts: [
+        { ...workout, id: "wk-1", planId: plan.id },
+        { ...dayTwo, id: "wk-2", planId: plan.id },
+        { ...workout, id: "new-day-id", dayNumber: 3, name: "Arms Day", planId: plan.id },
+      ],
+    };
+
+    const result = normalizeModifiedPlan(twoDayPlan, modelPlan, "auth-uid");
+
+    expect(result.workouts.map((w) => w.id)).toEqual(["wk-1", "wk-2", "new-day-id"]);
+  });
+
+  it("normalizes workoutsPerWeek to the returned day count after a removal", () => {
+    const dayTwo = { ...workout, id: "wk-2", dayNumber: 2, name: "Upper B" };
+    const twoDayPlan = { ...plan, workoutsPerWeek: 2, workouts: [workout, dayTwo] };
+    // Model removed day 2 but left workoutsPerWeek untouched.
+    const modelPlan = {
+      ...twoDayPlan,
+      workouts: [{ ...workout, id: "wk-1", planId: plan.id }],
+    };
+
+    const result = normalizeModifiedPlan(twoDayPlan, modelPlan, "auth-uid");
+
+    expect(result.workouts).toHaveLength(1);
+    expect(result.workoutsPerWeek).toBe(1);
+  });
 });
 
 describe("normalizeModifiedWorkout", () => {

@@ -11,6 +11,9 @@ struct AIModifySheet: View {
     let plan: WorkoutPlan?
     /// Day to modify; enables the "Just this workout" scope.
     let workout: WorkoutTemplate?
+    /// Presented from a running workout: plan-scope edits also merge into the
+    /// live session, so the scope copy must say so.
+    var appliesToLiveSession = false
     /// One-session apply: hand the modified day back to the presenter.
     var onApplyWorkout: ((WorkoutTemplate) -> Void)? = nil
     /// Permanent apply: called after the modified plan is saved.
@@ -90,9 +93,13 @@ struct AIModifySheet: View {
                 }
                 .pickerStyle(.segmented)
             } footer: {
-                Text(scope == .workout
-                     ? "A one-time change for this session. Your saved plan stays as it is."
-                     : "Permanently rewrites your saved plan.")
+                if scope == .workout {
+                    Text("A one-time change for this session. Your saved plan stays as it is.")
+                } else if appliesToLiveSession {
+                    Text("Permanently rewrites your saved plan and applies the change to this workout too.")
+                } else {
+                    Text("Permanently rewrites your saved plan.")
+                }
             }
         }
 
@@ -150,7 +157,9 @@ struct AIModifySheet: View {
                         ProgressView()
                             .padding(.trailing, 6)
                     }
-                    Text(result.workout != nil ? "Use for This Workout" : "Save Plan")
+                    Text(result.workout != nil
+                         ? "Use for This Workout"
+                         : (appliesToLiveSession ? "Save Plan & Apply Now" : "Save Plan"))
                         .font(.headline)
                 }
                 .frame(maxWidth: .infinity)

@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var customRestEnabled = false
     @State private var saveRestTask: Task<Void, Never>?
     @State private var settingsError: String?
+    @State private var showingGettingStarted = false
 
     var body: some View {
         List {
@@ -103,6 +104,14 @@ struct ProfileView: View {
                 }
             }
 
+            Section("Help") {
+                Button {
+                    showingGettingStarted = true
+                } label: {
+                    Label("Getting Started Tutorial", systemImage: "questionmark.circle")
+                }
+            }
+
             Section {
                 Button("Sign Out", role: .destructive) {
                     try? dependencies.authService.signOut()
@@ -119,6 +128,9 @@ struct ProfileView: View {
             }
         }
         .navigationTitle("Profile")
+        .sheet(isPresented: $showingGettingStarted) {
+            GettingStartedView()
+        }
         .onAppear {
             if let profile = dependencies.authService.currentUser?.profile {
                 defaultRestSeconds = profile.effectiveDefaultRestSeconds

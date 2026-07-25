@@ -111,6 +111,13 @@ final class WorkoutExecutionViewModel: Identifiable {
         return current
     }
 
+    /// The saved plan this session was started from, when it's still loaded;
+    /// enables the "Entire plan" scope in the mid-workout AI modify sheet.
+    var planForAIModification: WorkoutPlan? {
+        guard let planId = session.planId else { return nil }
+        return workoutService.plans.first { $0.id == planId }
+    }
+
     // MARK: - Group Mapping (for superset rest logic)
 
     var exerciseGroupMap: [Int: Int] = [:]   // exerciseLogIndex -> group index
@@ -295,6 +302,15 @@ final class WorkoutExecutionViewModel: Identifiable {
                 reps = prevSet.reps
                 input.reps = "\(prevSet.reps)"
             }
+            setInputs[setId] = input
+        }
+
+        // First-session fallback: with no history to ghost, tapping ✓ adopts
+        // the plan's rep target so a brand-new program still completes in one
+        // tap once a weight is chosen.
+        if reps <= 0, let target = targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
+            reps = target
+            input.reps = "\(target)"
             setInputs[setId] = input
         }
 
@@ -505,6 +521,17 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[index].exerciseName = newExercise.name
         exerciseDetails[newExercise.id] = newExercise
 
+        // The swapped-in exercise inherits the plan slot's prescription:
+        // rename the slot so planned-exercise lookups (rest seconds, rep
+        // targets, first-time guidance, suggestion recompute below) keep
+        // working under the new exerciseId.
+        if let gi = exerciseGroupMap[index], gi < templateGroups.count,
+           let pos = exerciseLogIndices(forGroupIndex: gi).firstIndex(of: index),
+           pos < templateGroups[gi].exercises.count {
+            templateGroups[gi].exercises[pos].exerciseId = newExercise.id
+            template?.exerciseGroups = templateGroups
+        }
+
         // Reset sets and their inputs
         for setIndex in session.exerciseLogs[index].sets.indices {
             let setId = session.exerciseLogs[index].sets[setIndex].id
@@ -550,6 +577,76 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
 
         swapTargetExerciseLogIndex = nil
+    }
+
+    // MARK: - Exercise Removal
+
+    /// Removes an entire exercise from the live session (long-press on its
+    /// card). Completed sets are discarded and their PRs rolled back, so the
+    /// view must confirm with the user first. The exercise also leaves its
+    /// template group, keeping the position-based group map, warm-up specs,
+    /// and the AI-modify projection aligned with the remaining logs.
+    func removeExercise(exerciseLogIndex: Int) async {
+        guard session.exerciseLogs.count > 1,
+              exerciseLogIndex < session.exerciseLogs.count else { return }
+
+        for setIndex in session.exerciseLogs[exerciseLogIndex].sets.indices {
+            await rollBackPersonalRecords(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
+        }
+
+        // Locate the template slot before indices shift.
+        let groupIndex = exerciseGroupMap[exerciseLogIndex]
+        let positionInGroup = groupIndex.flatMap {
+            exerciseLogIndices(forGroupIndex: $0).firstIndex(of: exerciseLogIndex)
+        }
+
+        let removed = session.exerciseLogs.remove(at: exerciseLogIndex)
+        for set in removed.sets {
+            completedSetIds.remove(set.id)
+            setInputs.removeValue(forKey: set.id)
+        }
+        for i in session.exerciseLogs.indices {
+            session.exerciseLogs[i].order = i
+        }
+
+        if let gi = groupIndex, gi < templateGroups.count,
+           let pos = positionInGroup, pos < templateGroups[gi].exercises.count {
+            templateGroups[gi].exercises.remove(at: pos)
+            if templateGroups[gi].exercises.isEmpty {
+                templateGroups.remove(at: gi)
+            } else if templateGroups[gi].exercises.count == 1 {
+                // A one-exercise "superset" is just straight sets; leaving the
+                // group type would keep the superset header and fire round
+                // rest even after the final set.
+                templateGroups[gi].groupType = .straight
+            }
+            template?.exerciseGroups = templateGroups
+        }
+        buildGroupMap(from: templateGroups)
+        // Re-sync log group types with the (possibly degraded) groups so the
+        // rest logic and rendering agree with the new template shape.
+        for (logIndex, gi) in exerciseGroupMap where gi < templateGroups.count
+            && logIndex < session.exerciseLogs.count {
+            session.exerciseLogs[logIndex].groupType = templateGroups[gi].groupType
+        }
+
+        // Only forget history/suggestions when no surviving log still uses
+        // the same exercise.
+        if !session.exerciseLogs.contains(where: { $0.exerciseId == removed.exerciseId }) {
+            previousLogs.removeValue(forKey: removed.exerciseId)
+            progressionSuggestions.removeValue(forKey: removed.exerciseId)
+        }
+
+        // Indices captured before the removal are stale now.
+        swapTargetExerciseLogIndex = nil
+        scrollToExerciseLogIndex = nil
+
+        session.durationSeconds = elapsedSeconds
+        do {
+            try await workoutService.updateSession(session)
+        } catch {
+            errorMessage = "Failed to save: \(error.localizedDescription)"
+        }
     }
 
     // MARK: - AI Mid-Workout Modification
@@ -654,6 +751,25 @@ final class WorkoutExecutionViewModel: Identifiable {
         } catch {
             errorMessage = "Failed to save changes: \(error.localizedDescription)"
         }
+    }
+
+    /// Plan-scope AI edit made mid-workout: the sheet has already saved the
+    /// modified plan; here the plan's version of this session's day is merged
+    /// into the live workout with the same completed-work guarantees as a
+    /// one-off edit. The server reclaims model-minted day ids, but a client
+    /// talking to an older deployment could still see one — fall back to the
+    /// day occupying this session's dayNumber. If the AI removed this day
+    /// from the plan entirely, the running session is left untouched.
+    func applyModifiedPlan(_ plan: WorkoutPlan) async {
+        let day = plan.workouts.first { $0.id == session.workoutTemplateId }
+            ?? template.flatMap { current in
+                plan.workouts.first { $0.dayNumber == current.dayNumber }
+            }
+        guard let day else { return }
+        // The fallback can match a day with a different id; repoint the
+        // session so resume looks up the right template afterwards.
+        session.workoutTemplateId = day.id
+        await applyModifiedWorkout(day)
     }
 
     /// Aligns a retained log with the modified template without touching
@@ -879,6 +995,20 @@ final class WorkoutExecutionViewModel: Identifiable {
             }
         }
         return nil
+    }
+
+    /// The plan's starting rep prescription for a working set, used as the
+    /// ghost value (and one-tap ✓ adoption) when there is no previous session
+    /// to repeat. repsMin is the bottom of the planned range — the intended
+    /// starting point the user progresses up from.
+    func targetReps(exerciseLogIndex: Int, setIndex: Int) -> Int? {
+        guard exerciseLogIndex < session.exerciseLogs.count else { return nil }
+        let log = session.exerciseLogs[exerciseLogIndex]
+        guard setIndex < log.sets.count,
+              log.sets[setIndex].setType == .working,
+              let planned = plannedExercise(for: log.exerciseId),
+              planned.repsMin > 0 else { return nil }
+        return planned.repsMin
     }
 
     /// Previous-session set matching this one by set type and position within

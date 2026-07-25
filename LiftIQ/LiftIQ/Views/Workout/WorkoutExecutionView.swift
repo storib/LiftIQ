@@ -164,16 +164,23 @@ struct WorkoutExecutionView: View {
         }
         .sheet(isPresented: $viewModel.showingAIModify) {
             if let template = viewModel.workoutForAIModification {
-                // Mid-workout edits are one-session only (plan: nil hides the
-                // "Entire plan" scope); permanent edits live on the plan/day
-                // detail screens. Applying merges into the live session
-                // without losing completed sets.
+                // Mid-workout edits offer both scopes: "Just this workout"
+                // merges into the live session only, while "Entire plan"
+                // saves the plan and then merges this session's day so the
+                // change also applies to the workout in progress. Neither
+                // path loses completed sets.
                 AIModifySheet(
-                    plan: nil,
+                    plan: viewModel.planForAIModification,
                     workout: template,
+                    appliesToLiveSession: true,
                     onApplyWorkout: { modified in
                         Task {
                             await viewModel.applyModifiedWorkout(modified)
+                        }
+                    },
+                    onApplyPlan: { updatedPlan in
+                        Task {
+                            await viewModel.applyModifiedPlan(updatedPlan)
                         }
                     }
                 )

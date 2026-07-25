@@ -1371,4 +1371,296 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         vm.scrollToExerciseLogIndex = 1
         XCTAssertEqual(vm.scrollToExerciseLogIndex, 1)
     }
+
+    // MARK: - First-workout rep targets
+
+    func testTargetRepsComesFromPlanForWorkingSetsOnly() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(sets: 3)],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template)
+
+        // Sets 0-1 are synthesized warm-ups; 2-4 are working sets.
+        XCTAssertNil(vm.targetReps(exerciseLogIndex: 0, setIndex: 0))
+        XCTAssertEqual(vm.targetReps(exerciseLogIndex: 0, setIndex: 2), 8)
+    }
+
+    func testCompleteSetAdoptsPlanTargetRepsWhenNoHistory() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(sets: 3)],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template)
+
+        // Weight typed, reps left empty, no previous session: the checkmark
+        // should adopt the plan's repsMin instead of erroring out.
+        seedInput(vm, exercise: 0, set: 2, weight: "100")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets[2].reps, 8)
+        XCTAssertEqual(input(vm, exercise: 0, set: 2).reps, "8")
+        XCTAssertTrue(vm.completedSetIds.contains(vm.session.exerciseLogs[0].sets[2].id))
+    }
+
+    func testCompleteSetStillRequiresWeightForWeightedExercise() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(sets: 3)],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template)
+
+        // No weight, no history: adopting the rep target alone must not
+        // complete a weighted set.
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+
+        XCTAssertTrue(vm.completedSetIds.isEmpty)
+        XCTAssertNil(vm.session.exerciseLogs[0].sets[2].completedAt)
+    }
+
+    func testPreviousSessionRepsWinOverPlanTarget() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(sets: 3)],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template)
+
+        var prevLog = vm.session.exerciseLogs[0]
+        prevLog.sets = vm.session.exerciseLogs[0].sets.map { set in
+            var s = set
+            s.id = UUID().uuidString
+            s.weightKg = 90
+            s.reps = 10
+            return s
+        }
+        vm.previousLogs["bench-press"] = prevLog
+
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+
+        // Ghost precedence: repeat last session (10 reps), not the plan's 8.
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets[2].reps, 10)
+    }
+
+    // MARK: - Remove exercise
+
+    func testRemoveExerciseDropsLogSetsInputsAndTemplateSlot() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p2", exerciseId: "barbell-row", sets: 4),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let workout = FakeWorkoutService()
+        let vm = makeVM(template: template, workout: workout)
+        let removedSetIds = vm.session.exerciseLogs[0].sets.map(\.id)
+        seedInput(vm, exercise: 0, set: 2, weight: "100", reps: "8")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: 2)
+
+        await vm.removeExercise(exerciseLogIndex: 0)
+
+        XCTAssertEqual(vm.session.exerciseLogs.map(\.exerciseId), ["barbell-row"])
+        XCTAssertEqual(vm.session.exerciseLogs[0].order, 0)
+        for id in removedSetIds {
+            XCTAssertNil(vm.setInputs[id])
+            XCTAssertFalse(vm.completedSetIds.contains(id))
+        }
+        // The template group lost the exercise, keeping the position-based
+        // group map and AI-modify projection aligned.
+        XCTAssertEqual(vm.templateGroups[0].exercises.map(\.exerciseId), ["barbell-row"])
+        XCTAssertEqual(vm.exerciseGroupMap, [0: 0])
+        XCTAssertEqual(
+            vm.workoutForAIModification?.exerciseGroups.flatMap(\.exercises).map(\.exerciseId),
+            ["barbell-row"]
+        )
+        XCTAssertNotNil(workout.updatedSessions.last)
+    }
+
+    func testRemoveExerciseRemovesEmptiedGroupAndKeepsLaterGroupsMapped() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let vm = makeVM(template: template)
+
+        await vm.removeExercise(exerciseLogIndex: 0)
+
+        XCTAssertEqual(vm.session.exerciseLogs.map(\.exerciseId), ["curl", "tricep-pushdown"])
+        XCTAssertEqual(vm.templateGroups.count, 1)
+        XCTAssertEqual(vm.templateGroups[0].groupType, .superset)
+        // Both remaining logs map to the (now first) superset group.
+        XCTAssertEqual(vm.exerciseGroupMap, [0: 0, 1: 0])
+    }
+
+    func testRemoveExerciseDegradesTwoExerciseSupersetToStraightSets() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "curl", sets: 2),
+                makePlanned(id: "p2", exerciseId: "tricep-pushdown", sets: 2),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let vm = makeVM(template: template)
+
+        await vm.removeExercise(exerciseLogIndex: 1)
+
+        // The surviving half is straight sets everywhere: template group,
+        // session log, and group map.
+        XCTAssertEqual(vm.templateGroups[0].groupType, .straight)
+        XCTAssertEqual(vm.session.exerciseLogs[0].groupType, .straight)
+        XCTAssertEqual(vm.groupType(for: 0), .straight)
+
+        // Straight-set rest semantics apply: rest fires mid-exercise but is
+        // suppressed after the final completed set (the superset round path
+        // would have kept firing it).
+        XCTAssertTrue(vm.restDuration(forExerciseLogIndex: 0, setIndex: 0).shouldTrigger)
+        for set in vm.session.exerciseLogs[0].sets {
+            vm.completedSetIds.insert(set.id)
+        }
+        let lastIndex = vm.session.exerciseLogs[0].sets.count - 1
+        XCTAssertFalse(vm.restDuration(forExerciseLogIndex: 0, setIndex: lastIndex).shouldTrigger)
+    }
+
+    func testRemoveExerciseRefusesToEmptyTheSession() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template)
+
+        await vm.removeExercise(exerciseLogIndex: 0)
+
+        XCTAssertEqual(vm.session.exerciseLogs.count, 1)
+    }
+
+    func testSwapExerciseKeepsPlanSlotPrescriptionForNewExercise() async {
+        let vm = makeBenchVM()
+        defer { vm.stopTimers() }
+
+        vm.requestSwap(exerciseLogIndex: 0)
+        await vm.swapExercise(newExercise: makeExercise(id: "incline-press", name: "Incline Press"))
+
+        // The template slot is renamed, so rep targets and first-time
+        // guidance keep working for the swapped-in exercise.
+        XCTAssertEqual(vm.plannedExercise(for: "incline-press")?.repsMin, 8)
+        XCTAssertNil(vm.plannedExercise(for: "bench-press"))
+        XCTAssertEqual(vm.targetReps(exerciseLogIndex: 0, setIndex: 2), 8)
+        XCTAssertEqual(
+            vm.workoutForAIModification?.exerciseGroups.flatMap(\.exercises).map(\.exerciseId),
+            ["incline-press"]
+        )
+    }
+
+    // MARK: - Plan-scope AI modification mid-workout
+
+    func testApplyModifiedPlanMergesThisSessionsDay() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template, planId: "plan-1")
+
+        var modifiedDay = template
+        modifiedDay.name = "Modified Day"
+        modifiedDay.exerciseGroups[0].exercises[0].sets = 5
+        let plan = WorkoutPlan(
+            id: "plan-1",
+            userId: "u1",
+            name: "Plan",
+            templateType: .fullBody,
+            goal: .strength,
+            weekCount: 4,
+            currentWeek: 1,
+            workoutsPerWeek: 3,
+            workouts: [modifiedDay],
+            deloadWeek: nil,
+            isActive: true,
+            createdAt: Date(),
+            aiGenerated: true,
+            aiPromptContext: nil
+        )
+
+        await vm.applyModifiedPlan(plan)
+
+        XCTAssertEqual(vm.session.workoutName, "Modified Day")
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets.count { $0.setType == .working }, 5)
+    }
+
+    func testApplyModifiedPlanFallsBackToDayNumberWhenIdWasReminted() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template, planId: "plan-1")
+
+        // Simulates an older deployed function that let the model mint a new
+        // id for this day; only dayNumber still identifies it.
+        var remintedDay = template
+        remintedDay.id = "model-fresh-id"
+        remintedDay.name = "Reminted Day"
+        let plan = WorkoutPlan(
+            id: "plan-1",
+            userId: "u1",
+            name: "Plan",
+            templateType: .fullBody,
+            goal: .strength,
+            weekCount: 4,
+            currentWeek: 1,
+            workoutsPerWeek: 1,
+            workouts: [remintedDay],
+            deloadWeek: nil,
+            isActive: true,
+            createdAt: Date(),
+            aiGenerated: true,
+            aiPromptContext: nil
+        )
+
+        await vm.applyModifiedPlan(plan)
+
+        XCTAssertEqual(vm.session.workoutName, "Reminted Day")
+        // The session repoints at the matched day so resume finds it again.
+        XCTAssertEqual(vm.session.workoutTemplateId, "model-fresh-id")
+    }
+
+    func testApplyModifiedPlanIgnoresPlansWithoutThisDay() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template, planId: "plan-1")
+
+        // A genuinely different remaining day: neither this session's id nor
+        // its dayNumber — the running day was removed from the plan.
+        var otherDay = template
+        otherDay.id = "some-other-day"
+        otherDay.dayNumber = 2
+        let plan = WorkoutPlan(
+            id: "plan-1",
+            userId: "u1",
+            name: "Plan",
+            templateType: .fullBody,
+            goal: .strength,
+            weekCount: 4,
+            currentWeek: 1,
+            workoutsPerWeek: 3,
+            workouts: [otherDay],
+            deloadWeek: nil,
+            isActive: true,
+            createdAt: Date(),
+            aiGenerated: true,
+            aiPromptContext: nil
+        )
+
+        await vm.applyModifiedPlan(plan)
+
+        // The running session's day is gone from the plan: leave it untouched.
+        XCTAssertEqual(vm.session.workoutName, "Test Day")
+        XCTAssertEqual(vm.session.exerciseLogs[0].sets.count { $0.setType == .working }, 3)
+    }
 }

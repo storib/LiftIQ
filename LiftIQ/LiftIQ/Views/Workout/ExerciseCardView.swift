@@ -9,6 +9,7 @@ struct ExerciseCardView: View {
     var focusedField: FocusState<SetFieldFocus?>.Binding
 
     @State private var showGuidance = false
+    @State private var showingRemoveConfirmation = false
 
     private var exerciseLog: ExerciseLog {
         viewModel.session.exerciseLogs[exerciseLogIndex]
@@ -86,9 +87,12 @@ struct ExerciseCardView: View {
                     }
                 }
 
-                // Previous session data
+                // Previous session data, or first-time coaching when there is
+                // no history to repeat.
                 if let prevLog = previousLog {
                     previousSessionLine(prevLog)
+                } else if let planned = viewModel.plannedExercise(for: exerciseLog.exerciseId) {
+                    firstTimeGuidance(planned)
                 } else {
                     Text("No previous data")
                         .font(.caption)
@@ -130,6 +134,7 @@ struct ExerciseCardView: View {
                         rpeText: $viewModel.setInputs[setId: setLog.id].rpe,
                         previousWeight: prevWeight,
                         previousReps: prevSet?.reps,
+                        targetReps: viewModel.targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex),
                         isBodyweight: exerciseDetail?.isBodyweight ?? false,
                         unitSystem: viewModel.unitSystem,
                         isCompleted: viewModel.completedSetIds.contains(setLog.id),
@@ -201,6 +206,41 @@ struct ExerciseCardView: View {
             radius: colorScheme == .dark ? 12 : 8,
             y: colorScheme == .dark ? 5 : 3
         )
+        .contextMenu {
+            Button {
+                viewModel.requestSwap(exerciseLogIndex: exerciseLogIndex)
+            } label: {
+                Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
+            }
+
+            if viewModel.session.exerciseLogs.count > 1 {
+                Button(role: .destructive) {
+                    showingRemoveConfirmation = true
+                } label: {
+                    Label("Remove Exercise", systemImage: "trash")
+                }
+            }
+        }
+        .confirmationDialog(
+            "Remove \(exerciseLog.exerciseName)?",
+            isPresented: $showingRemoveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Exercise", role: .destructive) {
+                Task {
+                    await viewModel.removeExercise(exerciseLogIndex: exerciseLogIndex)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(completedSetCount > 0
+                 ? "This deletes \(completedSetCount) completed set\(completedSetCount == 1 ? "" : "s") and any PRs they earned."
+                 : "Removes this exercise from the current workout.")
+        }
+    }
+
+    private var completedSetCount: Int {
+        exerciseLog.sets.count { viewModel.completedSetIds.contains($0.id) }
     }
 
     // MARK: - Subviews
@@ -277,6 +317,41 @@ struct ExerciseCardView: View {
             return "Try \(displayWeight.formatted(decimals: 1)) \(unitLabel) (+\(delta.formatted(decimals: 1)) from last)"
         }
         return "Hold at \(displayWeight.formatted(decimals: 1)) \(unitLabel) — hit \(s.suggestedRepsMax) reps to progress"
+    }
+
+    /// First-session coaching: surfaces the plan's prescription (which the
+    /// empty input fields otherwise hide) and tells a new user how to choose
+    /// a starting weight.
+    private func firstTimeGuidance(_ planned: PlannedExercise) -> some View {
+        let repRange = planned.repsMin == planned.repsMax
+            ? "\(planned.repsMin)"
+            : "\(planned.repsMin)-\(planned.repsMax)"
+        return VStack(alignment: .leading, spacing: 4) {
+            Label("First time — aim for \(planned.sets)×\(repRange) reps", systemImage: "flag.checkered")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+            Text(firstTimeBody(planned))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func firstTimeBody(_ planned: PlannedExercise) -> String {
+        if exerciseDetail?.isBodyweight == true {
+            return "Log your reps and tap the circle — enter a weight only if you add extra load."
+        }
+        // Anchored to repsMin because that's what ✓ adopts on a first
+        // workout: an (repsMin + rir)RM weight leaves ~rir reps in reserve
+        // after a set of repsMin.
+        let rir = planned.rirTarget ?? 2
+        return "Start with a weight you could lift about \(planned.repsMin + rir) times, "
+            + "so a set of \(planned.repsMin) ends with \(rir)-\(rir + 1) reps left in the tank. "
+            + "LiftIQ remembers it and suggests progressions from here."
     }
 
     private func previousSessionLine(_ prevLog: ExerciseLog) -> some View {

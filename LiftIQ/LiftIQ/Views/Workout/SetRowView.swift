@@ -12,6 +12,9 @@ struct SetRowView: View {
     @Binding var rpeText: String
     let previousWeight: Double?
     let previousReps: Int?
+    /// Plan-prescribed reps, ghosted when there is no previous session to
+    /// repeat (first workout of a new program). Tapping ✓ adopts it.
+    let targetReps: Int?
     let isBodyweight: Bool
     let unitSystem: UnitSystem
     let isCompleted: Bool
@@ -85,6 +88,13 @@ struct SetRowView: View {
                 ZStack {
                     if repsText.isEmpty, let prev = previousReps, prev > 0 {
                         Text("\(prev)")
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .accessibilityHidden(true)
+                    } else if repsText.isEmpty, let target = targetReps, target > 0 {
+                        Text("\(target)")
                             .foregroundStyle(.tertiary)
                             .font(.subheadline)
                             .lineLimit(1)
