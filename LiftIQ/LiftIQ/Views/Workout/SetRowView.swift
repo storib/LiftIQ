@@ -12,6 +12,10 @@ struct SetRowView: View {
     @Binding var rpeText: String
     let previousWeight: Double?
     let previousReps: Int?
+    /// Suggested values (progression weight, warm-up ramp) in display units,
+    /// ghosted ahead of the previous-session values. Tapping ✓ adopts them.
+    let suggestedWeight: String?
+    let suggestedReps: String?
     /// Plan-prescribed reps, ghosted when there is no previous session to
     /// repeat (first workout of a new program). Tapping ✓ adopts it.
     let targetReps: Int?
@@ -48,7 +52,14 @@ struct SetRowView: View {
             // Weight input
             inputSurface(width: 60, field: .weight) {
                 ZStack {
-                    if weightText.isEmpty, let prev = previousWeight, prev > 0 {
+                    if weightText.isEmpty, let suggested = suggestedWeight, !suggested.isEmpty {
+                        Text(suggested)
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .accessibilityHidden(true)
+                    } else if weightText.isEmpty, let prev = previousWeight, prev > 0 {
                         Text(prev.formatted())
                             .foregroundStyle(.tertiary)
                             .font(.subheadline)
@@ -86,7 +97,14 @@ struct SetRowView: View {
             // Reps input
             inputSurface(width: 44, field: .reps) {
                 ZStack {
-                    if repsText.isEmpty, let prev = previousReps, prev > 0 {
+                    if repsText.isEmpty, let suggested = suggestedReps, !suggested.isEmpty {
+                        Text(suggested)
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .accessibilityHidden(true)
+                    } else if repsText.isEmpty, let prev = previousReps, prev > 0 {
                         Text("\(prev)")
                             .foregroundStyle(.tertiary)
                             .font(.subheadline)

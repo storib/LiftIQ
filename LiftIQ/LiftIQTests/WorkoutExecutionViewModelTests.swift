@@ -477,10 +477,10 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         let suggestion = vm.progressionSuggestions["bench-press"]
         XCTAssertNotNil(suggestion)
         XCTAssertEqual(suggestion?.suggestedWeight, 62.5) // +2.5 kg barbell increment
-        XCTAssertFalse(suggestion?.isPlateaued ?? true)
+        XCTAssertFalse(suggestion?.isStalled ?? true)
     }
 
-    func testComputeSuggestionsEmitsPlateauWhenThreeConsecutiveFailures() {
+    func testComputeSuggestionsEmitsStallWhenThreeConsecutiveFailuresAtSameWeight() {
         let template = makeTemplate(groups: [
             ExerciseGroup(id: "g1", groupType: .straight, exercises: [
                 makePlanned(id: "p1", exerciseId: "bench-press"),
@@ -488,13 +488,16 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         ])
         let vm = makeVM(template: template)
         let failLog = makePriorLogBelowMin(exerciseId: "bench-press", repsMin: 8)
-        let recentLogs = Array(repeating: failLog, count: Constants.plateauThreshold)
+        let recentLogs = Array(repeating: failLog, count: Constants.stallThreshold)
 
         vm.computeSuggestions(recentLogs: ["bench-press": recentLogs])
 
         let suggestion = vm.progressionSuggestions["bench-press"]
         XCTAssertNotNil(suggestion)
-        XCTAssertTrue(suggestion?.isPlateaued ?? false)
+        XCTAssertTrue(suggestion?.isStalled ?? false)
+        // The stall response is a back-off probe, not a hold at the stuck
+        // weight: 60 * 0.9 = 54 → rounded down to the 2.5 kg increment.
+        XCTAssertEqual(suggestion?.suggestedWeight, 52.5)
     }
 
     func testComputeSuggestionsSkipsExerciseWithNoHistory() {
@@ -524,7 +527,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             suggestedRepsMin: 8,
             suggestedRepsMax: 10,
             message: "stale",
-            isPlateaued: false
+            isStalled: false
         )
 
         vm.computeSuggestions(recentLogs: [:])
@@ -1241,9 +1244,43 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         // History ghost and progression state arrived for the new exercise.
         XCTAssertNotNil(vm.previousLogs["incline-press"])
         XCTAssertNotNil(vm.exerciseDetails["incline-press"])
-        // Prefill gave its first working set a weight (suggestion bumps 40kg).
+        // The suggestion (40 kg + 2.5 bump) lands in the ghost layer; the
+        // editable field itself stays empty so the user never has to delete
+        // pre-filled text.
         let firstWorking = added.sets.first { $0.setType == .working }!
-        XCTAssertFalse((vm.setInputs[firstWorking.id] ?? SetInput()).weight.isEmpty)
+        XCTAssertTrue((vm.setInputs[firstWorking.id] ?? SetInput()).weight.isEmpty)
+        XCTAssertEqual(vm.suggestedSetInputs[firstWorking.id]?.weight, "42.5")
+    }
+
+    func testCompleteSetAdoptsSuggestedGhostWeight() async {
+        let workout = FakeWorkoutService()
+        workout.recentLogsByExerciseId["incline-press"] = [
+            makePriorLogAtMaxReps(exerciseId: "incline-press", repsMax: 10, weightKg: 40)
+        ]
+        let exercise = FakeExerciseService(exercises: [
+            makeExercise(id: "bench-press", name: "Bench Press"),
+            makeExercise(id: "incline-press", name: "Incline Press"),
+        ])
+        let vm = makeBenchVM(sets: 3, workout: workout, exercise: exercise)
+        defer { vm.stopTimers() }
+        vm.unitSystem = .metric
+
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+                makePlanned(id: "p3", exerciseId: "incline-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+        ])
+        await vm.applyModifiedWorkout(modified)
+
+        let inclineIndex = vm.session.exerciseLogs.firstIndex { $0.exerciseId == "incline-press" }!
+        let setIndex = vm.session.exerciseLogs[inclineIndex].sets.firstIndex { $0.setType == .working }!
+        await vm.completeSet(exerciseLogIndex: inclineIndex, setIndex: setIndex)
+
+        // ✓ on empty fields adopts the suggested ghost weight (42.5 kg) and
+        // the previous-session ghost reps.
+        XCTAssertEqual(vm.session.exerciseLogs[inclineIndex].sets[setIndex].weightKg, 42.5, accuracy: 0.001)
+        XCTAssertEqual(vm.session.exerciseLogs[inclineIndex].sets[setIndex].reps, 10)
     }
 
     func testApplyModifiedWorkoutRebuildsGroupContext() async {

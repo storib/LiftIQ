@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct ProfileView: View {
     @Environment(AppDependencies.self) private var dependencies
@@ -11,6 +12,7 @@ struct ProfileView: View {
     @State private var saveRestTask: Task<Void, Never>?
     @State private var settingsError: String?
     @State private var showingGettingStarted = false
+    @State private var restAlertsDenied = false
 
     var body: some View {
         List {
@@ -61,12 +63,19 @@ struct ProfileView: View {
                     } else {
                         LabeledContent("Rest Duration", value: "Program default")
                     }
+                    if restAlertsDenied {
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            Label("Turn On Rest-Timer Alerts", systemImage: "bell.badge")
+                        }
+                    }
                 } header: {
                     Text("Workout Settings")
                 } footer: {
-                    Text(customRestEnabled
-                        ? "Your rest duration applies to every exercise, overriding the rest times in your program."
-                        : "Rest follows your program's per-exercise values, with 60s when an exercise doesn't specify one.")
+                    Text(workoutSettingsFooter)
                 }
             }
 
@@ -136,6 +145,12 @@ struct ProfileView: View {
                 defaultRestSeconds = profile.effectiveDefaultRestSeconds
                 customRestEnabled = profile.defaultRestSeconds != nil
             }
+        }
+        .task {
+            // Surface a Settings shortcut when the rest-end notification is
+            // blocked — a denied prompt otherwise fails silently mid-workout.
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            restAlertsDenied = settings.authorizationStatus == .denied
         }
         .onChange(of: defaultRestSeconds) { _, newValue in
             guard customRestEnabled else { return }
@@ -233,6 +248,16 @@ struct ProfileView: View {
                 }
             }
         )
+    }
+
+    private var workoutSettingsFooter: String {
+        var text = customRestEnabled
+            ? "Your rest duration applies to every exercise, overriding the rest times in your program."
+            : "Rest follows your program's per-exercise values, with 60s when an exercise doesn't specify one."
+        if restAlertsDenied {
+            text += " Notifications are off, so you won't be alerted when rest ends while the app is in the background."
+        }
+        return text
     }
 
     private func restLabel(_ seconds: Int) -> String {

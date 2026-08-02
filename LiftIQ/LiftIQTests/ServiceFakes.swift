@@ -47,6 +47,12 @@ final class FakeWorkoutService: WorkoutServicing {
         loadPlansUserIds.append(userId)
     }
 
+    func completedSessionDates(userId: String, since: Date) async throws -> [Date] {
+        recentSessions
+            .filter { $0.status == .completed && $0.startedAt >= since }
+            .map(\.startedAt)
+    }
+
     func loadRecentSessions(userId: String) async throws {
         if let loadError { throw loadError }
         loadRecentSessionsUserIds.append(userId)
@@ -154,6 +160,13 @@ final class FakeProgressService: ProgressServicing {
     func getProgressRecords(userId: String, exerciseId: String) async throws -> [ProgressRecord] {
         if let getProgressRecordsError { throw getProgressRecordsError }
         return progressRecordsByExerciseId[exerciseId] ?? []
+    }
+
+    func getAllProgressRecords(userId: String, since: Date) async throws -> [ProgressRecord] {
+        if let getProgressRecordsError { throw getProgressRecordsError }
+        return progressRecordsByExerciseId.values.flatMap { $0 }
+            .filter { $0.date >= since }
+            .sorted { $0.date < $1.date }
     }
 
     func getExercisePRs(userId: String, exerciseId: String) async throws -> [PersonalRecord] {

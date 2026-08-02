@@ -34,6 +34,10 @@ final class WorkoutService {
         recentSessions = try await sessionRepository.getSessions(userId: userId, limit: 20)
     }
 
+    func completedSessionDates(userId: String, since: Date) async throws -> [Date] {
+        try await sessionRepository.getCompletedSessionDates(userId: userId, since: since)
+    }
+
     func loadActiveSession(userId: String) async throws {
         activeSession = try await sessionRepository.getActiveSession(userId: userId)
     }

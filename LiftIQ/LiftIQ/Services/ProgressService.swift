@@ -17,6 +17,10 @@ final class ProgressService {
         try await progressRepository.getRecords(userId: userId, exerciseId: exerciseId)
     }
 
+    func getAllProgressRecords(userId: String, since: Date) async throws -> [ProgressRecord] {
+        try await progressRepository.getAllRecords(userId: userId, since: since)
+    }
+
     func loadRecentPRs(userId: String) async throws {
         recentPRs = try await prRepository.getRecords(userId: userId, limit: 20)
     }

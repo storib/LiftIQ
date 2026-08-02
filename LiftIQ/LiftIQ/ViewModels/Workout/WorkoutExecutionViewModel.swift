@@ -46,6 +46,10 @@ final class WorkoutExecutionViewModel: Identifiable {
     // MARK: - Input State (keyed by SetLog.id)
 
     var setInputs: [String: SetInput] = [:]
+    /// Ghost layer: progression/warm-up suggestions rendered behind empty
+    /// fields and adopted by ✓, never written into `setInputs` — typed text
+    /// always belongs to the user.
+    var suggestedSetInputs: [String: SetInput] = [:]
 
     // MARK: - UI State
 
@@ -248,8 +252,9 @@ final class WorkoutExecutionViewModel: Identifiable {
 
             computeSuggestions(recentLogs: recentLogsByExerciseId)
 
-            // Pre-fill weights from suggestions (with previous-session fallback)
-            prefillFromSuggestions()
+            // Ghost suggested weights behind the empty fields (with
+            // previous-session fallback)
+            computeSuggestedInputs()
 
             // Start elapsed timer
             startElapsedTimer()
@@ -285,13 +290,25 @@ final class WorkoutExecutionViewModel: Identifiable {
         let setId = session.exerciseLogs[exerciseLogIndex].sets[setIndex].id
         var input = setInputs[setId] ?? SetInput()
 
-        // Parse inputs, adopting the previous-session ghost values when the
-        // fields were left empty (the placeholders read as "repeat last time").
+        // Parse inputs, adopting the ghost values when the fields were left
+        // empty. Suggestion ghosts (progression weight, warm-up ramp) win
+        // over the previous-session ghost — they're what the row displays.
         var weightDisplay = Double(input.weight) ?? 0
         var reps = Int(input.reps) ?? 0
         let rpe = Double(input.rpe)
 
         let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
+        if let suggested = suggestedSetInputs[setId] {
+            if weightDisplay <= 0, let w = Double(suggested.weight), w > 0 {
+                weightDisplay = w
+                input.weight = suggested.weight
+            }
+            if reps <= 0, let r = Int(suggested.reps), r > 0 {
+                reps = r
+                input.reps = suggested.reps
+            }
+            setInputs[setId] = input
+        }
         if weightDisplay <= 0 || reps <= 0,
            let prevSet = previousSet(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
             if weightDisplay <= 0 && prevSet.weightKg > 0 {
@@ -705,8 +722,9 @@ final class WorkoutExecutionViewModel: Identifiable {
             renumberSets(exerciseLogIndex: i)
         }
 
-        // Keep typed inputs for surviving sets; new sets start empty and are
-        // prefilled below. Dropped sets' inputs (and set ids) go with them.
+        // Keep typed inputs for surviving sets; new sets start empty with
+        // ghost suggestions computed below. Dropped sets' inputs (and set
+        // ids) go with them.
         var inputs: [String: SetInput] = [:]
         for log in session.exerciseLogs {
             for set in log.sets {
@@ -743,7 +761,7 @@ final class WorkoutExecutionViewModel: Identifiable {
                 // and the user's existing inputs still apply without them.
             }
         }
-        prefillFromSuggestions()
+        computeSuggestedInputs()
 
         session.durationSeconds = elapsedSeconds
         do {
@@ -967,6 +985,13 @@ final class WorkoutExecutionViewModel: Identifiable {
             let newValue = UnitConversionService.convertWeight(kg, to: newUnit)
             setInputs[setId]?.weight = newValue.formatted(decimals: 1)
         }
+        // The ghost layer is stored in display units too.
+        for (setId, input) in suggestedSetInputs {
+            guard let oldValue = Double(input.weight), oldValue > 0 else { continue }
+            let kg = UnitConversionService.convertToKg(oldValue, from: oldUnit)
+            let newValue = UnitConversionService.convertWeight(kg, to: newUnit)
+            suggestedSetInputs[setId]?.weight = newValue.formatted(decimals: 1)
+        }
     }
 
     /// Pure helper: given recent logs per exerciseId, populate
@@ -1026,7 +1051,12 @@ final class WorkoutExecutionViewModel: Identifiable {
         return prevOfType[positionInType]
     }
 
-    private func prefillFromSuggestions() {
+    /// Populates `suggestedSetInputs` — the ghost layer shown behind empty
+    /// fields — from progression suggestions and the warm-up ramp. Never
+    /// touches `setInputs`: suggestions must not become text the user has to
+    /// delete before typing their own numbers.
+    private func computeSuggestedInputs() {
+        suggestedSetInputs.removeAll()
         let warmUpSpecs = WarmUpPlanner.specs(forGroups: templateGroups)
 
         for i in session.exerciseLogs.indices {
@@ -1050,11 +1080,11 @@ final class WorkoutExecutionViewModel: Identifiable {
                     let position = session.exerciseLogs[i].sets[..<j].count { $0.setType == .warmUp }
                     guard position < specs.count else { continue }
                     let spec = specs[position]
-                    var input = setInputs[set.id] ?? SetInput()
-                    if input.reps.isEmpty && spec.reps > 0 {
+                    var input = SetInput()
+                    if spec.reps > 0 {
                         input.reps = "\(spec.reps)"
                     }
-                    if input.weight.isEmpty && workingKg > 0 && spec.percentageOf1RM > 0 {
+                    if workingKg > 0 && spec.percentageOf1RM > 0 {
                         let display = UnitConversionService.convertWeight(workingKg * spec.percentageOf1RM, to: unitSystem)
                         // Plate-friendly rounding; skip if it collapses to 0.
                         let rounded = (display / 2.5).rounded() * 2.5
@@ -1062,17 +1092,17 @@ final class WorkoutExecutionViewModel: Identifiable {
                             input.weight = rounded.formatted(decimals: 1)
                         }
                     }
-                    setInputs[set.id] = input
+                    if input != SetInput() {
+                        suggestedSetInputs[set.id] = input
+                    }
                 } else if set.setType == .working {
-                    // Priority: suggestion's weight > previous session's matching set > empty
-                    guard (setInputs[set.id] ?? SetInput()).weight.isEmpty else { continue }
                     var weightKg = workingKg
                     if weightKg == 0, let prevSet = previousSet(exerciseLogIndex: i, setIndex: j) {
                         weightKg = prevSet.weightKg
                     }
                     if weightKg > 0 {
                         let displayWeight = UnitConversionService.convertWeight(weightKg, to: unitSystem)
-                        setInputs[set.id, default: SetInput()].weight = displayWeight.formatted(decimals: 1)
+                        suggestedSetInputs[set.id, default: SetInput()].weight = displayWeight.formatted(decimals: 1)
                     }
                 }
             }

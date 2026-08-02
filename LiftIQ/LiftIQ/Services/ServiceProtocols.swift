@@ -20,6 +20,7 @@ protocol WorkoutServicing: AnyObject {
 
     func loadPlans(userId: String) async throws
     func loadRecentSessions(userId: String) async throws
+    func completedSessionDates(userId: String, since: Date) async throws -> [Date]
     func loadActiveSession(userId: String) async throws
     func savePlan(_ plan: WorkoutPlan) async throws
     func deletePlan(userId: String, planId: String) async throws
@@ -43,6 +44,7 @@ protocol ProgressServicing: AnyObject {
 
     func loadRecentPRs(userId: String) async throws
     func getProgressRecords(userId: String, exerciseId: String) async throws -> [ProgressRecord]
+    func getAllProgressRecords(userId: String, since: Date) async throws -> [ProgressRecord]
     func getExercisePRs(userId: String, exerciseId: String) async throws -> [PersonalRecord]
     func checkForPRs(
         userId: String,

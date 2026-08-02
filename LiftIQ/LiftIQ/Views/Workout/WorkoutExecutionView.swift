@@ -236,6 +236,9 @@ struct WorkoutExecutionView: View {
                 userDefaultRestSeconds: profile?.effectiveDefaultRestSeconds ?? 60,
                 userRestOverride: profile?.defaultRestSeconds
             )
+            // Ask before the first rest timer needs it — the prompt landing
+            // mid-set (and gating that set's notification) was the old flow.
+            await RestTimerController.requestNotificationAuthorizationIfNeeded()
         }
         .onDisappear {
             viewModel.stopTimers()

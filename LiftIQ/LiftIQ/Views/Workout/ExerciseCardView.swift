@@ -134,6 +134,8 @@ struct ExerciseCardView: View {
                         rpeText: $viewModel.setInputs[setId: setLog.id].rpe,
                         previousWeight: prevWeight,
                         previousReps: prevSet?.reps,
+                        suggestedWeight: viewModel.suggestedSetInputs[setLog.id]?.weight,
+                        suggestedReps: viewModel.suggestedSetInputs[setLog.id]?.reps,
                         targetReps: viewModel.targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex),
                         isBodyweight: exerciseDetail?.isBodyweight ?? false,
                         unitSystem: viewModel.unitSystem,
@@ -247,8 +249,8 @@ struct ExerciseCardView: View {
 
     @ViewBuilder
     private func suggestionPill(_ suggestion: ProgressionSuggestion) -> some View {
-        let tint: Color = suggestion.isPlateaued ? .orange : (suggestionIsProgression(suggestion) ? .green : .secondary)
-        let icon = suggestion.isPlateaued ? "exclamationmark.triangle.fill"
+        let tint: Color = suggestion.isStalled ? .orange : (suggestionIsProgression(suggestion) ? .green : .secondary)
+        let icon = suggestion.isStalled ? "arrow.uturn.down.circle.fill"
             : (suggestionIsProgression(suggestion) ? "arrow.up.right.circle.fill" : "equal.circle.fill")
 
         HStack(spacing: 8) {
@@ -260,17 +262,6 @@ struct ExerciseCardView: View {
                 .foregroundStyle(tint)
                 .lineLimit(2)
             Spacer()
-            if suggestion.isPlateaued {
-                Button("Swap") {
-                    viewModel.requestSwap(exerciseLogIndex: exerciseLogIndex)
-                }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(tint)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(tint.opacity(0.15))
-                .clipShape(Capsule())
-            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -288,22 +279,19 @@ struct ExerciseCardView: View {
         previousLog?.sets
             .filter { $0.setType == .working && $0.weightKg > 0 }
             .map(\.weightKg)
-            .first
+            .max()
     }
 
     /// Hide the pill when there's no meaningful guidance to show: a
     /// zero-weight suggestion with no previous data would read as "Hold at
     /// 0 lb", which looks broken.
     private func shouldShowSuggestionPill(_ s: ProgressionSuggestion) -> Bool {
-        if s.isPlateaued { return true }
+        if s.isStalled { return true }
         if s.suggestedWeight > 0.001 { return true }
         return previousLog != nil
     }
 
     private func suggestionText(_ s: ProgressionSuggestion) -> String {
-        if s.isPlateaued {
-            return "Plateau detected — try swapping this exercise"
-        }
         let unitLabel = viewModel.unitSystem == .metric ? "kg" : "lb"
         // Bodyweight / unweighted movements: no weight to hold, so lead with
         // the rep target instead of a "0 lb" callout.
@@ -311,6 +299,14 @@ struct ExerciseCardView: View {
             return "Hit \(s.suggestedRepsMax) reps to progress"
         }
         let displayWeight = UnitConversionService.convertWeight(s.suggestedWeight, to: viewModel.unitSystem)
+        // A stall keeps the last-session context in view: the back-off is a
+        // probe (if reps jump it was fatigue, if flat it's a real stall) —
+        // not an alarm, and not a reason to hide what the lifter just did.
+        if s.isStalled, let prevKg = topPreviousWorkingWeightKg {
+            let prevDisplay = UnitConversionService.convertWeight(prevKg, to: viewModel.unitSystem)
+            return "\(Constants.stallThreshold) sessions stuck at \(prevDisplay.formatted(decimals: 1)) \(unitLabel) — "
+                + "try \(displayWeight.formatted(decimals: 1)) \(unitLabel) and build back up"
+        }
         if let prevKg = topPreviousWorkingWeightKg, s.suggestedWeight > prevKg + 0.001 {
             let prevDisplay = UnitConversionService.convertWeight(prevKg, to: viewModel.unitSystem)
             let delta = displayWeight - prevDisplay
