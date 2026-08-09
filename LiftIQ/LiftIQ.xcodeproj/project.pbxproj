@@ -1014,7 +1014,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.11;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.liftiq;
 				PRODUCT_NAME = LiftIQ;
 				SDKROOT = iphoneos;
@@ -1109,7 +1109,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.11;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.adrianconley.liftiq;
 				PRODUCT_NAME = LiftIQ;
 				SDKROOT = iphoneos;
