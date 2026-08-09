@@ -43,6 +43,25 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         )
     }
 
+    private func makePlan(workouts: [WorkoutTemplate]) -> WorkoutPlan {
+        WorkoutPlan(
+            id: "plan-1",
+            userId: "u1",
+            name: "Test Plan",
+            templateType: .fullBody,
+            goal: .hypertrophy,
+            weekCount: 4,
+            currentWeek: 1,
+            workoutsPerWeek: 3,
+            workouts: workouts,
+            deloadWeek: nil,
+            isActive: true,
+            createdAt: Date(),
+            aiGenerated: false,
+            aiPromptContext: nil
+        )
+    }
+
     private func makeVM(
         template: WorkoutTemplate,
         planId: String? = nil,
@@ -1571,6 +1590,385 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         await vm.removeExercise(exerciseLogIndex: 0)
 
         XCTAssertEqual(vm.session.exerciseLogs.count, 1)
+    }
+
+    func testResumeAfterMidWorkoutRemovalNeverMapsMissingExerciseLogs() async {
+        // Removing an exercise mid-workout shrinks the session's logs but not
+        // the saved plan. On resume, rebuildTemplateContextIfNeeded() rebuilds
+        // the group map from the full template, so the map can hold a log
+        // index the session no longer has. The view hands those indices
+        // straight to ExerciseCardView, which subscripts exerciseLogs.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let plan = WorkoutPlan(
+            id: "plan-1",
+            userId: "u1",
+            name: "Test Plan",
+            templateType: .fullBody,
+            goal: .hypertrophy,
+            weekCount: 4,
+            currentWeek: 1,
+            workoutsPerWeek: 3,
+            workouts: [template],
+            deloadWeek: nil,
+            isActive: true,
+            createdAt: Date(),
+            aiGenerated: false,
+            aiPromptContext: nil
+        )
+        let workout = FakeWorkoutService()
+        workout.plans = [plan]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        await first.removeExercise(exerciseLogIndex: 0)
+        XCTAssertEqual(first.session.exerciseLogs.count, 2)
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        let logCount = resumed.session.exerciseLogs.count
+        for logIndex in resumed.session.exerciseLogs.indices {
+            guard let gi = resumed.groupIndex(for: logIndex) else { continue }
+            for mapped in resumed.exerciseLogIndices(forGroupIndex: gi) {
+                XCTAssertLessThan(
+                    mapped, logCount,
+                    "group \(gi) maps log index \(mapped) but the session has only \(logCount) logs"
+                )
+            }
+        }
+
+        // Not just in-bounds — the surviving superset keeps both its members
+        // paired, so round-based rest still works after the resume.
+        XCTAssertEqual(resumed.session.exerciseLogs.map(\.exerciseId), ["curl", "tricep-pushdown"])
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 0])
+        XCTAssertEqual(resumed.groupType(for: 0), .superset)
+        XCTAssertEqual(resumed.restDuration(forExerciseLogIndex: 0, setIndex: 0).shouldTrigger, false)
+    }
+
+    func testResumeAfterMidWorkoutSwapKeepsGroupsAndPrescriptions() async {
+        // A swap rewrites the session log's exerciseId but deliberately leaves
+        // the saved plan alone, so on resume the plan and the session disagree
+        // on that exercise without anything having been removed. Reconciling
+        // must read that as a substitution, not a deletion.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [template])]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        first.requestSwap(exerciseLogIndex: 0)
+        await first.swapExercise(newExercise: makeExercise(id: "incline-press", name: "Incline Press"))
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        // Nothing was removed, so nothing may be dropped.
+        XCTAssertEqual(resumed.templateGroups.count, 2)
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 1, 2: 1])
+        XCTAssertEqual(resumed.groupType(for: 1), .superset)
+        // The swapped-in exercise inherits the plan slot's prescription.
+        XCTAssertEqual(resumed.plannedExercise(for: "incline-press")?.repsMin, 8)
+        XCTAssertNil(resumed.plannedExercise(for: "bench-press"))
+        // Last set is always a working one; warm-ups carry no plan target.
+        let lastSet = resumed.session.exerciseLogs[0].sets.count - 1
+        XCTAssertEqual(resumed.targetReps(exerciseLogIndex: 0, setIndex: lastSet), 8)
+    }
+
+    func testResumeAfterSwapOfLaterExerciseKeepsTrailingGroups() async {
+        // A swap in the middle must not discard everything after it.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [template])]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        first.requestSwap(exerciseLogIndex: 1)
+        await first.swapExercise(newExercise: makeExercise(id: "hammer-curl", name: "Hammer Curl"))
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 1, 2: 1])
+        XCTAssertEqual(resumed.groupType(for: 2), .superset)
+        XCTAssertEqual(resumed.plannedExercise(for: "hammer-curl")?.repsMin, 8)
+        // The untouched partner keeps its own slot, not the swapped one's.
+        XCTAssertEqual(resumed.plannedExercise(for: "tricep-pushdown")?.id, "p3")
+        // Round-based rest still pairs the superset.
+        XCTAssertFalse(resumed.restDuration(forExerciseLogIndex: 1, setIndex: 0).shouldTrigger)
+    }
+
+    func testResumeAfterBothSwapAndRemovalReconcilesEachCorrectly() async {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [template])]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        // Swap the first exercise, then remove one half of the superset.
+        first.requestSwap(exerciseLogIndex: 0)
+        await first.swapExercise(newExercise: makeExercise(id: "incline-press", name: "Incline Press"))
+        await first.removeExercise(exerciseLogIndex: 2)
+        XCTAssertEqual(first.session.exerciseLogs.map(\.exerciseId), ["incline-press", "curl"])
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        // Swap kept its slot; the removed superset half is gone and the
+        // survivor degraded to straight sets.
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 1])
+        XCTAssertEqual(resumed.plannedExercise(for: "incline-press")?.repsMin, 8)
+        XCTAssertEqual(resumed.plannedExercise(for: "curl")?.id, "p2")
+        XCTAssertNil(resumed.plannedExercise(for: "tricep-pushdown"))
+        XCTAssertEqual(resumed.groupType(for: 1), .straight)
+    }
+
+    func testResumeAfterRemoveThenSwapKeepsSurvivingSuperset() async {
+        // The ambiguous case exercise ids cannot resolve: plan A straight,
+        // then B+C as a superset. Remove A, swap B -> X, and the session holds
+        // [X, C] — identical to what "swap A, remove B" would leave, which
+        // reconstructs as two straight exercises instead of an X+C superset.
+        // Slot identity distinguishes them.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [template])]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        await first.removeExercise(exerciseLogIndex: 0)
+        first.requestSwap(exerciseLogIndex: 0)
+        await first.swapExercise(newExercise: makeExercise(id: "hammer-curl", name: "Hammer Curl"))
+        XCTAssertEqual(first.session.exerciseLogs.map(\.exerciseId), ["hammer-curl", "tricep-pushdown"])
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        // Both survivors stay in the one superset, not two straight slots.
+        XCTAssertEqual(resumed.templateGroups.count, 1)
+        XCTAssertEqual(resumed.templateGroups[0].id, "g2")
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 0])
+        XCTAssertEqual(resumed.groupType(for: 0), .superset)
+        // The swapped-in exercise inherits p2's prescription, not p1's.
+        XCTAssertEqual(resumed.plannedExercise(for: "hammer-curl")?.id, "p2")
+        XCTAssertNil(resumed.plannedExercise(for: "bench-press"))
+        // Superset round rest, not straight-set rest.
+        XCTAssertFalse(resumed.restDuration(forExerciseLogIndex: 0, setIndex: 0).shouldTrigger)
+        for log in resumed.session.exerciseLogs {
+            resumed.completedSetIds.insert(log.sets[0].id)
+        }
+        XCTAssertEqual(resumed.restDuration(forExerciseLogIndex: 0, setIndex: 0).seconds, 60)
+    }
+
+    func testResumeFallsBackToExerciseIdAlignmentForPreFieldSessions() async {
+        // Sessions written before ExerciseLog carried plannedExerciseId decode
+        // it as nil and must still reconcile through the legacy heuristic.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [template])]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        await first.removeExercise(exerciseLogIndex: 0)
+
+        // Strip the field the way an older document would decode.
+        var legacy = first.session
+        for i in legacy.exerciseLogs.indices {
+            legacy.exerciseLogs[i].plannedExerciseId = nil
+        }
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: legacy,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 0])
+        XCTAssertEqual(resumed.groupType(for: 0), .superset)
+        XCTAssertEqual(resumed.plannedExercise(for: "curl")?.id, "p2")
+    }
+
+    func testResumeAfterWorkoutScopeReplacementFallsBackWhenNoSlotIdMatchesPlan() async {
+        // A workout-scope AI edit re-points every log at the modified
+        // template's slots, but leaves the saved plan alone. On resume the
+        // logs all carry slot ids the plan has never heard of, so slot
+        // alignment matches nothing and must hand off to the legacy path
+        // rather than reporting a clean trim to zero groups.
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        // Same exercises and shape, entirely fresh slot ids.
+        let modified = makeTemplate(groups: [
+            ExerciseGroup(id: "gA", groupType: .straight, exercises: [
+                makePlanned(id: "fresh-1", exerciseId: "bench-press", sets: 3),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "gB", groupType: .superset, exercises: [
+                makePlanned(id: "fresh-2", exerciseId: "curl", sets: 3),
+                makePlanned(id: "fresh-3", exerciseId: "tricep-pushdown", sets: 3),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [template])]
+
+        let first = makeVM(template: template, planId: "plan-1", workout: workout)
+        defer { first.stopTimers() }
+        await first.applyModifiedWorkout(modified)
+        XCTAssertEqual(
+            first.session.exerciseLogs.map(\.plannedExerciseId),
+            ["fresh-1", "fresh-2", "fresh-3"]
+        )
+
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+
+        // Recovered by exercise id instead of collapsing to no groups.
+        XCTAssertEqual(resumed.templateGroups.count, 2)
+        XCTAssertEqual(resumed.exerciseGroupMap, [0: 0, 1: 1, 2: 1])
+        XCTAssertEqual(resumed.groupType(for: 1), .superset)
+        XCTAssertEqual(resumed.plannedExercise(for: "curl")?.id, "p2")
+    }
+
+    func testCreateSessionStampsOriginatingPlanSlotOnEachLog() {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .superset, exercises: [
+                makePlanned(id: "p1", exerciseId: "curl", sets: 2),
+                makePlanned(id: "p2", exerciseId: "tricep-pushdown", sets: 2),
+            ], restBetweenRoundsSeconds: 60),
+        ])
+        let session = WorkoutSession.create(from: template, userId: "u1", planId: "plan-1")
+        XCTAssertEqual(session.exerciseLogs.map(\.plannedExerciseId), ["p1", "p2"])
+    }
+
+    func testReconcileGroupsTrimsPlannedExercisesWithNoRemainingLog() {
+        let groups = [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [
+                makePlanned(id: "p1", exerciseId: "bench-press"),
+            ], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .superset, exercises: [
+                makePlanned(id: "p2", exerciseId: "curl"),
+                makePlanned(id: "p3", exerciseId: "tricep-pushdown"),
+            ], restBetweenRoundsSeconds: 60),
+        ]
+        let logs = WorkoutSession.create(
+            from: makeTemplate(groups: groups), userId: "u1", planId: nil
+        ).exerciseLogs
+
+        // Whole group gone: the emptied group is dropped, later groups survive.
+        let withoutBench = WorkoutExecutionViewModel.reconcileGroups(
+            groups, with: Array(logs.dropFirst())
+        )
+        XCTAssertEqual(withoutBench.map(\.id), ["g2"])
+        XCTAssertEqual(withoutBench[0].groupType, .superset)
+
+        // Half a superset gone: it degrades to straight sets, like a live removal.
+        let withoutPushdown = WorkoutExecutionViewModel.reconcileGroups(
+            groups, with: Array(logs.dropLast())
+        )
+        XCTAssertEqual(withoutPushdown.map(\.id), ["g1", "g2"])
+        XCTAssertEqual(withoutPushdown[1].exercises.map(\.exerciseId), ["curl"])
+        XCTAssertEqual(withoutPushdown[1].groupType, .straight)
+
+        // Untouched session: groups pass through unchanged, keeping their types.
+        let unchanged = WorkoutExecutionViewModel.reconcileGroups(groups, with: logs)
+        XCTAssertEqual(unchanged, groups)
     }
 
     func testSwapExerciseKeepsPlanSlotPrescriptionForNewExercise() async {

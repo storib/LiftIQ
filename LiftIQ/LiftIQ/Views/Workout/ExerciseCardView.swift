@@ -11,23 +11,34 @@ struct ExerciseCardView: View {
     @State private var showGuidance = false
     @State private var showingRemoveConfirmation = false
 
-    private var exerciseLog: ExerciseLog {
-        viewModel.session.exerciseLogs[exerciseLogIndex]
+    /// Nil when the index no longer addresses a log — a removal shrinks
+    /// `exerciseLogs` while SwiftUI may still render the outgoing row, and a
+    /// resumed session can outlive part of the template it was built from.
+    /// Reading it as an optional keeps that a blank row instead of a trap.
+    private var exerciseLog: ExerciseLog? {
+        let logs = viewModel.session.exerciseLogs
+        return logs.indices.contains(exerciseLogIndex) ? logs[exerciseLogIndex] : nil
     }
 
     private var exerciseDetail: Exercise? {
-        viewModel.exerciseDetails[exerciseLog.exerciseId]
+        exerciseLog.flatMap { viewModel.exerciseDetails[$0.exerciseId] }
     }
 
     private var previousLog: ExerciseLog? {
-        viewModel.previousLogs[exerciseLog.exerciseId]
+        exerciseLog.flatMap { viewModel.previousLogs[$0.exerciseId] }
     }
 
     private var suggestion: ProgressionSuggestion? {
-        viewModel.progressionSuggestions[exerciseLog.exerciseId]
+        exerciseLog.flatMap { viewModel.progressionSuggestions[$0.exerciseId] }
     }
 
     var body: some View {
+        if let exerciseLog {
+            card(exerciseLog)
+        }
+    }
+
+    private func card(_ exerciseLog: ExerciseLog) -> some View {
         HStack(alignment: .top, spacing: 0) {
             // Superset color bar
             if let groupColor {
@@ -242,7 +253,7 @@ struct ExerciseCardView: View {
     }
 
     private var completedSetCount: Int {
-        exerciseLog.sets.count { viewModel.completedSetIds.contains($0.id) }
+        exerciseLog?.sets.count { viewModel.completedSetIds.contains($0.id) } ?? 0
     }
 
     // MARK: - Subviews

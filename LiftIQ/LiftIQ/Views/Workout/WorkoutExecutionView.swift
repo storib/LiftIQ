@@ -188,7 +188,8 @@ struct WorkoutExecutionView: View {
             }
         }
         .sheet(isPresented: $viewModel.showingExerciseSwap) {
-            if let swapIndex = viewModel.swapTargetExerciseLogIndex {
+            if let swapIndex = viewModel.swapTargetExerciseLogIndex,
+               viewModel.session.exerciseLogs.indices.contains(swapIndex) {
                 let currentExercise = viewModel.exerciseDetails[viewModel.session.exerciseLogs[swapIndex].exerciseId]
                 ExerciseSwapSheet(currentExercise: currentExercise) { newExercise in
                     Task {

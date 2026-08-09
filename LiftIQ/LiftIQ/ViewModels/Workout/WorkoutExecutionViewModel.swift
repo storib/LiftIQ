@@ -276,9 +276,168 @@ final class WorkoutExecutionViewModel: Identifiable {
         guard let plan = workoutService.plans.first(where: { $0.id == planId }),
               let template = plan.workouts.first(where: { $0.id == session.workoutTemplateId })
         else { return }
-        self.template = template
-        templateGroups = template.exerciseGroups
-        buildGroupMap(from: template.exerciseGroups)
+        // Mid-workout removals and swaps are session-scoped and deliberately
+        // never written back to the plan, so the saved template can name more
+        // exercises than the session holds, or different ones. Realign before
+        // mapping, or the group map ends up addressing logs that don't exist.
+        let reconciled = Self.reconcileGroups(template.exerciseGroups, with: session.exerciseLogs)
+        var resolved = template
+        resolved.exerciseGroups = reconciled
+        self.template = resolved
+        templateGroups = reconciled
+        buildGroupMap(from: reconciled)
+    }
+
+    /// Realigns a saved template with the exercises a session actually holds,
+    /// preserving each survivor's group and prescription.
+    ///
+    /// Both of the session-scoped mid-workout edits leave the saved plan
+    /// alone, so a resumed session can disagree with it in two different ways
+    /// that must not be confused: `removeExercise` drops a log (the plan has a
+    /// slot with no log), and `swapExercise` rewrites a log's `exerciseId`
+    /// in place (the plan has a slot whose log names a different exercise).
+    /// Reading a swap as a deletion would cascade — every later slot would
+    /// fall out of alignment and be discarded, costing the session its rep
+    /// targets, suggestions, and superset grouping.
+    ///
+    /// Planned slots and logs are walked together in order. Equal ids match.
+    /// Otherwise the log decides: if it turns up at a *later* slot, the
+    /// current slot was removed and is skipped; if it appears nowhere ahead,
+    /// this is a substitution and the slot keeps its sets/reps/rest under the
+    /// swapped-in exercise. Slots left over once the logs run out were
+    /// removed. Logs left over once the slots run out stay unmapped and
+    /// render as straight sets.
+    ///
+    /// Groups emptied this way are dropped, and a superset that *lost* an
+    /// exercise degrades to straight sets — the same shape `removeExercise`
+    /// produces live, so a resumed session looks like it did before the app
+    /// was backgrounded.
+    static func reconcileGroups(
+        _ groups: [ExerciseGroup],
+        with logs: [ExerciseLog]
+    ) -> [ExerciseGroup] {
+        alignBySlotIdentity(groups, logs) ?? alignByExerciseId(groups, logs)
+    }
+
+    /// Exact realignment via each log's originating `PlannedExercise.id`.
+    ///
+    /// Slot identity survives both mid-workout edits — a swap rewrites the
+    /// log's `exerciseId` but keeps its slot, a removal takes the whole log —
+    /// so removals and substitutions never have to be told apart by guesswork.
+    /// Exercise ids can't do that: a plan of A, then B+C as a superset, whose
+    /// session holds [X, C], is equally "swap A, remove B" and "remove A, swap
+    /// B", and the two reconstruct to different groupings.
+    ///
+    /// Returns nil — falling through to `alignByExerciseId` — when the session
+    /// predates the field (no log carries a slot id), when no log's slot id
+    /// appears in this plan at all, or when the surviving slots don't line up
+    /// positionally with the session's leading logs. That last case matters
+    /// because `buildGroupMap` pairs groups to logs by position, so an
+    /// alignment that doesn't preserve that ordering must not be used.
+    private static func alignBySlotIdentity(
+        _ groups: [ExerciseGroup],
+        _ logs: [ExerciseLog]
+    ) -> [ExerciseGroup]? {
+        var logForSlot: [String: ExerciseLog] = [:]
+        for log in logs {
+            guard let slotId = log.plannedExerciseId, logForSlot[slotId] == nil else { continue }
+            logForSlot[slotId] = log
+        }
+        guard !logForSlot.isEmpty else { return nil }
+
+        var reconciled: [ExerciseGroup] = []
+        var matchedLogIds: [String] = []
+
+        for var group in groups {
+            let plannedCount = group.exercises.count
+            var survivors: [PlannedExercise] = []
+            for var planned in group.exercises {
+                guard let log = logForSlot[planned.id] else { continue }
+                // The slot keeps its sets/reps/rest; a swap only changes which
+                // exercise fills it.
+                planned.exerciseId = log.exerciseId
+                survivors.append(planned)
+                matchedLogIds.append(log.id)
+            }
+            guard !survivors.isEmpty else { continue }
+            group.exercises = survivors
+            if survivors.count < plannedCount, survivors.count == 1 {
+                group.groupType = .straight
+            }
+            reconciled.append(group)
+        }
+
+        // Matching nothing is a failure, not a clean trim to zero: a
+        // workout-scope AI edit re-points logs at the modified template's
+        // slots while the saved plan keeps its own, so every log can carry a
+        // slot id that the plan has never heard of. Without this, the
+        // positional check below passes vacuously ([] == the first 0 logs),
+        // the session resumes with no groups at all, and the legacy fallback
+        // never gets a chance to recover it by exercise id.
+        guard !matchedLogIds.isEmpty,
+              matchedLogIds == logs.prefix(matchedLogIds.count).map(\.id)
+        else { return nil }
+        return reconciled
+    }
+
+    /// Legacy alignment for sessions written before logs carried their slot
+    /// id. Walks slots and logs together, resolving unequal ids by lookahead:
+    /// a log found at a later slot means the current slot was removed, a log
+    /// found nowhere ahead is a substitution.
+    ///
+    /// This is a heuristic and cannot be otherwise — ids alone underdetermine
+    /// the edit history. Where it guesses wrong the session reconstructs with
+    /// coarser grouping (unmapped logs render as straight sets); nothing
+    /// traps, and per-exercise history and progression still resolve.
+    private static func alignByExerciseId(
+        _ groups: [ExerciseGroup],
+        _ logs: [ExerciseLog]
+    ) -> [ExerciseGroup] {
+        let plannedIds = groups.flatMap { $0.exercises.map(\.exerciseId) }
+        let logIds = logs.map(\.exerciseId)
+
+        var isKept = [Bool](repeating: false, count: plannedIds.count)
+        var substitution: [Int: String] = [:]
+        var slot = 0
+        var log = 0
+
+        while slot < plannedIds.count, log < logIds.count {
+            if plannedIds[slot] == logIds[log] {
+                isKept[slot] = true
+                slot += 1
+                log += 1
+            } else if plannedIds[(slot + 1)...].contains(logIds[log]) {
+                slot += 1
+            } else {
+                isKept[slot] = true
+                substitution[slot] = logIds[log]
+                slot += 1
+                log += 1
+            }
+        }
+
+        var reconciled: [ExerciseGroup] = []
+        var flatIndex = 0
+        for var group in groups {
+            let plannedCount = group.exercises.count
+            var survivors: [PlannedExercise] = []
+            for var planned in group.exercises {
+                if isKept[flatIndex] {
+                    if let swapped = substitution[flatIndex] {
+                        planned.exerciseId = swapped
+                    }
+                    survivors.append(planned)
+                }
+                flatIndex += 1
+            }
+            guard !survivors.isEmpty else { continue }
+            group.exercises = survivors
+            if survivors.count < plannedCount, survivors.count == 1 {
+                group.groupType = .straight
+            }
+            reconciled.append(group)
+        }
+        return reconciled
     }
 
     // MARK: - Set Completion
@@ -686,6 +845,10 @@ final class WorkoutExecutionViewModel: Identifiable {
             if let matchIndex = unmatched.firstIndex(where: { $0.exerciseId == freshLog.exerciseId }) {
                 var kept = unmatched.remove(at: matchIndex)
                 kept.groupType = freshLog.groupType
+                // Re-point at the modified template's slot: the old one may
+                // not survive the edit, and a stale id would misalign a later
+                // resume.
+                kept.plannedExerciseId = freshLog.plannedExerciseId
                 reconcileSets(in: &kept, toMatch: freshLog)
                 mergedLogs.append(kept)
             } else {
@@ -707,6 +870,9 @@ final class WorkoutExecutionViewModel: Identifiable {
             orphan.sets.removeAll { !completedSetIds.contains($0.id) }
             guard !orphan.sets.isEmpty else { continue }
             orphan.groupType = .straight
+            // The modification dropped this exercise, so it no longer answers
+            // to a plan slot; clearing the id keeps a resume from rebinding it.
+            orphan.plannedExerciseId = nil
             mergedLogs.append(orphan)
         }
 
@@ -948,11 +1114,15 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Private Helpers
 
+    /// Maps log index -> group index by position. Never maps past the end of
+    /// `session.exerciseLogs`: every key here is handed to the view as a
+    /// subscript into that array, so a template describing more exercises
+    /// than the session holds must not widen the map.
     private func buildGroupMap(from groups: [ExerciseGroup]) {
         exerciseGroupMap.removeAll()
         var logIndex = 0
         for (groupIndex, group) in groups.enumerated() {
-            for _ in group.exercises {
+            for _ in group.exercises where logIndex < session.exerciseLogs.count {
                 exerciseGroupMap[logIndex] = groupIndex
                 logIndex += 1
             }
@@ -1176,6 +1346,9 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
 
         // All done for this round — trigger rest
+        guard groupIndex < templateGroups.count else {
+            return (true, userDefaultRestSeconds)
+        }
         let group = templateGroups[groupIndex]
         let restSeconds = userRestOverride ?? group.restBetweenRoundsSeconds ?? userDefaultRestSeconds
         return (true, restSeconds)
@@ -1187,8 +1360,15 @@ final class WorkoutExecutionViewModel: Identifiable {
         exerciseGroupMap[exerciseLogIndex]
     }
 
+    /// Log indices in a group, in render order. Bounded to logs that exist:
+    /// the view feeds these straight into `session.exerciseLogs[...]`, and a
+    /// removal can shrink the session between a map rebuild and the next
+    /// layout pass.
     func exerciseLogIndices(forGroupIndex groupIndex: Int) -> [Int] {
-        exerciseGroupMap.filter { $0.value == groupIndex }.map(\.key).sorted()
+        exerciseGroupMap
+            .filter { $0.value == groupIndex && $0.key < session.exerciseLogs.count }
+            .map(\.key)
+            .sorted()
     }
 
     func isFirstInGroup(_ exerciseLogIndex: Int) -> Bool {

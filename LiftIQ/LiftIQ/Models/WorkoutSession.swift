@@ -28,6 +28,17 @@ struct ExerciseLog: Codable, Identifiable, Hashable {
     var groupType: GroupType
     var sets: [SetLog]
     var notes: String?
+    /// The `PlannedExercise.id` this log was materialized from, so a resumed
+    /// session can realign with its plan without guessing from exercise ids
+    /// (a swap rewrites `exerciseId` in place, which is otherwise
+    /// indistinguishable from a removal plus a swap of the next slot).
+    ///
+    /// Nil for sessions written before this field existed, and for logs that
+    /// no longer correspond to a plan slot — both fall back to the id-based
+    /// alignment in `WorkoutExecutionViewModel.reconcileGroups`. Declared last
+    /// with a default so the memberwise init stays source-compatible, and
+    /// optional so existing Firestore documents decode unchanged.
+    var plannedExerciseId: String? = nil
 
     var totalVolume: Double {
         sets.filter { $0.setType == .working }.reduce(0) { $0 + $1.weightKg * Double($1.reps) }
@@ -107,7 +118,8 @@ extension WorkoutSession {
                     order: order,
                     groupType: group.groupType,
                     sets: sets,
-                    notes: nil
+                    notes: nil,
+                    plannedExerciseId: planned.id
                 ))
                 order += 1
             }
