@@ -6,7 +6,7 @@ final class LiftIQUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // Verify the welcome screen appears
-        XCTAssertTrue(app.staticTexts["LiftIQ"].exists)
+        // Verify the welcome screen appears (CI simulators cold-start slowly)
+        XCTAssertTrue(app.staticTexts["LiftIQ"].waitForExistence(timeout: 30))
     }
 }
