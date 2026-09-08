@@ -13,6 +13,9 @@ struct WorkoutSession: Codable, Identifiable, Hashable {
     var durationSeconds: Int
     var notes: String?
     var mood: Int?
+    /// How today's workout was adapted before it started, if it was.
+    /// Optional-and-last so existing documents decode unchanged.
+    var adaptation: WorkoutAdaptation? = nil
 
     var totalVolumeKg: Double {
         exerciseLogs.reduce(0) { $0 + $1.totalVolume }

@@ -195,11 +195,20 @@ struct WorkoutExecutionView: View {
             if let swapIndex = viewModel.swapTargetExerciseLogIndex,
                viewModel.session.exerciseLogs.indices.contains(swapIndex) {
                 let currentExercise = viewModel.exerciseDetails[viewModel.session.exerciseLogs[swapIndex].exerciseId]
-                ExerciseSwapSheet(currentExercise: currentExercise) { newExercise in
-                    Task {
-                        await viewModel.swapExercise(newExercise: newExercise)
+                ExerciseSwapSheet(
+                    currentExercise: currentExercise,
+                    candidates: viewModel.swapCandidates,
+                    unitSystem: viewModel.unitSystem,
+                    onSelect: { newExercise in
+                        Task { await viewModel.swapExercise(newExercise: newExercise) }
+                    },
+                    onAvoid: { exercise in
+                        Task {
+                            await viewModel.setAvoided(exerciseId: exercise.id, avoided: true)
+                            viewModel.requestSwap(exerciseLogIndex: swapIndex)
+                        }
                     }
-                }
+                )
             }
         }
         .alert("Couldn't Save", isPresented: Binding(

@@ -830,9 +830,47 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Exercise Swap
 
+    /// Ranked alternatives for the swap sheet: memory first, then catalog
+    /// similarity, then history. Catalog ranking is synchronous so the sheet
+    /// opens instantly; history arrives a moment later and re-ranks.
+    var swapCandidates: [WorkoutAdapter.SwapCandidate] = []
+
     func requestSwap(exerciseLogIndex: Int) {
         swapTargetExerciseLogIndex = exerciseLogIndex
+        swapCandidates = computeSwapCandidates(exerciseLogIndex: exerciseLogIndex, lastLogs: previousLogs)
         showingExerciseSwap = true
+        let candidateIds = Set(swapCandidates.map(\.id))
+        guard !candidateIds.isEmpty else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            let recent = (try? await workoutService.getRecentExerciseLogs(
+                userId: userId, exerciseIds: candidateIds, excludingSessionId: session.id, limit: 1
+            )) ?? [:]
+            var lastLogs = previousLogs
+            for (id, logs) in recent { if let first = logs.first { lastLogs[id] = first } }
+            // Only re-rank if the sheet is still for the same exercise.
+            guard swapTargetExerciseLogIndex == exerciseLogIndex else { return }
+            swapCandidates = computeSwapCandidates(exerciseLogIndex: exerciseLogIndex, lastLogs: lastLogs)
+        }
+    }
+
+    private func computeSwapCandidates(exerciseLogIndex: Int, lastLogs: [String: ExerciseLog]) -> [WorkoutAdapter.SwapCandidate] {
+        guard exerciseLogIndex < session.exerciseLogs.count,
+              let template = workoutForAIModification ?? template else { return [] }
+        let catalog = Dictionary(uniqueKeysWithValues: exerciseService.exercises.map { ($0.id, $0) })
+        let context = WorkoutAdapter.Context(
+            exercises: catalog,
+            preferences: exercisePreferences,
+            lastLogs: lastLogs,
+            userRestOverride: userRestOverride,
+            defaultRestSeconds: userDefaultRestSeconds
+        )
+        return WorkoutAdapter.candidates(
+            replacing: session.exerciseLogs[exerciseLogIndex].exerciseId,
+            in: template,
+            equipment: activeEquipment,
+            context: context
+        )
     }
 
     func swapExercise(newExercise: Exercise) async {
@@ -908,6 +946,19 @@ final class WorkoutExecutionViewModel: Identifiable {
             errorMessage = "Failed to save swap: \(error.localizedDescription)"
         }
 
+        let rank = swapCandidates.firstIndex { $0.id == newExercise.id }
+        betaEvents.log("swap_taken", [
+            "from": oldExerciseId,
+            "to": newExercise.id,
+            "wasUsualAlternative": swapCandidates.first { $0.id == newExercise.id }?.isUsualAlternative ?? false,
+            "suggestedRank": rank ?? -1,
+        ])
+        // Remember the choice: next time this is the first suggestion.
+        var pref = exercisePreferences[oldExerciseId] ?? ExercisePreference()
+        pref.usualAlternativeId = newExercise.id
+        exercisePreferences[oldExerciseId] = pref
+        await memory?.recordUsualAlternative(for: oldExerciseId, replacement: newExercise.id)
+        swapCandidates = []
         swapTargetExerciseLogIndex = nil
         syncLiveActivity()
     }

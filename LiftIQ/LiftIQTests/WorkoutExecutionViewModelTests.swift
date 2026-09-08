@@ -2346,4 +2346,61 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         await vm.setNote(exerciseId: "bench-press", note: "")
         XCTAssertNil(vm.exercisePreferences["bench-press"]?.note)
     }
+
+    // MARK: - Swap suggestions
+
+    private func chestExercise(_ id: String, equipment: [Equipment], pattern: MovementPattern = .horizontalPush, compound: Bool = true) -> Exercise {
+        Exercise(id: id, name: id, primaryMuscleGroup: .chest, secondaryMuscleGroups: [], equipment: equipment,
+                 movementPattern: pattern, difficulty: .beginner, youtubeVideoId: "", instructions: "", tips: [],
+                 alternatives: [], isCompound: compound, tags: [])
+    }
+
+    func testRequestSwapRanksUsualAlternativeFirstExcludesAvoidedAndSwapRecordsMemory() async {
+        let exercises = FakeExerciseService(exercises: [
+            chestExercise("bench-press", equipment: [.barbell, .bench]),
+            chestExercise("db-press", equipment: [.dumbbell, .bench]),
+            chestExercise("machine-press", equipment: [.machines]),
+            chestExercise("push-up", equipment: [.bodyweight]),
+        ])
+        let memory = FakeMemoryService()
+        let events = FakeBetaEventLogger()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(id: "p1", exerciseId: "bench-press")],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(
+            template: template, userId: "u1", planId: nil,
+            workoutService: FakeWorkoutService(), exerciseService: exercises,
+            progressService: FakeProgressService(), progressionService: ProgressionService(),
+            betaEvents: events, memory: memory
+        )
+        defer { vm.stopTimers() }
+        await vm.start(
+            userUnitSystem: .metric,
+            exercisePreferences: [
+                "bench-press": ExercisePreference(usualAlternativeId: "machine-press"),
+                "push-up": ExercisePreference(avoided: true),
+            ],
+            activeEquipment: Set(Equipment.allCases)
+        )
+
+        vm.requestSwap(exerciseLogIndex: 0)
+
+        XCTAssertEqual(vm.swapCandidates.first?.id, "machine-press")
+        XCTAssertTrue(vm.swapCandidates.first?.isUsualAlternative ?? false)
+        XCTAssertFalse(vm.swapCandidates.contains { $0.id == "push-up" })
+        XCTAssertFalse(vm.swapCandidates.contains { $0.id == "bench-press" })
+
+        await vm.swapExercise(newExercise: exercises.getExercise(id: "db-press")!)
+
+        XCTAssertEqual(memory.recordedAlternatives.first?.exerciseId, "bench-press")
+        XCTAssertEqual(memory.recordedAlternatives.first?.replacement, "db-press")
+        XCTAssertEqual(vm.exercisePreferences["bench-press"]?.usualAlternativeId, "db-press")
+        let taken = events.names("swap_taken").first
+        XCTAssertEqual(taken?.props["from"] as? String, "bench-press")
+        XCTAssertEqual(taken?.props["to"] as? String, "db-press")
+        XCTAssertEqual(taken?.props["wasUsualAlternative"] as? Bool, false)
+        XCTAssertEqual(taken?.props["suggestedRank"] as? Int, 1)
+        XCTAssertTrue(vm.swapCandidates.isEmpty)
+    }
 }
