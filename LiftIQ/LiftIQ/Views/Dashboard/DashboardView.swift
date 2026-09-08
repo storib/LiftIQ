@@ -34,7 +34,7 @@ struct DashboardView: View {
         // The session carries the adaptation so the beta can see which ones
         // get used; the dashboard drops it once the workout is underway.
         if let adapted = viewModel.adaptedWorkout, adapted.template.id == workout.id {
-            vm.session.adaptation = adapted.record
+            vm.applyPreStartAdaptation(adapted)
             viewModel.revertAdaptation()
         }
         workoutExecutionVM = vm

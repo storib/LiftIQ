@@ -131,4 +131,23 @@ final class WorkoutActivityStateBuilderTests: XCTestCase {
         XCTAssertEqual(state.restTotalSeconds, 90)
         XCTAssertTrue(state.isResting)
     }
+
+    func testRestRangeIsStableAndNilOnceExpired() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let end = now.addingTimeInterval(30)
+        let state = WorkoutActivityAttributes.ContentState(
+            exerciseName: "Bench", setLabel: "Set 1 of 3", nextUpLabel: nil,
+            completedSets: 1, totalSets: 3, restEndDate: end, restTotalSeconds: 90
+        )
+        // Mid-rest: lower bound is the rest start, not "now".
+        XCTAssertEqual(state.restRange(now: now), end.addingTimeInterval(-90)...end)
+        // Rendered after the rest ended (app suspended): no inverted range, no trap.
+        XCTAssertNil(state.restRange(now: end.addingTimeInterval(1)))
+        XCTAssertNil(state.restRange(now: end))
+        XCTAssertTrue(state.isResting)
+        // Not resting at all.
+        var idle = state
+        idle.restEndDate = nil
+        XCTAssertNil(idle.restRange(now: now))
+    }
 }

@@ -19,6 +19,17 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var restTotalSeconds: Int?
 
         var isResting: Bool { restEndDate != nil }
+
+        /// Range for `timerInterval` views: stable lower bound (rest start),
+        /// nil once the rest has expired — a `now...end` range with `end`
+        /// in the past is an invalid ClosedRange and traps inside the
+        /// extension, which can render long after the app was suspended.
+        func restRange(now: Date = Date()) -> ClosedRange<Date>? {
+            guard let end = restEndDate, end > now else { return nil }
+            let total = max(1, restTotalSeconds ?? 60)
+            let start = min(end.addingTimeInterval(-Double(total)), now)
+            return start...end
+        }
     }
 
     var workoutName: String

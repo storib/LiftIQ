@@ -25,8 +25,13 @@ struct WorkoutLiveActivity: Widget {
                     .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    if let end = context.state.restEndDate {
-                        RestRing(endDate: end, totalSeconds: context.state.restTotalSeconds ?? 60, size: 44)
+                    if let range = context.state.restRange() {
+                        RestRing(range: range, size: 44)
+                    } else if context.state.isResting {
+                        Text("Rest done")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.trailing, 4)
                     } else {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("\(context.state.completedSets)/\(context.state.totalSets)")
@@ -58,17 +63,20 @@ struct WorkoutLiveActivity: Widget {
                 Image(systemName: "dumbbell.fill")
                     .foregroundStyle(Color.accentColor)
             } compactTrailing: {
-                if let end = context.state.restEndDate {
-                    Text(timerInterval: Date.now...end, countsDown: true)
+                if let range = context.state.restRange() {
+                    Text(timerInterval: range, countsDown: true)
                         .font(.caption.monospacedDigit())
                         .frame(maxWidth: 44)
+                } else if context.state.isResting {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
                 } else {
                     Text("\(context.state.completedSets)/\(context.state.totalSets)")
                         .font(.caption.monospacedDigit())
                 }
             } minimal: {
-                if let end = context.state.restEndDate {
-                    ProgressView(timerInterval: end.addingTimeInterval(-Double(context.state.restTotalSeconds ?? 60))...end, countsDown: true, label: { EmptyView() }, currentValueLabel: { EmptyView() })
+                if let range = context.state.restRange() {
+                    ProgressView(timerInterval: range, countsDown: true, label: { EmptyView() }, currentValueLabel: { EmptyView() })
                         .progressViewStyle(.circular)
                         .tint(Color.accentColor)
                 } else {
@@ -114,10 +122,20 @@ private struct LockScreenView: View {
                     }
                 }
                 Spacer(minLength: 8)
-                if let end = context.state.restEndDate {
+                if let range = context.state.restRange() {
                     VStack(spacing: 2) {
-                        RestRing(endDate: end, totalSeconds: context.state.restTotalSeconds ?? 60, size: 52)
+                        RestRing(range: range, size: 52)
                         Text("rest")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if context.state.isResting {
+                    // Rest ran out while the app was suspended; the next set is up.
+                    VStack(spacing: 2) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(Color.accentColor)
+                        Text("rest done")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -137,19 +155,18 @@ private struct LockScreenView: View {
     }
 }
 
-/// Circular countdown that runs on its own via `timerInterval`.
+/// Circular countdown that runs on its own via `timerInterval`. The range
+/// comes from `ContentState.restRange`, which is never inverted.
 private struct RestRing: View {
-    let endDate: Date
-    let totalSeconds: Int
+    let range: ClosedRange<Date>
     let size: CGFloat
 
     var body: some View {
-        let start = endDate.addingTimeInterval(-Double(max(1, totalSeconds)))
         ZStack {
-            ProgressView(timerInterval: start...endDate, countsDown: true, label: { EmptyView() }, currentValueLabel: { EmptyView() })
+            ProgressView(timerInterval: range, countsDown: true, label: { EmptyView() }, currentValueLabel: { EmptyView() })
                 .progressViewStyle(.circular)
                 .tint(Color.accentColor)
-            Text(timerInterval: Date.now...endDate, countsDown: true)
+            Text(timerInterval: range, countsDown: true)
                 .font(.system(size: size * 0.26, weight: .semibold, design: .rounded).monospacedDigit())
                 .multilineTextAlignment(.center)
                 .frame(width: size * 0.9)

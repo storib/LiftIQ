@@ -53,4 +53,9 @@ struct AdaptedWorkout: Hashable {
     var minutesAfter: Int
     var sourceTemplateId: String
     var planId: String?
+
+    /// An adaptation that leaves nothing to do must not be startable.
+    var isUsable: Bool {
+        !template.exerciseGroups.flatMap(\.exercises).isEmpty
+    }
 }

@@ -125,6 +125,18 @@ final class WorkoutExecutionViewModel: Identifiable {
     private(set) var activeEquipment: Set<Equipment> = Set(Equipment.allCases)
     private let memory: (any MemoryServicing)?
 
+    /// Stamps a pre-start adaptation onto the session: the record for the
+    /// beta signal, and the effective template so resume honours it.
+    func applyPreStartAdaptation(_ adapted: AdaptedWorkout) {
+        session.adaptation = adapted.record
+        session.templateOverride = adapted.template
+    }
+
+    /// A one-session AI edit made before starting (plan untouched).
+    func applyPreStartTemplateOverride(_ template: WorkoutTemplate) {
+        session.templateOverride = template
+    }
+
     /// Saves a per-exercise note to the profile and mirrors it locally so
     /// the card updates without a reload.
     func setNote(exerciseId: String, note: String?) async {
@@ -407,11 +419,18 @@ final class WorkoutExecutionViewModel: Identifiable {
     /// session's plan. Best effort — when the plan or template is gone the
     /// session simply behaves as straight sets (the pre-existing behavior).
     private func rebuildTemplateContextIfNeeded() async {
-        guard templateGroups.isEmpty, let planId = session.planId else { return }
-        try? await workoutService.loadPlans(userId: userId)
-        guard let plan = workoutService.plans.first(where: { $0.id == planId }),
-              let template = plan.workouts.first(where: { $0.id == session.workoutTemplateId })
-        else { return }
+        guard templateGroups.isEmpty else { return }
+        // A session started from an adapted or one-session-edited day
+        // carries that template; the plan's saved day would silently undo
+        // the adaptation (rest, sets, swaps) on relaunch.
+        var source = session.templateOverride
+        if source == nil, let planId = session.planId {
+            try? await workoutService.loadPlans(userId: userId)
+            source = workoutService.plans
+                .first(where: { $0.id == planId })?
+                .workouts.first(where: { $0.id == session.workoutTemplateId })
+        }
+        guard let template = source else { return }
         // Mid-workout removals and swaps are session-scoped and deliberately
         // never written back to the plan, so the saved template can name more
         // exercises than the session holds, or different ones. Realign before

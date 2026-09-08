@@ -290,6 +290,7 @@ struct WorkoutDayDetailView: View {
             memory: dependencies.memoryService
         )
         vm.scrollToExerciseLogIndex = logIndex
+        if isTemporarilyModified { vm.applyPreStartTemplateOverride(workout) }
         workoutExecutionVM = vm
     }
 }

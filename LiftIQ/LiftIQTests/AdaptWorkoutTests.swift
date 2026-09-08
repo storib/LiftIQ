@@ -206,4 +206,90 @@ final class AdaptWorkoutTests: XCTestCase {
         XCTAssertEqual(workout.startedSessions.first?.adaptation?.kind, .shortOnTime)
         XCTAssertEqual(events.names("session_started").first?.props["adapted"] as? String, "shortOnTime")
     }
+
+    // MARK: - Review fixes
+
+    func testResumeRebuildsPrescriptionsFromTheSessionTemplateOverride() async {
+        // Plan day rests 180 s; the adapted session shortened it to 90 s.
+        var planDay = template(["bench", "cable-fly"])
+        planDay.exerciseGroups[0].exercises[0].restSeconds = 180
+        var adaptedDay = planDay
+        adaptedDay.exerciseGroups[0].exercises[0].restSeconds = 90
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [planDay])]
+        workout.activePlan = workout.plans[0]
+
+        var existing = WorkoutSession.create(from: adaptedDay, userId: "u1", planId: "plan-1")
+        existing.templateOverride = adaptedDay
+        let vm = WorkoutExecutionViewModel(
+            existingSession: existing, workoutService: workout, exerciseService: FakeExerciseService(exercises: catalog),
+            progressService: FakeProgressService(), progressionService: ProgressionService()
+        )
+        defer { vm.stopTimers() }
+
+        await vm.start(userUnitSystem: .metric)
+
+        XCTAssertEqual(vm.plannedExercise(for: "bench")?.restSeconds, 90)
+        XCTAssertEqual(vm.restDuration(forExerciseLogIndex: 0, setIndex: 2).seconds, 90)
+    }
+
+    func testResumeWithoutOverrideStillUsesThePlan() async {
+        var planDay = template(["bench", "cable-fly"])
+        planDay.exerciseGroups[0].exercises[0].restSeconds = 180
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [planDay])]
+        let existing = WorkoutSession.create(from: planDay, userId: "u1", planId: "plan-1")
+        let vm = WorkoutExecutionViewModel(
+            existingSession: existing, workoutService: workout, exerciseService: FakeExerciseService(exercises: catalog),
+            progressService: FakeProgressService(), progressionService: ProgressionService()
+        )
+        defer { vm.stopTimers() }
+        await vm.start(userUnitSystem: .metric)
+        XCTAssertEqual(vm.plannedExercise(for: "bench")?.restSeconds, 180)
+    }
+
+    func testApplyPreStartAdaptationStampsRecordAndTemplate() {
+        let day = template(["bench", "cable-fly"])
+        let adapted = WorkoutAdapter.shortOnTime(day, targetMinutes: 10, context: .init(exercises: Dictionary(uniqueKeysWithValues: catalog.map { ($0.id, $0) })))
+        let vm = WorkoutExecutionViewModel(
+            template: adapted.template, userId: "u1", planId: "plan-1",
+            workoutService: FakeWorkoutService(), exerciseService: FakeExerciseService(exercises: catalog),
+            progressService: FakeProgressService(), progressionService: ProgressionService()
+        )
+        vm.applyPreStartAdaptation(adapted)
+        XCTAssertEqual(vm.session.adaptation?.kind, .shortOnTime)
+        XCTAssertEqual(vm.session.templateOverride, adapted.template)
+    }
+
+    func testActiveEquipmentFollowsTheAdaptedGym() {
+        let home = GymSetup(id: "home", name: "Home", equipment: [.dumbbell, .bench], isDefault: false)
+        let main = GymSetup(id: "main", name: "Gym", equipment: Equipment.allCases, isDefault: true)
+        let p = profile(setups: [main, home])
+        var session = completedSession(templateId: "day-1", at: t0)
+        XCTAssertEqual(session.activeEquipment(in: p), Set(Equipment.allCases))
+
+        session.adaptation = WorkoutAdaptation(kind: .differentGym, gymSetupId: "home", changes: [], usedAI: false, acceptedAt: t0)
+        XCTAssertEqual(session.activeEquipment(in: p), [.dumbbell, .bench])
+
+        // A setup deleted since the session started falls back to the default.
+        session.adaptation?.gymSetupId = "gone"
+        XCTAssertEqual(session.activeEquipment(in: p), Set(Equipment.allCases))
+        XCTAssertEqual(session.activeEquipment(in: nil), Set(Equipment.allCases))
+    }
+
+    func testEmptyWorkoutAfterRemovalIsNotAcceptable() async {
+        let bands = GymSetup(id: "bands", name: "Bands", equipment: [.bands], isDefault: false)
+        let events = FakeBetaEventLogger()
+        let vm = makeAdaptVM(kind: .differentGym, template: template(["bench"]),
+                             profile: profile(setups: [GymSetup(id: "main", name: "Gym", equipment: Equipment.allCases, isDefault: true), bands]),
+                             events: events)
+        await vm.prepare()
+        await vm.chooseSetup(bands)
+        vm.dropUnresolved()
+
+        XCTAssertEqual(vm.result?.isUsable, false)
+        let accepted = await vm.accept()
+        XCTAssertNil(accepted, "an empty workout must never be handed to Start")
+        XCTAssertTrue(events.names("adapt_chosen").isEmpty)
+    }
 }

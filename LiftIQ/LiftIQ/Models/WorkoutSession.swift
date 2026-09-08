@@ -16,6 +16,11 @@ struct WorkoutSession: Codable, Identifiable, Hashable {
     /// How today's workout was adapted before it started, if it was.
     /// Optional-and-last so existing documents decode unchanged.
     var adaptation: WorkoutAdaptation? = nil
+    /// The template this session actually runs when it differs from the
+    /// plan's saved day (an adaptation or a one-session AI edit). Resume
+    /// rebuilds prescriptions from this instead of the plan, so shortened
+    /// rest or swapped slots survive a relaunch.
+    var templateOverride: WorkoutTemplate? = nil
 
     var totalVolumeKg: Double {
         exerciseLogs.reduce(0) { $0 + $1.totalVolume }
@@ -148,6 +153,23 @@ extension WorkoutSession {
             notes: nil,
             mood: nil
         )
+    }
+}
+
+// MARK: - Equipment in effect
+
+extension WorkoutSession {
+    /// The equipment swaps should stay within: the adaptation's gym when
+    /// the session was adapted to another gym, else the profile's default.
+    /// Read on start and on resume, so a hotel workout never suggests the
+    /// home gym's machines.
+    func activeEquipment(in profile: UserProfile?) -> Set<Equipment> {
+        guard let profile else { return Set(Equipment.allCases) }
+        if let setupId = adaptation?.gymSetupId,
+           let setup = profile.effectiveGymSetups.first(where: { $0.id == setupId }) {
+            return Set(setup.equipment)
+        }
+        return Set(profile.effectiveGymSetup.equipment)
     }
 }
 

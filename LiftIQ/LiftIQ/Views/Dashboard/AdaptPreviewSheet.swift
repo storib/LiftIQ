@@ -213,6 +213,11 @@ struct AdaptPreviewSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+                if !result.isUsable {
+                    Label("This gym's equipment can't support any of today's exercises. Add equipment to the setup in Profile → Equipment, or let Claude find replacements.", systemImage: "exclamationmark.triangle")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.liftWarning)
+                }
             }
 
             if !result.changes.isEmpty {
@@ -245,7 +250,7 @@ struct AdaptPreviewSheet: View {
                 } label: {
                     Text("Use this workout").font(.headline).frame(maxWidth: .infinity)
                 }
-                .disabled(result.changes.isEmpty)
+                .disabled(result.changes.isEmpty || !result.isUsable)
             } footer: {
                 Text("Only today's session changes. Your saved plan stays as it is.")
             }

@@ -231,7 +231,7 @@ final class AdaptWorkoutViewModel {
     /// Hands the adaptation back and remembers what it can: the chosen
     /// busy-equipment swap becomes that exercise's usual alternative.
     func accept() async -> AdaptedWorkout? {
-        guard let result else { return nil }
+        guard let result, result.isUsable else { return nil }
         betaEvents.log("adapt_chosen", [
             "kind": kind.rawValue, "accepted": true, "changesCount": result.changes.count,
             "usedAI": result.record.usedAI, "targetMinutes": result.record.targetMinutes ?? -1,
