@@ -3,10 +3,22 @@ import SwiftUI
 struct ExerciseGuidanceView: View {
     let exercise: Exercise
     var showsVideo: Bool = true
+    /// Memory hooks; the section only renders when a save callback exists.
+    var note: String? = nil
+    var onSaveNote: ((String?) -> Void)? = nil
+    var isAvoided: Bool = false
+    var onToggleAvoid: ((Bool) -> Void)? = nil
+
+    @State private var draftNote: String = ""
+    @FocusState private var noteFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
+
+            if onSaveNote != nil || onToggleAvoid != nil {
+                memorySection
+            }
 
             if showsVideo, !exercise.youtubeVideoId.isEmpty {
                 YouTubePlayerView(videoId: exercise.youtubeVideoId)
@@ -35,6 +47,37 @@ struct ExerciseGuidanceView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .labelStyle(.titleAndIcon)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// "Seat 4, wide grip" — the small things worth remembering, kept on
+    /// the profile so they follow the lifter to every plan.
+    private var memorySection: some View {
+        guidanceSection(title: "My notes", systemImage: "note.text") {
+            VStack(alignment: .leading, spacing: 10) {
+                if let onSaveNote {
+                    TextField("Seat height, grip, cues that work for you…", text: $draftNote, axis: .vertical)
+                        .lineLimit(1...4)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($noteFocused)
+                        .onAppear { draftNote = note ?? "" }
+                        .onChange(of: noteFocused) { _, focused in
+                            if !focused, draftNote != (note ?? "") { onSaveNote(draftNote) }
+                        }
+                        .onSubmit { onSaveNote(draftNote) }
+                }
+                if let onToggleAvoid {
+                    Toggle(isOn: Binding(get: { isAvoided }, set: { onToggleAvoid($0) })) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Avoid this exercise")
+                                .font(.subheadline)
+                            Text("Left out of swap suggestions and gym adaptations.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

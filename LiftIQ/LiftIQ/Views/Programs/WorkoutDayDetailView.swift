@@ -159,8 +159,18 @@ struct WorkoutDayDetailView: View {
         .sheet(item: $selectedExercise) { exercise in
             NavigationStack {
                 ScrollView {
-                    ExerciseGuidanceView(exercise: exercise)
-                        .padding()
+                    ExerciseGuidanceView(
+                        exercise: exercise,
+                        note: dependencies.memoryService.preferences[exercise.id]?.note,
+                        onSaveNote: { note in
+                            Task { try? await dependencies.memoryService.setNote(note, for: exercise.id) }
+                        },
+                        isAvoided: dependencies.memoryService.preferences[exercise.id]?.isAvoided ?? false,
+                        onToggleAvoid: { avoided in
+                            Task { try? await dependencies.memoryService.setAvoided(avoided, for: exercise.id) }
+                        }
+                    )
+                    .padding()
                 }
                 .background(Color.liftBackground)
                 .navigationTitle("Exercise Guide")
@@ -276,7 +286,8 @@ struct WorkoutDayDetailView: View {
             progressionService: dependencies.progressionService,
             startSource: "day",
             betaEvents: dependencies.betaEvents,
-            liveActivity: dependencies.liveActivityController
+            liveActivity: dependencies.liveActivityController,
+            memory: dependencies.memoryService
         )
         vm.scrollToExerciseLogIndex = logIndex
         workoutExecutionVM = vm

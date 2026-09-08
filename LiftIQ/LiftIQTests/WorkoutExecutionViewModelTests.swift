@@ -2318,4 +2318,32 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
 
         XCTAssertLessThan(live.latestState?.totalSets ?? before, before)
     }
+
+    // MARK: - Memory
+
+    func testSetNoteAndAvoidPersistThroughMemoryService() async {
+        let memory = FakeMemoryService()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(id: "p1", exerciseId: "bench-press")],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(
+            template: template, userId: "u1", planId: nil,
+            workoutService: FakeWorkoutService(), exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(), progressionService: ProgressionService(),
+            memory: memory
+        )
+        defer { vm.stopTimers() }
+
+        await vm.setNote(exerciseId: "bench-press", note: "  Seat 4  ")
+        await vm.setAvoided(exerciseId: "bench-press", avoided: true)
+
+        XCTAssertEqual(vm.exercisePreferences["bench-press"]?.note, "Seat 4")
+        XCTAssertTrue(vm.exercisePreferences["bench-press"]?.isAvoided ?? false)
+        XCTAssertEqual(memory.notes["bench-press"] ?? nil, "Seat 4")
+        XCTAssertEqual(memory.avoided["bench-press"], true)
+
+        await vm.setNote(exerciseId: "bench-press", note: "")
+        XCTAssertNil(vm.exercisePreferences["bench-press"]?.note)
+    }
 }

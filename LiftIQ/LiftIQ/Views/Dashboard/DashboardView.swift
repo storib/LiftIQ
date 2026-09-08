@@ -46,7 +46,8 @@ struct DashboardView: View {
             progressService: dependencies.progressService,
             progressionService: dependencies.progressionService,
             betaEvents: dependencies.betaEvents,
-            liveActivity: dependencies.liveActivityController
+            liveActivity: dependencies.liveActivityController,
+            memory: dependencies.memoryService
         )
     }
 
@@ -270,7 +271,8 @@ struct DashboardView: View {
                                         progressionService: dependencies.progressionService,
                                         startSource: "dashboard",
                                         betaEvents: dependencies.betaEvents,
-            liveActivity: dependencies.liveActivityController
+            liveActivity: dependencies.liveActivityController,
+            memory: dependencies.memoryService
                                     )
                                 }
                             } label: {

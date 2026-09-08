@@ -64,6 +64,13 @@ struct ExerciseCardView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                         }
+                        if let note = viewModel.exercisePreferences[exerciseLog.exerciseId]?.note, !note.isEmpty {
+                            Label(note, systemImage: "note.text")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .accessibilityLabel("Your note: \(note)")
+                        }
                     }
                     Spacer()
                     Button {
@@ -89,8 +96,18 @@ struct ExerciseCardView: View {
                     Divider()
 
                     DisclosureGroup(isExpanded: $showGuidance) {
-                        ExerciseGuidanceView(exercise: exerciseDetail)
-                            .padding(.top, 8)
+                        ExerciseGuidanceView(
+                            exercise: exerciseDetail,
+                            note: viewModel.exercisePreferences[exerciseDetail.id]?.note,
+                            onSaveNote: { note in
+                                Task { await viewModel.setNote(exerciseId: exerciseDetail.id, note: note) }
+                            },
+                            isAvoided: viewModel.exercisePreferences[exerciseDetail.id]?.isAvoided ?? false,
+                            onToggleAvoid: { avoided in
+                                Task { await viewModel.setAvoided(exerciseId: exerciseDetail.id, avoided: avoided) }
+                            }
+                        )
+                        .padding(.top, 8)
                     } label: {
                         Label("Form, cues, and video", systemImage: "play.rectangle")
                             .font(.caption.weight(.semibold))

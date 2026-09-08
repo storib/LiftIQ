@@ -81,7 +81,8 @@ struct WorkoutHistoryView: View {
             progressionService: dependencies.progressionService,
             startSource: "history",
             betaEvents: dependencies.betaEvents,
-            liveActivity: dependencies.liveActivityController
+            liveActivity: dependencies.liveActivityController,
+            memory: dependencies.memoryService
         )
     }
 

@@ -45,10 +45,27 @@ struct ProfileView: View {
                 }
 
                 Section("Equipment") {
-                    let equipmentList = user.profile.availableEquipment.map { $0.displayName }.joined(separator: ", ")
-                    Text(equipmentList)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    NavigationLink {
+                        EditEquipmentView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(user.profile.effectiveGymSetup.name)
+                                Spacer()
+                                Text("\(user.profile.effectiveGymSetup.equipment.count) items")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(user.profile.effectiveGymSetup.equipment.map(\.displayName).joined(separator: ", "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                            if user.profile.effectiveGymSetups.count > 1 {
+                                Text("+ \(user.profile.effectiveGymSetups.count - 1) more gym\(user.profile.effectiveGymSetups.count == 2 ? "" : "s")")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
                 }
 
                 Section {
@@ -65,6 +82,9 @@ struct ProfileView: View {
                         }
                     } else {
                         LabeledContent("Rest Duration", value: "Program default")
+                    }
+                    NavigationLink("Weight Increments") {
+                        WeightIncrementsView()
                     }
                     Toggle("Long Workout Reminder", isOn: $sessionReminderEnabled)
                     Toggle("Show Workout on Lock Screen", isOn: $liveActivityEnabled)

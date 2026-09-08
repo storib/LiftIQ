@@ -123,6 +123,24 @@ final class WorkoutExecutionViewModel: Identifiable {
     var exercisePreferences: [String: ExercisePreference] = [:]
     /// The default gym's equipment; swap candidates stay within it.
     private(set) var activeEquipment: Set<Equipment> = Set(Equipment.allCases)
+    private let memory: (any MemoryServicing)?
+
+    /// Saves a per-exercise note to the profile and mirrors it locally so
+    /// the card updates without a reload.
+    func setNote(exerciseId: String, note: String?) async {
+        let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var pref = exercisePreferences[exerciseId] ?? ExercisePreference()
+        pref.note = (trimmed ?? "").isEmpty ? nil : trimmed
+        exercisePreferences[exerciseId] = pref
+        try? await memory?.setNote(trimmed, for: exerciseId)
+    }
+
+    func setAvoided(exerciseId: String, avoided: Bool) async {
+        var pref = exercisePreferences[exerciseId] ?? ExercisePreference()
+        pref.avoided = avoided ? true : nil
+        exercisePreferences[exerciseId] = pref
+        try? await memory?.setAvoided(avoided, for: exerciseId)
+    }
 
     // MARK: - Rest Timer
 
@@ -236,7 +254,8 @@ final class WorkoutExecutionViewModel: Identifiable {
         progressionService: ProgressionService,
         startSource: String = "unknown",
         betaEvents: any BetaEventLogging = NoopBetaEventLogger(),
-        liveActivity: (any WorkoutLiveActivitying)? = nil
+        liveActivity: (any WorkoutLiveActivitying)? = nil,
+        memory: (any MemoryServicing)? = nil
     ) {
         self.workoutService = workoutService
         self.exerciseService = exerciseService
@@ -244,6 +263,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         self.progressionService = progressionService
         self.betaEvents = betaEvents
         self.liveActivity = liveActivity
+        self.memory = memory
         self.startSource = startSource
         self.isResumed = false
         self.userId = userId
@@ -264,7 +284,8 @@ final class WorkoutExecutionViewModel: Identifiable {
         progressService: any ProgressServicing,
         progressionService: ProgressionService,
         betaEvents: any BetaEventLogging = NoopBetaEventLogger(),
-        liveActivity: (any WorkoutLiveActivitying)? = nil
+        liveActivity: (any WorkoutLiveActivitying)? = nil,
+        memory: (any MemoryServicing)? = nil
     ) {
         self.workoutService = workoutService
         self.exerciseService = exerciseService
@@ -272,6 +293,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         self.progressionService = progressionService
         self.betaEvents = betaEvents
         self.liveActivity = liveActivity
+        self.memory = memory
         self.startSource = "resume"
         self.isResumed = true
         self.userId = existingSession.userId
