@@ -67,11 +67,27 @@ final class WorkoutExecutionViewModel: Identifiable {
     // MARK: - Rest Timer
 
     let restTimer = RestTimerController()
+    /// "Still working out?" reminder. Cancelled only on finish/abandon —
+    /// never in `stopTimers()`, which runs when the screen merely disappears.
+    private let sessionReminder = SessionReminderScheduler()
+
+    /// A resumed session the lifter almost certainly forgot to finish; the
+    /// screen shows a banner and Finish ends it at the last set.
+    var isResumedStale: Bool { session.isLikelyForgotten }
+
+    func scheduleSessionReminderIfNeeded() {
+        guard session.status == .inProgress else { return }
+        sessionReminder.schedule(for: session)
+    }
 
     // MARK: - PR Tracking
 
     var newPR: PersonalRecord?
     var sessionPRs: [PersonalRecord] = []
+
+    /// Milestones this session crossed, loaded after completion so the
+    /// summary never waits on the network. Empty on any fetch failure.
+    var milestones: [Milestone] = []
 
     // Session-scoped cache of each exercise's existing PRs so completing a
     // set doesn't re-query Firestore on every checkmark tap.
@@ -1041,8 +1057,12 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.durationSeconds = elapsedSeconds
 
         do {
-            session = try await workoutService.completeSession(session)
+            // A forgotten session ends at its last set, not at the moment
+            // the lifter noticed; the service derives duration from the end.
+            session = try await workoutService.completeSession(session, endingAt: session.inferredFinishDate())
+            sessionReminder.cancel()
             showingSummary = true
+            await loadMilestones()
         } catch {
             errorMessage = "Failed to complete workout: \(error.localizedDescription)"
         }
@@ -1070,9 +1090,31 @@ final class WorkoutExecutionViewModel: Identifiable {
 
         do {
             try await workoutService.abandonSession(session)
+            sessionReminder.cancel()
         } catch {
             errorMessage = "Failed to abandon workout: \(error.localizedDescription)"
         }
+    }
+
+    private func loadMilestones() async {
+        guard let completedAt = session.completedAt else { return }
+        let since = Calendar.current.date(byAdding: .weekOfYear, value: -Milestones.streakWindowWeeks, to: completedAt) ?? .distantPast
+        guard let count = try? await workoutService.completedSessionCount(userId: userId),
+              let dates = try? await workoutService.completedSessionDates(userId: userId, since: since) else { return }
+        let target = workoutService.plans.first { $0.id == session.planId }?.workoutsPerWeek
+            ?? workoutService.activePlan?.workoutsPerWeek ?? 2
+        // The just-saved session may not be in the fetched dates yet
+        // (eventual read-after-write); make sure it's counted once.
+        var allDates = dates
+        if !allDates.contains(where: { abs($0.timeIntervalSince(session.startedAt)) < 1 }) {
+            allDates.append(session.startedAt)
+        }
+        milestones = Milestones.evaluate(
+            totalCompletedCount: count,
+            completedSessionDates: allDates,
+            weeklyTarget: target,
+            now: completedAt
+        )
     }
 
     func saveMoodAndNotes(mood: Int?, notes: String?) async {

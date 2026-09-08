@@ -23,6 +23,10 @@ struct SessionDetailView: View {
         List {
             summarySection
 
+            if viewModel.isEditing, viewModel.canEditTimes {
+                timeSection
+            }
+
             ForEach(viewModel.session.exerciseLogs.sorted(by: { $0.order < $1.order })) { log in
                 exerciseSection(log)
             }
@@ -53,7 +57,7 @@ struct SessionDetailView: View {
                             }
                         }
                         .font(.body.weight(.semibold))
-                        .disabled(viewModel.isSaving)
+                        .disabled(!viewModel.canSave)
                     }
                 } else {
                     Button("Edit") { viewModel.beginEditing(unitSystem: unitSystem) }
@@ -95,6 +99,32 @@ struct SessionDetailView: View {
                     value: "\(Int(UnitConversionService.convertWeight(viewModel.session.totalVolumeKg, to: unitSystem)))",
                     label: "\(weightUnit) total"
                 )
+            }
+        }
+    }
+
+    private var timeSection: some View {
+        Section {
+            DatePicker(
+                "Started",
+                selection: Binding(get: { viewModel.startInput }, set: { viewModel.startInput = $0 }),
+                in: ...Date(),
+                displayedComponents: [.date, .hourAndMinute]
+            )
+            DatePicker(
+                "Finished",
+                selection: Binding(get: { viewModel.endInput }, set: { viewModel.endInput = $0 }),
+                in: ...Date(),
+                displayedComponents: [.date, .hourAndMinute]
+            )
+            LabeledContent("Duration", value: Formatters.durationString(from: viewModel.editedDurationSeconds))
+        } header: {
+            Text("Time")
+        } footer: {
+            if let message = viewModel.timeValidationMessage {
+                Text(message).foregroundStyle(.red)
+            } else {
+                Text("Changing the times also updates this workout in Apple Health.")
             }
         }
     }

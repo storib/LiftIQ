@@ -114,6 +114,8 @@ final class AuthService {
 
         _ = try await functions.httpsCallable("deleteAccount").call([:])
         try? Auth.auth().signOut()
+        // Device-local caches keyed by this user go too.
+        WeeklyInsightsStore().clear(userId: userId)
 
         currentUserId = nil
         currentUser = nil

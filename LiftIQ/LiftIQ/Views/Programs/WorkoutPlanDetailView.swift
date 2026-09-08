@@ -15,8 +15,8 @@ struct WorkoutPlanDetailView: View {
             Section {
                 LabeledContent("Template", value: plan.templateType.displayName)
                 LabeledContent("Goal", value: plan.goal.displayName)
-                LabeledContent("Duration", value: "\(plan.weekCount) weeks")
-                LabeledContent("Current Week", value: "\(plan.currentWeek)")
+                LabeledContent("Block Length", value: "\(plan.weekCount) weeks")
+                LabeledContent("Block", value: "\(plan.effectiveBlockNumber)")
                 if let deload = plan.deloadWeek {
                     LabeledContent("Deload Week", value: "\(deload)")
                 }

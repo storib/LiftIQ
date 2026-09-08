@@ -69,6 +69,10 @@ struct WorkoutExecutionView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
 
+                if viewModel.isResumedStale {
+                    staleSessionBanner
+                }
+
                 // Exercise list
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -221,6 +225,7 @@ struct WorkoutExecutionView: View {
             WorkoutSummaryView(
                 session: viewModel.session,
                 sessionPRs: viewModel.sessionPRs,
+                milestones: viewModel.milestones,
                 unitSystem: viewModel.unitSystem,
                 onSaveMoodAndNotes: { mood, notes in
                     Task {
@@ -240,6 +245,9 @@ struct WorkoutExecutionView: View {
             // Ask before the first rest timer needs it — the prompt landing
             // mid-set (and gating that set's notification) was the old flow.
             await RestTimerController.requestNotificationAuthorizationIfNeeded()
+            // After the prompt, so a first-ever workout's reminder isn't
+            // dropped by the settings check while permission is undecided.
+            viewModel.scheduleSessionReminderIfNeeded()
         }
         .onDisappear {
             viewModel.stopTimers()
@@ -251,6 +259,23 @@ struct WorkoutExecutionView: View {
                 viewModel.refreshTimersFromWallClock()
             }
         }
+    }
+
+    private var staleSessionBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .foregroundStyle(Color.liftWarning)
+            Text("Looks like this ran long. Finish will end it at your last set.")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.liftWarning.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+        .padding(.bottom, 8)
     }
 
     private var restTimerBottomPadding: CGFloat {

@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var settingsError: String?
     @State private var showingGettingStarted = false
     @State private var restAlertsDenied = false
+    @State private var sessionReminderEnabled = SessionReminderScheduler.isEnabled
 
     var body: some View {
         List {
@@ -63,13 +64,14 @@ struct ProfileView: View {
                     } else {
                         LabeledContent("Rest Duration", value: "Program default")
                     }
+                    Toggle("Long Workout Reminder", isOn: $sessionReminderEnabled)
                     if restAlertsDenied {
                         Button {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
                         } label: {
-                            Label("Turn On Rest-Timer Alerts", systemImage: "bell.badge")
+                            Label("Turn On Workout Alerts", systemImage: "bell.badge")
                         }
                     }
                 } header: {
@@ -103,7 +105,7 @@ struct ProfileView: View {
                 ))
 
                 if AIConsentManager.hasConsented {
-                    Text("Training profile and injury data may be sent to Anthropic (Claude AI) when generating workout plans.")
+                    Text("Training profile, injury data, and recent session summaries may be sent to Anthropic (Claude AI) when generating plans or the weekly check-in.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -155,6 +157,9 @@ struct ProfileView: View {
         .onChange(of: defaultRestSeconds) { _, newValue in
             guard customRestEnabled else { return }
             scheduleRestSave(newValue)
+        }
+        .onChange(of: sessionReminderEnabled) { _, enabled in
+            SessionReminderScheduler.isEnabled = enabled
         }
         .onChange(of: customRestEnabled) { _, enabled in
             // Toggling is a deliberate action — persist immediately rather
@@ -254,8 +259,11 @@ struct ProfileView: View {
         var text = customRestEnabled
             ? "Your rest duration applies to every exercise, overriding the rest times in your program."
             : "Rest follows your program's per-exercise values, with 60s when an exercise doesn't specify one."
+        if sessionReminderEnabled {
+            text += " The reminder asks whether you're still training two hours into a workout, in case you forgot to finish it."
+        }
         if restAlertsDenied {
-            text += " Notifications are off, so you won't be alerted when rest ends while the app is in the background."
+            text += " Notifications are off, so you won't be alerted when rest ends in the background or reminded about a long workout."
         }
         return text
     }

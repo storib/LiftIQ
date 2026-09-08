@@ -21,13 +21,19 @@ protocol WorkoutServicing: AnyObject {
     func loadPlans(userId: String) async throws
     func loadRecentSessions(userId: String) async throws
     func completedSessionDates(userId: String, since: Date) async throws -> [Date]
+    func completedSessions(userId: String, since: Date) async throws -> [WorkoutSession]
+    func completedSessionCount(userId: String) async throws -> Int
     func loadActiveSession(userId: String) async throws
     func savePlan(_ plan: WorkoutPlan) async throws
     func deletePlan(userId: String, planId: String) async throws
     func startSession(_ session: WorkoutSession) async throws
     func updateSession(_ session: WorkoutSession) async throws
     @discardableResult
-    func completeSession(_ session: WorkoutSession) async throws -> WorkoutSession
+    func completeSession(_ session: WorkoutSession, endingAt end: Date) async throws -> WorkoutSession
+    /// Rewrites a completed session's start/end (and derived duration) and
+    /// replaces its Apple Health export. Throws for non-completed sessions.
+    @discardableResult
+    func updateSessionTimes(_ session: WorkoutSession, startedAt: Date, completedAt: Date) async throws -> WorkoutSession
     func abandonSession(_ session: WorkoutSession) async throws
     func deleteSession(_ session: WorkoutSession) async throws
     func getRecentExerciseLogs(
@@ -82,6 +88,18 @@ protocol HealthKitServicing: AnyObject {
     func fetchExternalActivities(from startDate: Date, to endDate: Date) async throws -> [ExternalActivity]
     func exportSession(_ session: WorkoutSession) async
     func deleteExportedSession(sessionId: String) async
+    @discardableResult
+    func reexportSession(_ session: WorkoutSession) async -> Bool
+    var pendingReexportSessionIds: Set<String> { get }
+    func retryPendingReexports(sessions: [WorkoutSession]) async
+}
+
+extension WorkoutServicing {
+    /// Protocols can't carry default arguments; the common case ends now.
+    @discardableResult
+    func completeSession(_ session: WorkoutSession) async throws -> WorkoutSession {
+        try await completeSession(session, endingAt: Date())
+    }
 }
 
 extension WorkoutService: WorkoutServicing {}

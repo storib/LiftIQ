@@ -94,6 +94,8 @@ export function normalizeModifiedPlan(original: Plan, modified: Plan, userId: st
     userId,
     createdAt: original.createdAt,
     isActive: original.isActive,
+    blockStartedAt: original.blockStartedAt ?? null,
+    blockNumber: original.blockNumber ?? null,
     aiGenerated: true,
     workoutsPerWeek: modified.workouts.length,
     workouts: modified.workouts.map((workout) => {

@@ -2,13 +2,164 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = DashboardViewModel()
     @State private var workoutExecutionVM: WorkoutExecutionViewModel?
     @State private var sessionPendingDeletion: WorkoutSession?
     @State private var healthError: String?
+    @State private var showDiscardConfirmation = false
+    @State private var weeklyCheckIn = WeeklyCheckInViewModel()
 
     private var unitSystem: UnitSystem {
         dependencies.authService.currentUser?.profile.unitSystem ?? .imperial
+    }
+
+    /// "Up Next · Block 1 · Week 3 of 6" once a plan has block progress.
+    private var upNextLabel: String {
+        guard let progress = viewModel.blockProgress, !progress.isComplete else { return "Up Next" }
+        return "Up Next \u{2022} Block \(progress.blockNumber) \u{2022} Week \(progress.currentWeek) of \(progress.weekCount)"
+    }
+
+    private func prepareWeeklyCheckIn() {
+        weeklyCheckIn.prepare(
+            userId: dependencies.authService.currentUserId,
+            sessions: viewModel.completedSessions,
+            plan: dependencies.workoutService.activePlan,
+            profile: dependencies.authService.currentUser?.profile,
+            unitSystem: unitSystem
+        )
+    }
+
+    private func keepGoing(_ plan: WorkoutPlan) async {
+        do {
+            try await viewModel.startNextBlock(plan: plan, workoutService: dependencies.workoutService)
+        } catch {
+            viewModel.repairError = "Couldn't start the next block: \(error.localizedDescription)"
+        }
+    }
+
+    private func resume(_ session: WorkoutSession) {
+        workoutExecutionVM = WorkoutExecutionViewModel(
+            existingSession: session,
+            workoutService: dependencies.workoutService,
+            exerciseService: dependencies.exerciseService,
+            progressService: dependencies.progressService,
+            progressionService: dependencies.progressionService
+        )
+    }
+
+    private func activeSessionCard(_ activeSession: WorkoutSession) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "figure.run.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color.liftWarning)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Workout in Progress")
+                        .font(.subheadline.weight(.semibold))
+                    Text("\(activeSession.workoutName) \u{2022} \(Formatters.durationString(from: Int(Date().timeIntervalSince(activeSession.startedAt))))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            Button {
+                resume(activeSession)
+            } label: {
+                Text("Resume Workout")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.liftWarning)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding()
+        .background(Color.liftWarning.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+    }
+
+    /// A session that ran for hours is almost never still going. Offer to
+    /// close it at the last logged set — the repair that fixes both the
+    /// stored duration and the Apple Health export — before resuming.
+    private func staleSessionCard(_ session: WorkoutSession) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .font(.title2)
+                    .foregroundStyle(Color.liftWarning)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Looks like this ran long")
+                        .font(.subheadline.weight(.semibold))
+                    Text(staleSubtitle(session))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if session.lastCompletedSetAt != nil {
+                Button {
+                    Task { await finishStale() }
+                } label: {
+                    Text("Finish at last set")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.liftWarning)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .disabled(viewModel.isRepairing)
+            }
+            HStack(spacing: 12) {
+                Button("Resume") { resume(session) }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                Button("Discard", role: .destructive) { showDiscardConfirmation = true }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .disabled(viewModel.isRepairing)
+        }
+        .padding()
+        .background(Color.liftWarning.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .confirmationDialog("Discard this workout?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+            Button("Discard Workout", role: .destructive) {
+                Task { await discardStale() }
+            }
+        } message: {
+            Text("Its sets and any records they set will be removed.")
+        }
+    }
+
+    private func staleSubtitle(_ session: WorkoutSession) -> String {
+        let started = "Started \(session.startedAt.relativeDescription.lowercased())"
+        guard let lastSet = session.lastCompletedSetAt else {
+            return "\(session.workoutName) \u{2022} \(started), no sets logged"
+        }
+        return "\(session.workoutName) \u{2022} \(started), last set \(lastSet.formatted(date: .omitted, time: .shortened))"
+    }
+
+    private func finishStale() async {
+        guard let userId = dependencies.authService.currentUserId else { return }
+        await viewModel.finishStaleSessionAtLastSet(
+            workoutService: dependencies.workoutService,
+            healthKitService: dependencies.healthKitService,
+            userId: userId
+        )
+    }
+
+    private func discardStale() async {
+        guard let userId = dependencies.authService.currentUserId else { return }
+        await viewModel.discardStaleSession(
+            workoutService: dependencies.workoutService,
+            healthKitService: dependencies.healthKitService,
+            userId: userId
+        )
     }
 
     var body: some View {
@@ -24,10 +175,11 @@ struct DashboardView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if viewModel.streak > 0 {
-                            Label("\(viewModel.streak)", systemImage: "flame.fill")
+                        if viewModel.weekStreak > 0 {
+                            Label("\(viewModel.weekStreak) wk", systemImage: "flame.fill")
                                 .font(.headline)
                                 .foregroundStyle(.orange)
+                                .accessibilityLabel("\(viewModel.weekStreak) week training streak")
                         }
                     }
                     .padding(.horizontal)
@@ -35,11 +187,20 @@ struct DashboardView: View {
 
                 weekOverview
 
+                if let review = viewModel.blockReview, let plan = dependencies.workoutService.activePlan {
+                    BlockReviewCard(
+                        review: review,
+                        plan: plan,
+                        onKeepGoing: { Task { await keepGoing(plan) } },
+                        onPlanModified: { modified in Task { await keepGoing(modified) } }
+                    )
+                }
+
                 // Next recommended workout — advances as plan days complete
                 if let workout = viewModel.todayWorkout {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Up Next")
+                            Text(upNextLabel)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
@@ -74,6 +235,13 @@ struct DashboardView: View {
                             }
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+
+                            if let progress = viewModel.blockProgress,
+                               progress.isDeloadWeek(dependencies.workoutService.activePlan?.deloadWeek) {
+                                Label("Deload week (optional): keep the weights, cut a set or two.", systemImage: "leaf")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
 
                             HStack {
                                 ForEach(workout.targetMuscleGroups, id: \.self) { group in
@@ -134,42 +302,11 @@ struct DashboardView: View {
                 // Active session recovery
                 if let activeSession = dependencies.workoutService.activeSession,
                    workoutExecutionVM == nil {
-                    VStack(spacing: 12) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "figure.run.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(Color.liftWarning)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Workout in Progress")
-                                    .font(.subheadline.weight(.semibold))
-                                Text("\(activeSession.workoutName) \u{2022} \(Formatters.durationString(from: Int(Date().timeIntervalSince(activeSession.startedAt))))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                        Button {
-                            workoutExecutionVM = WorkoutExecutionViewModel(
-                                existingSession: activeSession,
-                                workoutService: dependencies.workoutService,
-                                exerciseService: dependencies.exerciseService,
-                                progressService: dependencies.progressService,
-                                progressionService: dependencies.progressionService
-                            )
-                        } label: {
-                            Text("Resume Workout")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(Color.liftWarning)
-                                .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
+                    if let stale = viewModel.staleSession, stale.id == activeSession.id {
+                        staleSessionCard(stale)
+                    } else {
+                        activeSessionCard(activeSession)
                     }
-                    .padding()
-                    .background(Color.liftWarning.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .padding(.horizontal)
                 }
 
                 // Quick Stats
@@ -189,6 +326,10 @@ struct DashboardView: View {
                     )
                 }
                 .padding(.horizontal)
+
+                if weeklyCheckIn.state != .hidden {
+                    WeeklyCheckInCard(viewModel: weeklyCheckIn)
+                }
 
                 // Recent Activity
                 if !dependencies.workoutService.recentSessions.isEmpty {
@@ -266,12 +407,36 @@ struct DashboardView: View {
         } message: {
             Text(healthError ?? "")
         }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { viewModel.repairError != nil },
+            set: { if !$0 { viewModel.repairError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.repairError ?? "")
+        }
         .fullScreenCover(item: $workoutExecutionVM) { vm in
             WorkoutExecutionView(viewModel: vm)
                 .environment(dependencies)
         }
         .task {
             await reloadDashboard()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // A session that crossed the threshold while the app was in the
+            // background must show the repair actions the moment we're back.
+            if phase == .active {
+                viewModel.refreshStaleness(workoutService: dependencies.workoutService)
+            }
+        }
+        .task(id: dependencies.workoutService.activeSession?.id) {
+            // Same for the threshold passing while the dashboard stays on
+            // screen: sleep until then, re-evaluate. Cancelled automatically
+            // when the active session changes or the view goes away.
+            guard let wait = viewModel.secondsUntilStale(workoutService: dependencies.workoutService) else { return }
+            try? await Task.sleep(nanoseconds: UInt64((wait + 1) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            viewModel.refreshStaleness(workoutService: dependencies.workoutService)
         }
     }
 
@@ -397,8 +562,10 @@ struct DashboardView: View {
         await viewModel.load(
             workoutService: dependencies.workoutService,
             healthKitService: dependencies.healthKitService,
-            userId: userId
+            userId: userId,
+            progressService: dependencies.progressService
         )
+        prepareWeeklyCheckIn()
     }
 
     private func connectAppleHealth() async {

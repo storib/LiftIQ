@@ -42,7 +42,7 @@ struct WorkoutPlanListView: View {
                             Text("\(plan.templateType.displayName) \u{2022} \(plan.workoutsPerWeek)x/week")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text("Week \(plan.currentWeek) of \(plan.weekCount)")
+                            Text("\(plan.weekCount)-week block \u{2022} Block \(plan.effectiveBlockNumber)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

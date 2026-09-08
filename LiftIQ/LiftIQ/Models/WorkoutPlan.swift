@@ -15,4 +15,12 @@ struct WorkoutPlan: Codable, Identifiable, Hashable {
     var createdAt: Date
     var aiGenerated: Bool
     var aiPromptContext: String?
+    /// Training-block boundaries, stamped by "Keep going" on the block review.
+    /// Declared last with defaults so the memberwise init stays
+    /// source-compatible and existing documents decode unchanged.
+    var blockStartedAt: Date? = nil
+    var blockNumber: Int? = nil
+
+    var effectiveBlockStart: Date { blockStartedAt ?? createdAt }
+    var effectiveBlockNumber: Int { blockNumber ?? 1 }
 }

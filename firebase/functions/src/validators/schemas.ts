@@ -155,6 +155,11 @@ export const WorkoutPlanSchema = z.object({
   createdAt: z.string().datetime(),
   aiGenerated: z.boolean(),
   aiPromptContext: z.string().nullable().optional(),
+  // Training-block boundaries stamped by the client ("Keep going" on the
+  // block review). Zod strips unknown keys, so these must be declared or a
+  // plan-scope AI edit would silently drop them and resurrect the review.
+  blockStartedAt: z.string().datetime().nullable().optional(),
+  blockNumber: z.number().int().min(1).nullable().optional(),
 });
 
 // modifyWorkout request: scope "plan" edits the whole plan permanently
@@ -192,8 +197,39 @@ export const PlateauAnalysisSchema = z.object({
   details: z.string(),
 });
 
+// Weekly check-in request: two weeks of session summaries plus top sets
+// for up to ten lifts, already in the user's display unit. No body weight,
+// no per-set RPE; "difficulty" is the 1-5 post-workout rating.
+const WeekSummarySchema = z.object({
+  weekStart: z.string().min(8).max(40),
+  sessionsCompleted: z.number().int().min(0).max(14),
+  totalVolume: z.number().min(0).max(2_000_000),
+  distinctDays: z.number().int().min(0).max(7),
+  prCount: z.number().int().min(0).max(200),
+  averageDifficulty: z.number().min(1).max(5).nullable().optional(),
+}).strict();
+
+const LiftWeekSchema = z.object({
+  weight: z.number().min(0).max(2000),
+  reps: z.number().int().min(0).max(100),
+}).strict();
+
+export const WeeklyInsightsRequestSchema = z.object({
+  weightUnit: z.enum(["kg", "lb"]),
+  plannedSessionsPerWeek: z.number().int().min(1).max(7).nullable().optional(),
+  goal: GoalSchema.nullable().optional(),
+  experienceLevel: ExperienceLevelSchema.nullable().optional(),
+  lastWeek: WeekSummarySchema,
+  priorWeek: WeekSummarySchema.nullable().optional(),
+  lifts: z.array(z.object({
+    name: z.string().min(1).max(120),
+    lastWeek: LiftWeekSchema,
+    priorWeek: LiftWeekSchema.nullable().optional(),
+  }).strict()).max(10),
+}).strict();
+
 export const WeeklyInsightsSchema = z.object({
-  insights: z.array(z.string()),
-  actionItem: z.string(),
+  insights: z.array(z.string().min(1).max(300)).min(3).max(5),
+  actionItem: z.string().min(1).max(400),
   overallRating: z.enum(["great", "good", "needsAttention"]),
-});
+}).strict();

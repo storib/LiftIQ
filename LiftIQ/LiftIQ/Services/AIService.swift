@@ -98,6 +98,24 @@ final class AIService {
         return AIWorkoutModification(changeSummary: changeSummary, plan: modifiedPlan, workout: modifiedWorkout)
     }
 
+    /// Weekly check-in over a pre-built summary of the last two weeks.
+    func generateWeeklyInsights(_ request: WeeklyInsightsRequest) async throws -> WeeklyInsights {
+        isGenerating = true
+        defer { isGenerating = false }
+
+        guard let data = try Self.jsonObject(from: request) as? [String: Any] else {
+            throw AIServiceError.invalidResponse
+        }
+        let callable = functions.httpsCallable("generateWeeklyInsights")
+        callable.timeoutInterval = 60
+        let result = try await callable.call(data)
+        guard let json = result.data as? [String: Any],
+              let jsonData = try? JSONSerialization.data(withJSONObject: json) else {
+            throw AIServiceError.invalidResponse
+        }
+        return try JSONDecoder().decode(WeeklyInsights.self, from: jsonData)
+    }
+
     /// Callable payloads are dictionaries; dates go out as ISO 8601 strings
     /// to satisfy the server's z.string().datetime() validation.
     private static func jsonObject(from value: some Encodable) throws -> Any {

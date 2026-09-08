@@ -18,8 +18,44 @@ final class SessionDetailViewModel {
     var weightInputs: [String: String] = [:]
     var repsInputs: [String: String] = [:]
 
-    init(session: WorkoutSession) {
+    /// Start/end being edited. Only completed sessions have a meaningful
+    /// end (an export in Apple Health), so only they get the pickers.
+    var startInput: Date
+    var endInput: Date
+
+    private let now: () -> Date
+
+    init(session: WorkoutSession, now: @escaping () -> Date = { Date() }) {
         self.session = session
+        self.now = now
+        startInput = session.startedAt
+        endInput = session.completedAt ?? session.startedAt.addingTimeInterval(TimeInterval(session.durationSeconds))
+    }
+
+    var canEditTimes: Bool { session.status == .completed }
+
+    var editedDurationSeconds: Int {
+        max(0, Int(endInput.timeIntervalSince(startInput)))
+    }
+
+    var timesChanged: Bool {
+        startInput != session.startedAt || endInput != session.completedAt
+    }
+
+    var timeValidationMessage: String? {
+        guard canEditTimes, timesChanged else { return nil }
+        return Self.validateTimes(start: startInput, end: endInput, now: now())
+    }
+
+    var canSave: Bool { !isSaving && timeValidationMessage == nil }
+
+    static func validateTimes(start: Date, end: Date, now: Date) -> String? {
+        if end <= start { return "End must be after start" }
+        if end > now { return "Workout can't end in the future" }
+        if end.timeIntervalSince(start) > Constants.maxEditableSessionDurationSeconds {
+            return "Workouts longer than 12 hours can't be saved"
+        }
+        return nil
     }
 
     func beginEditing(unitSystem: UnitSystem) {
@@ -30,6 +66,8 @@ final class SessionDetailViewModel {
             weightInputs[set.id] = display.formatted(decimals: 1)
             repsInputs[set.id] = String(set.reps)
         }
+        startInput = session.startedAt
+        endInput = session.completedAt ?? session.startedAt.addingTimeInterval(TimeInterval(session.durationSeconds))
         isEditing = true
     }
 
@@ -57,8 +95,21 @@ final class SessionDetailViewModel {
         }
 
         do {
-            try await workoutService.updateSession(updated)
-            session = updated
+            if canEditTimes, timesChanged {
+                if let message = timeValidationMessage {
+                    errorMessage = message
+                    isSaving = false
+                    return
+                }
+                // One write carries both the set edits and the new bounds;
+                // this path also replaces the Apple Health export.
+                session = try await workoutService.updateSessionTimes(
+                    updated, startedAt: startInput, completedAt: endInput
+                )
+            } else {
+                try await workoutService.updateSession(updated)
+                session = updated
+            }
             isEditing = false
         } catch {
             errorMessage = "Couldn't save changes: \(error.localizedDescription)"

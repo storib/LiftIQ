@@ -7,6 +7,8 @@ import {
   ExerciseSwapRequestSchema,
   ExerciseSwapResponseSchema,
   PlateauAnalysisRequestSchema,
+  WeeklyInsightsRequestSchema,
+  WeeklyInsightsSchema,
 } from "../../src/validators/schemas";
 
 const validRequest = {
@@ -475,5 +477,67 @@ describe("ExerciseSwapResponseSchema", () => {
         suggestions: [{ exerciseId: "x" }],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("WeeklyInsightsRequestSchema", () => {
+  const week = {
+    weekStart: "2026-08-31",
+    sessionsCompleted: 3,
+    totalVolume: 24500,
+    distinctDays: 3,
+    prCount: 1,
+    averageDifficulty: 3.5,
+  };
+  const lift = { name: "Bench Press", lastWeek: { weight: 185, reps: 8 }, priorWeek: { weight: 180, reps: 8 } };
+  const valid = {
+    weightUnit: "lb",
+    plannedSessionsPerWeek: 3,
+    goal: "hypertrophy",
+    experienceLevel: "intermediate",
+    lastWeek: week,
+    priorWeek: { ...week, weekStart: "2026-08-24", prCount: 0, averageDifficulty: null },
+    lifts: [lift],
+  };
+
+  it("accepts the client's shape", () => {
+    expect(WeeklyInsightsRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts a first week with no prior week and no lifts", () => {
+    expect(WeeklyInsightsRequestSchema.safeParse({ ...valid, priorWeek: null, lifts: [] }).success).toBe(true);
+  });
+
+  it("rejects more than ten lifts", () => {
+    expect(
+      WeeklyInsightsRequestSchema.safeParse({ ...valid, lifts: Array.from({ length: 11 }, () => lift) }).success,
+    ).toBe(false);
+  });
+
+  it("rejects unknown keys (no body weight, no per-set data)", () => {
+    expect(WeeklyInsightsRequestSchema.safeParse({ ...valid, bodyWeightKg: 80 }).success).toBe(false);
+    expect(WeeklyInsightsRequestSchema.safeParse({ ...valid, lastWeek: { ...week, sets: [] } }).success).toBe(false);
+  });
+});
+
+describe("WeeklyInsightsSchema", () => {
+  const valid = {
+    insights: ["Three for three this week.", "Bench moved up 5 lb.", "Volume up 8% on the week before."],
+    actionItem: "Hit 8 reps on all three bench sets at 185 lb.",
+    overallRating: "great",
+  };
+
+  it("accepts 3-5 insights", () => {
+    expect(WeeklyInsightsSchema.safeParse(valid).success).toBe(true);
+    expect(WeeklyInsightsSchema.safeParse({ ...valid, insights: [...valid.insights, "a", "b"] }).success).toBe(true);
+  });
+
+  it("rejects fewer than three or more than five insights", () => {
+    expect(WeeklyInsightsSchema.safeParse({ ...valid, insights: valid.insights.slice(0, 2) }).success).toBe(false);
+    expect(WeeklyInsightsSchema.safeParse({ ...valid, insights: [...valid.insights, "a", "b", "c"] }).success).toBe(false);
+  });
+
+  it("rejects an unknown rating", () => {
+    expect(WeeklyInsightsSchema.safeParse({ ...valid, overallRating: "meh" }).success).toBe(false);
   });
 });

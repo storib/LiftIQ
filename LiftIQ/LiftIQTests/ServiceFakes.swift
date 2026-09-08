@@ -53,6 +53,22 @@ final class FakeWorkoutService: WorkoutServicing {
             .map(\.startedAt)
     }
 
+    /// Completed sessions come from `recentSessions`; the lifetime count can
+    /// be pinned for milestone tests.
+    var completedSessionCountOverride: Int?
+
+    func completedSessions(userId: String, since: Date) async throws -> [WorkoutSession] {
+        if let loadError { throw loadError }
+        return recentSessions
+            .filter { $0.status == .completed && $0.startedAt >= since }
+            .sorted { $0.startedAt < $1.startedAt }
+    }
+
+    func completedSessionCount(userId: String) async throws -> Int {
+        if let loadError { throw loadError }
+        return completedSessionCountOverride ?? recentSessions.filter { $0.status == .completed }.count
+    }
+
     func loadRecentSessions(userId: String) async throws {
         if let loadError { throw loadError }
         loadRecentSessionsUserIds.append(userId)
@@ -92,14 +108,32 @@ final class FakeWorkoutService: WorkoutServicing {
     }
 
     @discardableResult
-    func completeSession(_ session: WorkoutSession) async throws -> WorkoutSession {
+    func completeSession(_ session: WorkoutSession, endingAt end: Date) async throws -> WorkoutSession {
         if let completeSessionError { throw completeSessionError }
         var completed = session
         completed.status = .completed
-        completed.completedAt = Date()
+        completed.completedAt = end
+        completed.durationSeconds = max(0, Int(end.timeIntervalSince(session.startedAt)))
         completedSessions.append(completed)
         activeSession = nil
         return completed
+    }
+
+    var timeUpdates: [(session: WorkoutSession, startedAt: Date, completedAt: Date)] = []
+    var updateSessionTimesError: Error?
+
+    @discardableResult
+    func updateSessionTimes(_ session: WorkoutSession, startedAt: Date, completedAt: Date) async throws -> WorkoutSession {
+        if let updateSessionTimesError { throw updateSessionTimesError }
+        timeUpdates.append((session, startedAt, completedAt))
+        var updated = session
+        updated.startedAt = startedAt
+        updated.completedAt = completedAt
+        updated.durationSeconds = max(0, Int(completedAt.timeIntervalSince(startedAt)))
+        if let index = recentSessions.firstIndex(where: { $0.id == updated.id }) {
+            recentSessions[index] = updated
+        }
+        return updated
     }
 
     func abandonSession(_ session: WorkoutSession) async throws {
@@ -283,6 +317,18 @@ final class FakeHealthKitService: HealthKitServicing {
         return activities.filter { $0.startedAt >= startDate && $0.startedAt < endDate }
     }
 
-    func exportSession(_ session: WorkoutSession) async {}
-    func deleteExportedSession(sessionId: String) async {}
+    private(set) var exportedSessionIds: [String] = []
+    private(set) var deletedSessionIds: [String] = []
+    private(set) var reexportedSessionIds: [String] = []
+    private(set) var retryBatches: [[String]] = []
+    var reexportSucceeds = true
+    var pendingReexportSessionIds: Set<String> = []
+
+    func exportSession(_ session: WorkoutSession) async { exportedSessionIds.append(session.id) }
+    func deleteExportedSession(sessionId: String) async { deletedSessionIds.append(sessionId) }
+    func reexportSession(_ session: WorkoutSession) async -> Bool {
+        reexportedSessionIds.append(session.id)
+        return reexportSucceeds
+    }
+    func retryPendingReexports(sessions: [WorkoutSession]) async { retryBatches.append(sessions.map(\.id)) }
 }

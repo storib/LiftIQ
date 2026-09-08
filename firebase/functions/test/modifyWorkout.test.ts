@@ -108,6 +108,24 @@ describe("normalizeModifiedPlan", () => {
     expect(result.workouts.map((w) => w.id)).toEqual(["wk-1", "wk-2", "new-day-id"]);
   });
 
+  it("preserves the client's training-block fields through a plan edit", () => {
+    // The block review card derives its state from these; a model that
+    // omits them (it always does — they're not in the tool schema) must not
+    // reset the lifter back to block 1.
+    const blockPlan = WorkoutPlanSchema.parse({
+      ...plan,
+      blockStartedAt: "2026-03-01T00:00:00.000Z",
+      blockNumber: 3,
+    });
+    const modelPlan = { ...plan, name: "Edited" };
+
+    const result = normalizeModifiedPlan(blockPlan, modelPlan, "auth-uid");
+
+    expect(result.blockStartedAt).toBe("2026-03-01T00:00:00.000Z");
+    expect(result.blockNumber).toBe(3);
+    expect(normalizeModifiedPlan(plan, modelPlan, "auth-uid").blockNumber).toBeNull();
+  });
+
   it("normalizes workoutsPerWeek to the returned day count after a removal", () => {
     const dayTwo = { ...workout, id: "wk-2", dayNumber: 2, name: "Upper B" };
     const twoDayPlan = { ...plan, workoutsPerWeek: 2, workouts: [workout, dayTwo] };

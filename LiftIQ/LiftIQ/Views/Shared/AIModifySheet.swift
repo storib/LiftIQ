@@ -18,6 +18,8 @@ struct AIModifySheet: View {
     var onApplyWorkout: ((WorkoutTemplate) -> Void)? = nil
     /// Permanent apply: called after the modified plan is saved.
     var onApplyPlan: ((WorkoutPlan) -> Void)? = nil
+    /// Pre-filled request (e.g. from the block review); editable.
+    var initialInstruction: String = ""
 
     @State private var instruction = ""
     @State private var scope: AIModificationScope = .workout
@@ -53,6 +55,7 @@ struct AIModifySheet: View {
             .interactiveDismissDisabled(isSubmitting || isApplying)
             .onAppear {
                 if let first = scopeChoices.first { scope = first }
+                if instruction.isEmpty { instruction = initialInstruction }
                 showingConsent = !AIConsentManager.hasConsented
             }
             .sheet(isPresented: $showingConsent) {

@@ -8,7 +8,9 @@ enum AIConsentManager {
     /// to re-prompt users who previously consented under an older version.
     /// v2: AI workout modification also shares the current plan contents and
     /// the user's free-text modification request.
-    static let currentConsentVersion = 2
+    /// v3: the weekly check-in shares two weeks of session summaries —
+    /// session counts, volume, best sets per lift, and difficulty ratings.
+    static let currentConsentVersion = 3
 
     static var hasConsented: Bool {
         UserDefaults.standard.bool(forKey: consentKey)

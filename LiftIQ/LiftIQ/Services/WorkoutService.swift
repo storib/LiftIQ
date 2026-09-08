@@ -32,10 +32,46 @@ final class WorkoutService {
 
     func loadRecentSessions(userId: String) async throws {
         recentSessions = try await sessionRepository.getSessions(userId: userId, limit: 20)
+        await retryPendingHealthReplacements(userId: userId)
+    }
+
+    /// A Health replacement that failed after a time edit gets another go on
+    /// every dashboard load. Pending sessions are fetched by id — the edited
+    /// workout may be older than any recent-sessions window — and one that
+    /// no longer exists is dropped from the ledger.
+    private func retryPendingHealthReplacements(userId: String) async {
+        let pending = healthKitService.pendingReexportSessionIds
+        guard !pending.isEmpty else { return }
+        var sessions: [WorkoutSession] = []
+        for sessionId in pending {
+            if let cached = recentSessions.first(where: { $0.id == sessionId }) {
+                sessions.append(cached)
+                continue
+            }
+            do {
+                if let fetched = try await sessionRepository.getSession(userId: userId, sessionId: sessionId) {
+                    sessions.append(fetched)
+                } else {
+                    // Gone from Firestore: nothing to replace, drop the entry.
+                    await healthKitService.deleteExportedSession(sessionId: sessionId)
+                }
+            } catch {
+                // Transient read failure: leave it pending for next time.
+            }
+        }
+        await healthKitService.retryPendingReexports(sessions: sessions)
     }
 
     func completedSessionDates(userId: String, since: Date) async throws -> [Date] {
         try await sessionRepository.getCompletedSessionDates(userId: userId, since: since)
+    }
+
+    func completedSessions(userId: String, since: Date) async throws -> [WorkoutSession] {
+        try await sessionRepository.getCompletedSessions(userId: userId, since: since)
+    }
+
+    func completedSessionCount(userId: String) async throws -> Int {
+        try await sessionRepository.countCompletedSessions(userId: userId)
     }
 
     func loadActiveSession(userId: String) async throws {
@@ -73,17 +109,40 @@ final class WorkoutService {
         }
     }
 
+    /// Completes a session ending at `end` — now for a normal finish, or the
+    /// last set's time when a forgotten session is closed out. This is the
+    /// one place `durationSeconds` is derived at completion, so the stored
+    /// duration and the Apple Health bounds can't disagree.
     @discardableResult
-    func completeSession(_ session: WorkoutSession) async throws -> WorkoutSession {
+    func completeSession(_ session: WorkoutSession, endingAt end: Date) async throws -> WorkoutSession {
         var completed = session
         completed.status = .completed
-        completed.completedAt = Date()
+        completed.completedAt = end
+        completed.durationSeconds = max(0, Int(end.timeIntervalSince(session.startedAt)))
         try await sessionRepository.saveSession(completed)
         activeSession = nil
         try await loadRecentSessions(userId: session.userId)
         // Best-effort mirror into Apple Health; never fails completion.
         await healthKitService.exportSession(completed)
         return completed
+    }
+
+    /// Rewrites a completed session's times. Kept separate from
+    /// `updateSession` — which runs on every ✓ tap and on mood/notes — so
+    /// Apple Health is only touched when the workout's bounds actually move.
+    @discardableResult
+    func updateSessionTimes(_ session: WorkoutSession, startedAt: Date, completedAt: Date) async throws -> WorkoutSession {
+        guard session.status == .completed else { throw WorkoutServiceError.sessionNotCompleted }
+        var updated = session
+        updated.startedAt = startedAt
+        updated.completedAt = completedAt
+        updated.durationSeconds = max(0, Int(completedAt.timeIntervalSince(startedAt)))
+        try await sessionRepository.saveSession(updated)
+        if let index = recentSessions.firstIndex(where: { $0.id == updated.id }) {
+            recentSessions[index] = updated
+        }
+        await healthKitService.reexportSession(updated)
+        return updated
     }
 
     /// Deletes a session and best-effort rolls back the personal records its
@@ -102,10 +161,19 @@ final class WorkoutService {
         }
     }
 
+    /// Abandons a session and best-effort rolls back its PRs — the dashboard
+    /// discards forgotten sessions without going through the execution view
+    /// model, which otherwise owns that rollback.
     func abandonSession(_ session: WorkoutSession) async throws {
+        let recordIds = Set(session.exerciseLogs.flatMap(\.sets).flatMap { $0.personalRecordIds ?? [] })
+        for recordId in recordIds {
+            try? await prRepository.deleteRecord(userId: session.userId, recordId: recordId)
+        }
         var abandoned = session
         abandoned.status = .abandoned
-        abandoned.completedAt = Date()
+        let end = Date()
+        abandoned.completedAt = end
+        abandoned.durationSeconds = max(0, Int(end.timeIntervalSince(session.startedAt)))
         try await sessionRepository.saveSession(abandoned)
         activeSession = nil
     }
@@ -133,5 +201,15 @@ final class WorkoutService {
             logs[exerciseId] = Array(recent.prefix(limit))
         }
         return logs
+    }
+}
+
+enum WorkoutServiceError: LocalizedError {
+    case sessionNotCompleted
+
+    var errorDescription: String? {
+        switch self {
+        case .sessionNotCompleted: return "Only completed workouts can have their times changed."
+        }
     }
 }

@@ -32,7 +32,8 @@ struct AIConsentSheet: View {
                             "Goals, experience, and equipment",
                             "Training schedule and session length",
                             "Injuries and exercise history",
-                            "Your workout plan and any change requests you type"
+                            "Your workout plan and any change requests you type",
+                            "For the weekly check-in: two weeks of session counts, volume, best sets, and difficulty ratings"
                         ]
                     )
 

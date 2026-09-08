@@ -147,3 +147,40 @@ extension WorkoutSession {
         )
     }
 }
+
+// MARK: - Forgotten-session helpers
+
+extension WorkoutSession {
+    /// When the most recent set was completed, across every exercise.
+    var lastCompletedSetAt: Date? {
+        exerciseLogs.flatMap(\.sets).compactMap(\.completedAt).max()
+    }
+
+    /// An in-progress session older than the stale threshold — almost
+    /// certainly one the lifter forgot to finish.
+    func isLikelyForgotten(at now: Date = Date()) -> Bool {
+        status == .inProgress && now.timeIntervalSince(startedAt) > Constants.staleSessionThresholdSeconds
+    }
+
+    var isLikelyForgotten: Bool { isLikelyForgotten() }
+
+    /// The literal "finish at last set" end: the last completed set, else
+    /// start + threshold; never in the future and never at or before the start.
+    func repairEndDate(now: Date = Date()) -> Date {
+        let candidate = lastCompletedSetAt ?? startedAt.addingTimeInterval(Constants.staleSessionThresholdSeconds)
+        let capped = min(candidate, now)
+        return capped > startedAt ? capped : startedAt.addingTimeInterval(1)
+    }
+
+    /// End date to use when Finish is tapped. A fresh session ends now. A
+    /// forgotten session ends at its last set — unless the lifter came back,
+    /// resumed, and logged sets recently, in which case now is right again.
+    func inferredFinishDate(now: Date = Date()) -> Date {
+        guard isLikelyForgotten(at: now) else { return now }
+        if let lastSet = lastCompletedSetAt,
+           now.timeIntervalSince(lastSet) <= Constants.staleSessionThresholdSeconds {
+            return now
+        }
+        return repairEndDate(now: now)
+    }
+}

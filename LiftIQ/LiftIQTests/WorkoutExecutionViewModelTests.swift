@@ -545,8 +545,7 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             suggestedWeight: 100,
             suggestedRepsMin: 8,
             suggestedRepsMax: 10,
-            message: "stale",
-            isStalled: false
+            reason: .holdNearTarget(previousTopKg: 100, topReps: [9, 9, 8], repsToGo: 1)
         )
 
         vm.computeSuggestions(recentLogs: [:])
@@ -2097,5 +2096,54 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         // The running session's day is gone from the plan: leave it untouched.
         XCTAssertEqual(vm.session.workoutName, "Test Day")
         XCTAssertEqual(vm.session.exerciseLogs[0].sets.count { $0.setType == .working }, 3)
+    }
+
+    // MARK: - Forgotten sessions
+
+    func testFinishOnResumedStaleSessionEndsAtLastSet() async {
+        let workout = FakeWorkoutService()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        var existing = WorkoutSession.create(from: template, userId: "u1", planId: nil)
+        let startedAt = Date().addingTimeInterval(-30 * 3600)
+        let lastSet = startedAt.addingTimeInterval(2700)
+        existing.startedAt = startedAt
+        existing.exerciseLogs[0].sets[0].weightKg = 60
+        existing.exerciseLogs[0].sets[0].reps = 8
+        existing.exerciseLogs[0].sets[0].completedAt = lastSet
+        let vm = WorkoutExecutionViewModel(
+            existingSession: existing,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { vm.stopTimers() }
+        XCTAssertTrue(vm.isResumedStale)
+
+        await vm.finishWorkout()
+
+        XCTAssertEqual(workout.completedSessions.first?.completedAt, lastSet)
+        XCTAssertEqual(workout.completedSessions.first?.durationSeconds, 2700)
+        XCTAssertEqual(vm.session.durationSeconds, 2700)
+    }
+
+    func testFinishOnFreshSessionEndsNow() async {
+        let workout = FakeWorkoutService()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        let vm = makeVM(template: template, workout: workout)
+        defer { vm.stopTimers() }
+        let before = Date()
+
+        await vm.finishWorkout()
+
+        let end = workout.completedSessions.first?.completedAt
+        XCTAssertNotNil(end)
+        XCTAssertGreaterThanOrEqual(end ?? .distantPast, before)
     }
 }

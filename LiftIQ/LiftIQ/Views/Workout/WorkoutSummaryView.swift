@@ -3,6 +3,8 @@ import SwiftUI
 struct WorkoutSummaryView: View {
     let session: WorkoutSession
     let sessionPRs: [PersonalRecord]
+    /// Arrives asynchronously after the sheet is up; the card animates in.
+    var milestones: [Milestone] = []
     let unitSystem: UnitSystem
     let onSaveMoodAndNotes: (Int?, String?) -> Void
     let onDismiss: () -> Void
@@ -26,6 +28,11 @@ struct WorkoutSummaryView: View {
                 VStack(spacing: 28) {
                     heroHeader
 
+                    if !milestones.isEmpty {
+                        milestoneCard
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
+
                     statsGrid
 
                     if !sessionPRs.isEmpty {
@@ -44,6 +51,70 @@ struct WorkoutSummaryView: View {
             .background(Color.liftBackground)
             .navigationBarTitleDisplayMode(.inline)
             .interactiveDismissDisabled()
+            .animation(.spring(response: 0.45, dampingFraction: 0.75), value: milestones)
+            .onChange(of: milestones) { _, new in
+                if !new.isEmpty { Haptics.success() }
+            }
+            .onAppear {
+                if !milestones.isEmpty { Haptics.success() }
+            }
+        }
+    }
+
+    // MARK: - Milestones
+
+    private var milestoneCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "medal.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Color.liftPR)
+                Text("Milestone")
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(Color.liftPR)
+                Spacer()
+            }
+            ForEach(milestones) { milestone in
+                HStack(spacing: 12) {
+                    Image(systemName: milestoneIcon(milestone))
+                        .font(.title3)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Color.liftPR)
+                        .frame(width: 34, height: 34)
+                        .background(Color.liftPR.opacity(0.14))
+                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(milestone.title)
+                            .font(.subheadline.weight(.semibold))
+                        Text(milestone.subtitle)
+                            .font(.system(.caption, design: .rounded).weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [Color.liftPR.opacity(0.14), Color.liftPR.opacity(0.05)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.liftPR.opacity(0.25), lineWidth: 1)
+        )
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func milestoneIcon(_ milestone: Milestone) -> String {
+        switch milestone {
+        case .workoutCount: return "figure.strengthtraining.traditional"
+        case .weekStreak: return "flame.fill"
         }
     }
 

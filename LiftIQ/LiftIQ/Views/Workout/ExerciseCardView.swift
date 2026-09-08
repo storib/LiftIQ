@@ -258,11 +258,18 @@ struct ExerciseCardView: View {
 
     // MARK: - Subviews
 
+    private func pillStyle(_ reason: ProgressionReason) -> (tint: Color, icon: String) {
+        switch reason {
+        case .increase: return (.green, "arrow.up.right.circle.fill")
+        case .stall: return (.orange, "arrow.uturn.down.circle.fill")
+        case .holdRebuilding: return (.secondary, "arrow.up.circle")
+        case .holdNearTarget, .holdFloorMissed, .bodyweight: return (.secondary, "equal.circle.fill")
+        }
+    }
+
     @ViewBuilder
     private func suggestionPill(_ suggestion: ProgressionSuggestion) -> some View {
-        let tint: Color = suggestion.isStalled ? .orange : (suggestionIsProgression(suggestion) ? .green : .secondary)
-        let icon = suggestion.isStalled ? "arrow.uturn.down.circle.fill"
-            : (suggestionIsProgression(suggestion) ? "arrow.up.right.circle.fill" : "equal.circle.fill")
+        let (tint, icon) = pillStyle(suggestion.reason)
 
         HStack(spacing: 8) {
             Image(systemName: icon)
@@ -281,49 +288,77 @@ struct ExerciseCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func suggestionIsProgression(_ s: ProgressionSuggestion) -> Bool {
-        guard let prevWeight = topPreviousWorkingWeightKg else { return false }
-        return s.suggestedWeight > prevWeight + 0.001
-    }
-
-    private var topPreviousWorkingWeightKg: Double? {
-        previousLog?.sets
-            .filter { $0.setType == .working && $0.weightKg > 0 }
-            .map(\.weightKg)
-            .max()
-    }
-
     /// Hide the pill when there's no meaningful guidance to show: a
-    /// zero-weight suggestion with no previous data would read as "Hold at
-    /// 0 lb", which looks broken.
+    /// bodyweight suggestion with no previous data has nothing to say yet.
     private func shouldShowSuggestionPill(_ s: ProgressionSuggestion) -> Bool {
-        if s.isStalled { return true }
-        if s.suggestedWeight > 0.001 { return true }
-        return previousLog != nil
+        if case .bodyweight = s.reason { return previousLog != nil }
+        return true
     }
 
+    /// Copy is encouraging by design: a hold shows what the lifter just did
+    /// and exactly what moves them up, never just "hold".
     private func suggestionText(_ s: ProgressionSuggestion) -> String {
-        let unitLabel = viewModel.unitSystem == .metric ? "kg" : "lb"
-        // Bodyweight / unweighted movements: no weight to hold, so lead with
-        // the rep target instead of a "0 lb" callout.
-        guard s.suggestedWeight > 0.001 else {
+        let unit = viewModel.unitSystem
+        let unitLabel = unit == .metric ? "kg" : "lb"
+        func weight(_ kg: Double) -> String {
+            "\(UnitConversionService.convertWeight(kg, to: unit).formatted(decimals: 1)) \(unitLabel)"
+        }
+        func reps(_ values: [Int]) -> String {
+            values.map(String.init).joined(separator: " · ")
+        }
+        let target = weight(s.suggestedWeight)
+
+        switch s.reason {
+        case .bodyweight:
             return "Hit \(s.suggestedRepsMax) reps to progress"
+
+        case .increase(let previousTopKg):
+            let previousDisplay = UnitConversionService.convertWeight(previousTopKg, to: unit)
+            let delta = UnitConversionService.convertWeight(s.suggestedWeight, to: unit) - previousDisplay
+            // A jump of more than one step means the recent-best floor is
+            // pulling the lifter back up after a light week.
+            if s.suggestedWeight - previousTopKg > Constants.barbellIncrement + 0.001 {
+                return "Back to \(target) — your recent best"
+            }
+            return "Try \(target) (+\(delta.formatted(decimals: 1)) from last)"
+
+        case .holdNearTarget(let previousTopKg, let topReps, _):
+            if let back = backToRecentBest(previousTopKg, suggestedKg: s.suggestedWeight) {
+                return "\(reps(topReps)) at \(weight(previousTopKg)) last time — \(back)"
+            }
+            return "\(reps(topReps)) at \(target) — hit \(s.suggestedRepsMax) on your first set to move up"
+
+        case .holdFloorMissed(let previousTopKg, let topReps, let bestReps):
+            if let back = backToRecentBest(previousTopKg, suggestedKg: s.suggestedWeight) {
+                return "\(reps(topReps)) at \(weight(previousTopKg)) last time — \(back)"
+            }
+            if bestReps >= s.suggestedRepsMax {
+                return "Best set hit \(bestReps) at \(target) — keep every set ≥ \(s.suggestedRepsMin) and you're up"
+            }
+            return "\(reps(topReps)) at \(target) — hit \(s.suggestedRepsMax) and keep every set ≥ \(s.suggestedRepsMin)"
+
+        case .holdRebuilding(let previousTopKg, let topReps, _):
+            if let back = backToRecentBest(previousTopKg, suggestedKg: s.suggestedWeight) {
+                return "\(reps(topReps)) at \(weight(previousTopKg)) last time — \(back)"
+            }
+            return "New weight — \(reps(topReps)) at \(target), build to \(s.suggestedRepsMax) to move up"
+
+        case .stall(let stuckKg, let sessions):
+            // The back-off is a probe (if reps jump it was fatigue, if flat
+            // it's a real stall) — not an alarm, and the stuck weight stays
+            // in view so the lifter knows what they just did.
+            return "\(sessions) sessions stuck at \(weight(stuckKg)) — try \(target) and build back up"
         }
-        let displayWeight = UnitConversionService.convertWeight(s.suggestedWeight, to: viewModel.unitSystem)
-        // A stall keeps the last-session context in view: the back-off is a
-        // probe (if reps jump it was fatigue, if flat it's a real stall) —
-        // not an alarm, and not a reason to hide what the lifter just did.
-        if s.isStalled, let prevKg = topPreviousWorkingWeightKg {
-            let prevDisplay = UnitConversionService.convertWeight(prevKg, to: viewModel.unitSystem)
-            return "\(Constants.stallThreshold) sessions stuck at \(prevDisplay.formatted(decimals: 1)) \(unitLabel) — "
-                + "try \(displayWeight.formatted(decimals: 1)) \(unitLabel) and build back up"
-        }
-        if let prevKg = topPreviousWorkingWeightKg, s.suggestedWeight > prevKg + 0.001 {
-            let prevDisplay = UnitConversionService.convertWeight(prevKg, to: viewModel.unitSystem)
-            let delta = displayWeight - prevDisplay
-            return "Try \(displayWeight.formatted(decimals: 1)) \(unitLabel) (+\(delta.formatted(decimals: 1)) from last)"
-        }
-        return "Hold at \(displayWeight.formatted(decimals: 1)) \(unitLabel) — hit \(s.suggestedRepsMax) reps to progress"
+    }
+
+    /// After a light week the recent-best floor lifts the suggestion above
+    /// the weight the last reps were done at; say so rather than attribute
+    /// those reps to a weight the lifter didn't touch.
+    private func backToRecentBest(_ previousTopKg: Double, suggestedKg: Double) -> String? {
+        guard suggestedKg > previousTopKg + 0.001 else { return nil }
+        let unitLabel = viewModel.unitSystem == .metric ? "kg" : "lb"
+        let display = UnitConversionService.convertWeight(suggestedKg, to: viewModel.unitSystem)
+        return "back to \(display.formatted(decimals: 1)) \(unitLabel), your recent best"
     }
 
     /// First-session coaching: surfaces the plan's prescription (which the
