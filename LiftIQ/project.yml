@@ -11,8 +11,8 @@ options:
 # identity covers both.
 settings:
   base:
-    MARKETING_VERSION: "1.2.0"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "1.3.0"
+    CURRENT_PROJECT_VERSION: "6"
     DEVELOPMENT_TEAM: 93G47TS4YJ
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.9"
