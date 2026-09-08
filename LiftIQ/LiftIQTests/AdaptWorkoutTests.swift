@@ -292,4 +292,43 @@ final class AdaptWorkoutTests: XCTestCase {
         XCTAssertNil(accepted, "an empty workout must never be handed to Start")
         XCTAssertTrue(events.names("adapt_chosen").isEmpty)
     }
+
+    func testMidWorkoutAIEditRefreshesTheTemplateOverrideForResume() async {
+        // Adapted to 90 s rest, then changed to 120 s through a mid-workout
+        // AI edit; a relaunch must resume with 120, not the older snapshot.
+        var planDay = template(["bench", "cable-fly"])
+        planDay.exerciseGroups[0].exercises[0].restSeconds = 180
+        var adaptedDay = planDay
+        adaptedDay.exerciseGroups[0].exercises[0].restSeconds = 90
+        let workout = FakeWorkoutService()
+        workout.plans = [makePlan(workouts: [planDay])]
+        workout.activePlan = workout.plans[0]
+        let exercises = FakeExerciseService(exercises: catalog)
+
+        let vm = WorkoutExecutionViewModel(
+            template: adaptedDay, userId: "u1", planId: "plan-1",
+            workoutService: workout, exerciseService: exercises,
+            progressService: FakeProgressService(), progressionService: ProgressionService()
+        )
+        vm.applyPreStartTemplateOverride(adaptedDay)
+        await vm.start(userUnitSystem: .metric)
+        XCTAssertEqual(vm.plannedExercise(for: "bench")?.restSeconds, 90)
+
+        var edited = adaptedDay
+        edited.exerciseGroups[0].exercises[0].restSeconds = 120
+        await vm.applyModifiedWorkout(edited)
+        vm.stopTimers()
+        XCTAssertEqual(vm.session.templateOverride?.exerciseGroups[0].exercises[0].restSeconds, 120)
+        XCTAssertEqual(workout.updatedSessions.last?.templateOverride?.exerciseGroups[0].exercises[0].restSeconds, 120,
+                       "the override must be in the document that was saved")
+
+        // Relaunch: resume from what was persisted.
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: workout.updatedSessions.last!, workoutService: workout, exerciseService: exercises,
+            progressService: FakeProgressService(), progressionService: ProgressionService()
+        )
+        defer { resumed.stopTimers() }
+        await resumed.start(userUnitSystem: .metric)
+        XCTAssertEqual(resumed.plannedExercise(for: "bench")?.restSeconds, 120)
+    }
 }

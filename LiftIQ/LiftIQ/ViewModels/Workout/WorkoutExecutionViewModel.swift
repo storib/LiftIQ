@@ -1112,6 +1112,11 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.workoutName = modified.name
         template = modified
         templateGroups = modified.exerciseGroups
+        // The saved session must carry the same template resume will need:
+        // a one-session edit never reaches the plan, and an adapted
+        // session's earlier snapshot is now stale (plan-scope edits pass
+        // through here too, so the override simply equals the saved day).
+        session.templateOverride = modified
         buildGroupMap(from: modified.exerciseGroups)
         for i in session.exerciseLogs.indices {
             renumberSets(exerciseLogIndex: i)

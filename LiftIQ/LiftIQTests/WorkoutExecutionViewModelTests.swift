@@ -1908,8 +1908,29 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
             ["fresh-1", "fresh-2", "fresh-3"]
         )
 
-        let resumed = WorkoutExecutionViewModel(
+        // The edit persists the modified template on the session, so a
+        // relaunch resumes exactly against it — fresh slot ids and all.
+        XCTAssertEqual(first.session.templateOverride?.id, modified.id)
+        let exact = WorkoutExecutionViewModel(
             existingSession: first.session,
+            workoutService: workout,
+            exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(),
+            progressionService: ProgressionService()
+        )
+        defer { exact.stopTimers() }
+        await exact.start(userUnitSystem: .metric)
+        XCTAssertEqual(exact.exerciseGroupMap, [0: 0, 1: 1, 2: 1])
+        XCTAssertEqual(exact.groupType(for: 1), .superset)
+        XCTAssertEqual(exact.plannedExercise(for: "curl")?.id, "fresh-2")
+
+        // A session written before templateOverride existed has only the
+        // plan to go on: slot alignment matches nothing and must hand off to
+        // the legacy exercise-id path rather than trimming to zero groups.
+        var legacy = first.session
+        legacy.templateOverride = nil
+        let resumed = WorkoutExecutionViewModel(
+            existingSession: legacy,
             workoutService: workout,
             exerciseService: FakeExerciseService(),
             progressService: FakeProgressService(),
