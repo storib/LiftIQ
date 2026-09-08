@@ -273,7 +273,9 @@ struct WorkoutDayDetailView: View {
             workoutService: dependencies.workoutService,
             exerciseService: dependencies.exerciseService,
             progressService: dependencies.progressService,
-            progressionService: dependencies.progressionService
+            progressionService: dependencies.progressionService,
+            startSource: "day",
+            betaEvents: dependencies.betaEvents
         )
         vm.scrollToExerciseLogIndex = logIndex
         workoutExecutionVM = vm

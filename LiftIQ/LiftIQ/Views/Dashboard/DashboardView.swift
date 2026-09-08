@@ -44,7 +44,8 @@ struct DashboardView: View {
             workoutService: dependencies.workoutService,
             exerciseService: dependencies.exerciseService,
             progressService: dependencies.progressService,
-            progressionService: dependencies.progressionService
+            progressionService: dependencies.progressionService,
+            betaEvents: dependencies.betaEvents
         )
     }
 
@@ -263,7 +264,9 @@ struct DashboardView: View {
                                         workoutService: dependencies.workoutService,
                                         exerciseService: dependencies.exerciseService,
                                         progressService: dependencies.progressService,
-                                        progressionService: dependencies.progressionService
+                                        progressionService: dependencies.progressionService,
+                                        startSource: "dashboard",
+                                        betaEvents: dependencies.betaEvents
                                     )
                                 }
                             } label: {

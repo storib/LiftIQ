@@ -11,6 +11,7 @@ final class AppDependencies {
     let progressionService: ProgressionService
     let healthKitService: HealthKitService
     let memoryService: MemoryService
+    let betaEvents: BetaEventLogger
 
     init() {
         let userRepo = UserRepository()
@@ -28,5 +29,6 @@ final class AppDependencies {
         self.aiService = AIService()
         self.progressionService = ProgressionService()
         self.memoryService = MemoryService(profileStore: authService)
+        self.betaEvents = BetaEventLogger(writer: BetaEventRepository())
     }
 }

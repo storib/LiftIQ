@@ -64,6 +64,13 @@ final class WorkoutExecutionViewModel: Identifiable {
     }
     var completedSetIds: Set<String> = []
 
+    // MARK: - Beta signal
+
+    private let betaEvents: any BetaEventLogging
+    /// Where this session was started from (dashboard / history / day / resume).
+    let startSource: String
+    private let isResumed: Bool
+
     // MARK: - Memory (from the profile, via start)
 
     /// Loadable steps used by progression and the pill copy.
@@ -183,12 +190,17 @@ final class WorkoutExecutionViewModel: Identifiable {
         workoutService: any WorkoutServicing,
         exerciseService: any ExerciseServicing,
         progressService: any ProgressServicing,
-        progressionService: ProgressionService
+        progressionService: ProgressionService,
+        startSource: String = "unknown",
+        betaEvents: any BetaEventLogging = NoopBetaEventLogger()
     ) {
         self.workoutService = workoutService
         self.exerciseService = exerciseService
         self.progressService = progressService
         self.progressionService = progressionService
+        self.betaEvents = betaEvents
+        self.startSource = startSource
+        self.isResumed = false
         self.userId = userId
         self.session = WorkoutSession.create(from: template, userId: userId, planId: planId)
         self.template = template
@@ -204,12 +216,16 @@ final class WorkoutExecutionViewModel: Identifiable {
         workoutService: any WorkoutServicing,
         exerciseService: any ExerciseServicing,
         progressService: any ProgressServicing,
-        progressionService: ProgressionService
+        progressionService: ProgressionService,
+        betaEvents: any BetaEventLogging = NoopBetaEventLogger()
     ) {
         self.workoutService = workoutService
         self.exerciseService = exerciseService
         self.progressService = progressService
         self.progressionService = progressionService
+        self.betaEvents = betaEvents
+        self.startSource = "resume"
+        self.isResumed = true
         self.userId = existingSession.userId
         self.session = existingSession
         self.elapsedSeconds = max(0, Int(Date().timeIntervalSince(existingSession.startedAt)))
@@ -250,6 +266,13 @@ final class WorkoutExecutionViewModel: Identifiable {
 
             // Persist the initial session
             try await workoutService.startSession(session)
+            if !isResumed {
+                betaEvents.log("session_started", [
+                    "source": startSource,
+                    "adapted": "none",
+                    "exercises": session.exerciseLogs.count,
+                ])
+            }
 
             // Load exercise details from the in-memory catalog.
             let exerciseIds = Set(session.exerciseLogs.map(\.exerciseId))
@@ -283,6 +306,12 @@ final class WorkoutExecutionViewModel: Identifiable {
             }
 
             computeSuggestions(recentLogs: recentLogsByExerciseId)
+            for (exerciseId, suggestion) in progressionSuggestions {
+                betaEvents.log("suggestion_pill_shown", [
+                    "exerciseId": exerciseId,
+                    "reason": suggestion.reason.analyticsName,
+                ])
+            }
 
             // Ghost suggested weights behind the empty fields (with
             // previous-session fallback)
@@ -489,6 +518,20 @@ final class WorkoutExecutionViewModel: Identifiable {
         let rpe = Double(input.rpe)
 
         let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
+        // A typed weight that differs from the ghost is the lifter overriding
+        // the suggestion — the signal the beta most wants to see.
+        if weightDisplay > 0,
+           let suggested = suggestedSetInputs[setId],
+           let ghostWeight = Double(suggested.weight), ghostWeight > 0,
+           abs(ghostWeight - weightDisplay) > 0.001,
+           session.exerciseLogs[exerciseLogIndex].sets[setIndex].setType == .working {
+            betaEvents.log("set_completed_with_ghost_overridden", [
+                "exerciseId": exerciseId,
+                "suggestedKg": UnitConversionService.convertToKg(ghostWeight, from: unitSystem),
+                "enteredKg": UnitConversionService.convertToKg(weightDisplay, from: unitSystem),
+                "reason": progressionSuggestions[exerciseId]?.reason.analyticsName ?? "none",
+            ])
+        }
         if let suggested = suggestedSetInputs[setId] {
             if weightDisplay <= 0, let w = Double(suggested.weight), w > 0 {
                 weightDisplay = w
@@ -1080,6 +1123,14 @@ final class WorkoutExecutionViewModel: Identifiable {
             sessionReminder.cancel()
             showingSummary = true
             await loadMilestones()
+            betaEvents.log("session_finished", [
+                "durationSeconds": session.durationSeconds,
+                "completedSets": completedSetsCount,
+                "totalSets": totalSetsCount,
+                "milestones": milestones.count,
+                "adapted": "none",
+                "source": startSource,
+            ])
         } catch {
             errorMessage = "Failed to complete workout: \(error.localizedDescription)"
         }

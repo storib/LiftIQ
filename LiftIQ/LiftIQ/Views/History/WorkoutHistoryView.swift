@@ -78,7 +78,9 @@ struct WorkoutHistoryView: View {
             workoutService: dependencies.workoutService,
             exerciseService: dependencies.exerciseService,
             progressService: dependencies.progressService,
-            progressionService: dependencies.progressionService
+            progressionService: dependencies.progressionService,
+            startSource: "history",
+            betaEvents: dependencies.betaEvents
         )
     }
 

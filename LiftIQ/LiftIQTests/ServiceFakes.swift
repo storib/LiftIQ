@@ -383,3 +383,18 @@ final class FakeMemoryService: MemoryServicing {
     func setWeightIncrements(_ increments: WeightIncrements?) async throws { savedIncrements.append(increments) }
 }
 
+// MARK: - FakeBetaEventLogger
+
+final class FakeBetaEventLogger: BetaEventLogging, @unchecked Sendable {
+    struct Event { let name: String; let props: [String: any Sendable] }
+    private let lock = NSLock()
+    private var storage: [Event] = []
+
+    var events: [Event] { lock.withLock { storage } }
+    func names(_ name: String) -> [Event] { events.filter { $0.name == name } }
+
+    func log(_ name: String, _ props: [String: any Sendable]) {
+        lock.withLock { storage.append(Event(name: name, props: props)) }
+    }
+}
+

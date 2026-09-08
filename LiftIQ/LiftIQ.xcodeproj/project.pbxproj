@@ -30,6 +30,7 @@
 		270947228DAFB4602EBE752A /* WorkoutExecutionViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36989BE05A85EB8C0573BF7 /* WorkoutExecutionViewModelTests.swift */; };
 		28170E5536C774CD6F11AFA1 /* View+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE33A986D22E8BD63878B1B /* View+Extensions.swift */; };
 		29A29FE46D54642553A1EB94 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = EB28A0A7FD8C320D74E3C657 /* GoogleService-Info.plist */; };
+		2C03346234CF44F6860597DD /* BetaEventRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED309F4E6E7DC25B63D92E6 /* BetaEventRepository.swift */; };
 		2D737E3F8B6A56AF402FF71A /* SetType.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7C69EE26498FE58A713710 /* SetType.swift */; };
 		2EE5A7579BE712126B3C7ED6 /* AIModifySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9113F940233293360C1D5A2B /* AIModifySheet.swift */; };
 		32EFA9958BD643F8727BB84F /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36940A00370528B0CA5FCFC /* WorkoutTemplate.swift */; };
@@ -60,6 +61,7 @@
 		59874E9AD0FFCB18DD3917AF /* WorkoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 357673A38056905C25E9FD3E /* WorkoutService.swift */; };
 		59E9B28DF8867F77385AA3D6 /* TemplateBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C1553C7D248DE5493CA5048 /* TemplateBrowserView.swift */; };
 		5A122FE3900B03E8E9B701F2 /* StrengthTrend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DCAB2A5E5415F3E7443FDCC /* StrengthTrend.swift */; };
+		5A1ECD93C520792947B47A3A /* BetaEventLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530E2D5B44B384C11F5AB932 /* BetaEventLoggerTests.swift */; };
 		5C221F412A5C88652EC81633 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 5CC3EF47C1D4AEC2586719E9 /* FirebaseAppCheck */; };
 		5D434445E4CF4356F570D352 /* Milestones.swift in Sources */ = {isa = PBXBuildFile; fileRef = 502AFAB7921C59B4D03D261A /* Milestones.swift */; };
 		5E3257A83978E1E9E5E42A82 /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328338124C6DB8B6C37E2676 /* PreviewData.swift */; };
@@ -92,6 +94,7 @@
 		9069F06FC9121BC9A50F8E8C /* ForgottenSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ADD0A0A9D44E7234DDD5A1A /* ForgottenSessionTests.swift */; };
 		911B3B831E6F5F94411D8C54 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E938A2B86F7F81BA274741C1 /* FirebaseFirestore */; };
 		92BFD7A37FA1C680B645C377 /* ExerciseSwapSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62EED9D9CAC1DB0B50FD330 /* ExerciseSwapSheet.swift */; };
+		93CDE64CCFC5FBDE5CC11C63 /* BetaEventLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A2314BA146EADBE224CF83 /* BetaEventLogger.swift */; };
 		96BBFAFE470E0708784052CE /* ExternalActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE33D6EFCF9A6813D7E0F9F1 /* ExternalActivity.swift */; };
 		989EE37D9B6C4C12413982BF /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A7036C394D2FD6A75D02A5 /* AuthService.swift */; };
 		9AB3B0D569CAF273836C6EAB /* AIConsentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72142791C6D73216BB25BDA6 /* AIConsentSheet.swift */; };
@@ -181,6 +184,7 @@
 		1C939458111A5D3F49650678 /* WorkoutRecommendationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRecommendationTests.swift; sourceTree = "<group>"; };
 		1DAE2D532917E3FA759CFB25 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
 		1EB9F7B50F6FE21DBDC7759D /* SetRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetRowView.swift; sourceTree = "<group>"; };
+		1ED309F4E6E7DC25B63D92E6 /* BetaEventRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetaEventRepository.swift; sourceTree = "<group>"; };
 		24E2D296BB2DB448ED354F2C /* LiftIQUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiftIQUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		28DB683111DDF572B81BA7F2 /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
 		28F062ABE21B69910D49784D /* WorkoutPlanListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanListViewModel.swift; sourceTree = "<group>"; };
@@ -208,6 +212,7 @@
 		503F41FF8772A55EF089556C /* BlockReviewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockReviewCard.swift; sourceTree = "<group>"; };
 		51A4540B60D90DB4CB23993B /* RestTimerControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerControllerTests.swift; sourceTree = "<group>"; };
 		5257901BD4B5800E5996E2FB /* WeeklySummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummaryBuilder.swift; sourceTree = "<group>"; };
+		530E2D5B44B384C11F5AB932 /* BetaEventLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetaEventLoggerTests.swift; sourceTree = "<group>"; };
 		54C3E15BF2199EEB0D300005 /* SessionDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailViewModel.swift; sourceTree = "<group>"; };
 		586C084B4EAD08AA48259334 /* WorkoutHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryView.swift; sourceTree = "<group>"; };
 		5AABE3EC1CFE271282D51A5D /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
@@ -274,6 +279,7 @@
 		E377EF98BB5CBE51CAB521B5 /* OnboardingSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSummaryView.swift; sourceTree = "<group>"; };
 		E3AD0F52CC473294944DB658 /* HealthKitServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitServiceTests.swift; sourceTree = "<group>"; };
 		E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseService.swift; sourceTree = "<group>"; };
+		E4A2314BA146EADBE224CF83 /* BetaEventLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetaEventLogger.swift; sourceTree = "<group>"; };
 		E6D0A795D08254815C4A6916 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		E72D582089ADDEF5B2D00146 /* TemplateType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateType.swift; sourceTree = "<group>"; };
 		EA0B4B74A4E5F957DB42398D /* UnitSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitSystem.swift; sourceTree = "<group>"; };
@@ -590,6 +596,7 @@
 			isa = PBXGroup;
 			children = (
 				2C332D1C634E0BEC86FFD1B8 /* AuthValidationTests.swift */,
+				530E2D5B44B384C11F5AB932 /* BetaEventLoggerTests.swift */,
 				6ADD0A0A9D44E7234DDD5A1A /* ForgottenSessionTests.swift */,
 				E3AD0F52CC473294944DB658 /* HealthKitServiceTests.swift */,
 				5F2EABF8D7A0E053604004A3 /* MilestonesTests.swift */,
@@ -655,6 +662,7 @@
 		DD8899E8E8CA715873F0FC0E /* Repositories */ = {
 			isa = PBXGroup;
 			children = (
+				1ED309F4E6E7DC25B63D92E6 /* BetaEventRepository.swift */,
 				95F615A0B29142EEB22869AD /* ExerciseRepository.swift */,
 				3AEC9A89784E0884D0D3B3CE /* PersonalRecordRepository.swift */,
 				49E5D6F092764E6DF2C205FE /* ProgressRecordRepository.swift */,
@@ -689,6 +697,7 @@
 				73D9E74DF8C553E06D6BAAF7 /* AIConsentManager.swift */,
 				0DE7750F35E46F614AFABFA6 /* AIService.swift */,
 				00A7036C394D2FD6A75D02A5 /* AuthService.swift */,
+				E4A2314BA146EADBE224CF83 /* BetaEventLogger.swift */,
 				E3ECEA46F1BE17E90A400DB0 /* ExerciseService.swift */,
 				3869ED121F51638089582469 /* HealthKitService.swift */,
 				9B96866397940624A6BE8CD5 /* MemoryService.swift */,
@@ -866,6 +875,8 @@
 				C18CDEF678680988DFABC0AA /* AppDependencies.swift in Sources */,
 				705C69DEB3355F493F3F9729 /* AuthErrorMapper.swift in Sources */,
 				989EE37D9B6C4C12413982BF /* AuthService.swift in Sources */,
+				93CDE64CCFC5FBDE5CC11C63 /* BetaEventLogger.swift in Sources */,
+				2C03346234CF44F6860597DD /* BetaEventRepository.swift in Sources */,
 				07426900359AA6B443AAF717 /* BlockProgress.swift in Sources */,
 				CECDD372A24E9FAE7C8764D1 /* BlockReviewCard.swift in Sources */,
 				38A8280A954949D6F92257CB /* BodyMetricsView.swift in Sources */,
@@ -976,6 +987,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3453E8A85B4034E0B5D44EC0 /* AuthValidationTests.swift in Sources */,
+				5A1ECD93C520792947B47A3A /* BetaEventLoggerTests.swift in Sources */,
 				9069F06FC9121BC9A50F8E8C /* ForgottenSessionTests.swift in Sources */,
 				73EA5F23BF9FCDA1ECAE0EDF /* HealthKitServiceTests.swift in Sources */,
 				0E036635DF940EA474C0B036 /* MilestonesTests.swift in Sources */,

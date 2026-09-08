@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var showingGettingStarted = false
     @State private var restAlertsDenied = false
     @State private var sessionReminderEnabled = SessionReminderScheduler.isEnabled
+    @State private var betaEventsEnabled = BetaEventLogger.isEnabled
 
     var body: some View {
         List {
@@ -93,6 +94,11 @@ struct ProfileView: View {
             }
 
             Section("Data & Privacy") {
+                Toggle("Share Anonymous Beta Usage", isOn: $betaEventsEnabled)
+                Text("Counts of taps and workouts, stored in LiftIQ's own database to improve the beta. Never sent to Anthropic.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Toggle("AI Data Sharing", isOn: Binding(
                     get: { AIConsentManager.hasConsented },
                     set: { newValue in
@@ -160,6 +166,9 @@ struct ProfileView: View {
         }
         .onChange(of: sessionReminderEnabled) { _, enabled in
             SessionReminderScheduler.isEnabled = enabled
+        }
+        .onChange(of: betaEventsEnabled) { _, enabled in
+            BetaEventLogger.isEnabled = enabled
         }
         .onChange(of: customRestEnabled) { _, enabled in
             // Toggling is a deliberate action — persist immediately rather

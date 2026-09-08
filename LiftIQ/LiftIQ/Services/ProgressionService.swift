@@ -25,6 +25,20 @@ enum ProgressionReason: Equatable {
     case bodyweight(bestReps: Int)
 }
 
+extension ProgressionReason {
+    /// Stable label for beta events; never shown to the user.
+    var analyticsName: String {
+        switch self {
+        case .increase: return "increase"
+        case .holdNearTarget: return "holdNearTarget"
+        case .holdFloorMissed: return "holdFloorMissed"
+        case .holdRebuilding: return "holdRebuilding"
+        case .stall: return "stall"
+        case .bodyweight: return "bodyweight"
+        }
+    }
+}
+
 struct ProgressionSuggestion: Equatable {
     let exerciseId: String
     /// kg; 0 means no load (bodyweight).

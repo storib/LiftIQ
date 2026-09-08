@@ -2146,4 +2146,90 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertNotNil(end)
         XCTAssertGreaterThanOrEqual(end ?? .distantPast, before)
     }
+
+    // MARK: - Beta events
+
+    private func makeEventVM(events: FakeBetaEventLogger, workout: FakeWorkoutService) -> WorkoutExecutionViewModel {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(id: "p1", exerciseId: "bench-press")],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        return WorkoutExecutionViewModel(
+            template: template, userId: "u1", planId: nil,
+            workoutService: workout, exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(), progressionService: ProgressionService(),
+            startSource: "dashboard", betaEvents: events
+        )
+    }
+
+    func testStartLogsSessionStartedWithSource() async {
+        let events = FakeBetaEventLogger()
+        let vm = makeEventVM(events: events, workout: FakeWorkoutService())
+        defer { vm.stopTimers() }
+
+        await vm.start(userUnitSystem: .metric)
+
+        let started = events.names("session_started")
+        XCTAssertEqual(started.count, 1)
+        XCTAssertEqual(started.first?.props["source"] as? String, "dashboard")
+    }
+
+    func testResumeDoesNotLogSessionStarted() async {
+        let events = FakeBetaEventLogger()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned()], restBetweenRoundsSeconds: nil),
+        ])
+        let existing = WorkoutSession.create(from: template, userId: "u1", planId: nil)
+        let vm = WorkoutExecutionViewModel(
+            existingSession: existing, workoutService: FakeWorkoutService(), exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(), progressionService: ProgressionService(), betaEvents: events
+        )
+        defer { vm.stopTimers() }
+
+        await vm.start(userUnitSystem: .metric)
+
+        XCTAssertTrue(events.names("session_started").isEmpty)
+        XCTAssertEqual(vm.startSource, "resume")
+    }
+
+    func testGhostOverrideLogsEventButAdoptionDoesNot() async {
+        let events = FakeBetaEventLogger()
+        let workout = FakeWorkoutService()
+        workout.recentLogsByExerciseId = ["bench-press": [makePriorLogAtMaxReps(exerciseId: "bench-press", repsMax: 10, weightKg: 60)]]
+        let vm = makeEventVM(events: events, workout: workout)
+        defer { vm.stopTimers() }
+        await vm.start(userUnitSystem: .metric)
+        XCTAssertEqual(events.names("suggestion_pill_shown").count, 1)
+
+        // Sets 0-1 are synthesized warm-ups; working sets start at index 2.
+        let firstWorking = vm.session.exerciseLogs[0].sets.firstIndex { $0.setType == .working } ?? 0
+
+        // Adopt the ghost (empty weight) → no override event.
+        seedInput(vm, exercise: 0, set: firstWorking, weight: "", reps: "8")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: firstWorking)
+        XCTAssertTrue(events.names("set_completed_with_ghost_overridden").isEmpty)
+
+        // Type a different weight → override event with both values in kg.
+        seedInput(vm, exercise: 0, set: firstWorking + 1, weight: "55", reps: "8")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: firstWorking + 1)
+        let overrides = events.names("set_completed_with_ghost_overridden")
+        XCTAssertEqual(overrides.count, 1)
+        XCTAssertEqual(overrides.first?.props["enteredKg"] as? Double ?? 0, 55, accuracy: 0.01)
+        XCTAssertEqual(overrides.first?.props["suggestedKg"] as? Double ?? 0, 62.5, accuracy: 0.01)
+        XCTAssertEqual(overrides.first?.props["reason"] as? String, "increase")
+    }
+
+    func testFinishLogsSessionFinished() async {
+        let events = FakeBetaEventLogger()
+        let vm = makeEventVM(events: events, workout: FakeWorkoutService())
+        defer { vm.stopTimers() }
+        await vm.start(userUnitSystem: .metric)
+
+        await vm.finishWorkout()
+
+        let finished = events.names("session_finished")
+        XCTAssertEqual(finished.count, 1)
+        XCTAssertEqual(finished.first?.props["source"] as? String, "dashboard")
+        XCTAssertNotNil(finished.first?.props["totalSets"])
+    }
 }
