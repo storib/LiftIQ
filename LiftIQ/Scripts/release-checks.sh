@@ -40,7 +40,7 @@ fi
 
 # ── 4. Check for debug print/NSLog statements in Swift source ──
 # Allow os_log and Logger (structured logging), flag print() and NSLog()
-SWIFT_SOURCES=$(find "${SRCROOT}/LiftIQ" -name "*.swift" -not -path "*/Tests/*" -not -path "*/.build/*")
+SWIFT_SOURCES=$(find "${SRCROOT}/LiftIQ" "${SRCROOT}/LiftIQWidgets" -name "*.swift" -not -path "*/Tests/*" -not -path "*/.build/*")
 DEBUG_PRINTS=$(echo "$SWIFT_SOURCES" | xargs grep -n '\bprint(' 2>/dev/null | grep -v '^\s*//' | grep -v 'MARK' || true)
 if [ -n "$DEBUG_PRINTS" ]; then
     echo "warning: Found print() statements in release build. Consider removing:"

@@ -6,6 +6,17 @@ options:
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
 
+# Shared by every target: the app and its Live Activity extension must
+# carry the same version/build for App Store validation, and one signing
+# identity covers both.
+settings:
+  base:
+    MARKETING_VERSION: "1.2.0"
+    CURRENT_PROJECT_VERSION: "5"
+    DEVELOPMENT_TEAM: 93G47TS4YJ
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+
 packages:
   firebase-ios-sdk:
     url: https://github.com/firebase/firebase-ios-sdk.git
@@ -41,18 +52,14 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         TARGETED_DEVICE_FAMILY: 1
         SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
-        MARKETING_VERSION: "1.2.0"
-        CURRENT_PROJECT_VERSION: "5"
-        DEVELOPMENT_TEAM: 93G47TS4YJ
         # com.liftiq.app is registered to another Apple developer team, so it
         # can't carry capabilities (HealthKit) under this team's signing.
         PRODUCT_BUNDLE_IDENTIFIER: com.adrianconley.liftiq
         PRODUCT_NAME: LiftIQ
-        SWIFT_VERSION: "5.9"
-        CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     postBuildScripts:
@@ -72,6 +79,30 @@ targets:
         product: FirebaseAppCheck
       - package: swift-algorithms
         product: Algorithms
+      - target: LiftIQWidgets
+
+  # Live Activity (Lock Screen + Dynamic Island) for the running workout.
+  # Imports only ActivityKit/WidgetKit/SwiftUI — never Firebase — and shares
+  # a single attributes file with the app.
+  LiftIQWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LiftIQWidgets
+      - path: LiftIQ/Shared/WorkoutActivityAttributes.swift
+    info:
+      path: LiftIQWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: LiftIQ
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.adrianconley.liftiq.widgets
+        PRODUCT_NAME: LiftIQWidgets
+        SKIP_INSTALL: YES
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: 1
 
   LiftIQTests:
     type: bundle.unit-test
@@ -83,7 +114,6 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        SWIFT_VERSION: "5.9"
 
   LiftIQUITests:
     type: bundle.ui-testing
@@ -95,4 +125,3 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        SWIFT_VERSION: "5.9"

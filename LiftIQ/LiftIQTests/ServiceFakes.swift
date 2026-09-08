@@ -398,3 +398,22 @@ final class FakeBetaEventLogger: BetaEventLogging, @unchecked Sendable {
     }
 }
 
+// MARK: - FakeLiveActivityController
+
+@MainActor
+final class FakeLiveActivityController: WorkoutLiveActivitying {
+    private(set) var started: [(attributes: WorkoutActivityAttributes, state: WorkoutActivityAttributes.ContentState)] = []
+    private(set) var updates: [WorkoutActivityAttributes.ContentState] = []
+    private(set) var endCount = 0
+    private(set) var endAllCount = 0
+
+    var latestState: WorkoutActivityAttributes.ContentState? { updates.last ?? started.last?.state }
+
+    func start(attributes: WorkoutActivityAttributes, state: WorkoutActivityAttributes.ContentState) {
+        started.append((attributes, state))
+    }
+    func update(_ state: WorkoutActivityAttributes.ContentState) { updates.append(state) }
+    func end() { endCount += 1 }
+    func endAll() { endAllCount += 1 }
+}
+

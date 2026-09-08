@@ -45,7 +45,8 @@ struct DashboardView: View {
             exerciseService: dependencies.exerciseService,
             progressService: dependencies.progressService,
             progressionService: dependencies.progressionService,
-            betaEvents: dependencies.betaEvents
+            betaEvents: dependencies.betaEvents,
+            liveActivity: dependencies.liveActivityController
         )
     }
 
@@ -150,7 +151,8 @@ struct DashboardView: View {
         await viewModel.finishStaleSessionAtLastSet(
             workoutService: dependencies.workoutService,
             healthKitService: dependencies.healthKitService,
-            userId: userId
+            userId: userId,
+            liveActivity: dependencies.liveActivityController
         )
     }
 
@@ -159,7 +161,8 @@ struct DashboardView: View {
         await viewModel.discardStaleSession(
             workoutService: dependencies.workoutService,
             healthKitService: dependencies.healthKitService,
-            userId: userId
+            userId: userId,
+            liveActivity: dependencies.liveActivityController
         )
     }
 
@@ -266,7 +269,8 @@ struct DashboardView: View {
                                         progressService: dependencies.progressService,
                                         progressionService: dependencies.progressionService,
                                         startSource: "dashboard",
-                                        betaEvents: dependencies.betaEvents
+                                        betaEvents: dependencies.betaEvents,
+            liveActivity: dependencies.liveActivityController
                                     )
                                 }
                             } label: {
@@ -566,7 +570,8 @@ struct DashboardView: View {
             workoutService: dependencies.workoutService,
             healthKitService: dependencies.healthKitService,
             userId: userId,
-            progressService: dependencies.progressService
+            progressService: dependencies.progressService,
+            liveActivity: dependencies.liveActivityController
         )
         prepareWeeklyCheckIn()
     }

@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var showingGettingStarted = false
     @State private var restAlertsDenied = false
     @State private var sessionReminderEnabled = SessionReminderScheduler.isEnabled
+    @State private var liveActivityEnabled = WorkoutLiveActivityController.isEnabled
     @State private var betaEventsEnabled = BetaEventLogger.isEnabled
 
     var body: some View {
@@ -66,6 +67,7 @@ struct ProfileView: View {
                         LabeledContent("Rest Duration", value: "Program default")
                     }
                     Toggle("Long Workout Reminder", isOn: $sessionReminderEnabled)
+                    Toggle("Show Workout on Lock Screen", isOn: $liveActivityEnabled)
                     if restAlertsDenied {
                         Button {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -166,6 +168,9 @@ struct ProfileView: View {
         }
         .onChange(of: sessionReminderEnabled) { _, enabled in
             SessionReminderScheduler.isEnabled = enabled
+        }
+        .onChange(of: liveActivityEnabled) { _, enabled in
+            WorkoutLiveActivityController.isEnabled = enabled
         }
         .onChange(of: betaEventsEnabled) { _, enabled in
             BetaEventLogger.isEnabled = enabled
@@ -270,6 +275,9 @@ struct ProfileView: View {
             : "Rest follows your program's per-exercise values, with 60s when an exercise doesn't specify one."
         if sessionReminderEnabled {
             text += " The reminder asks whether you're still training two hours into a workout, in case you forgot to finish it."
+        }
+        if liveActivityEnabled {
+            text += " The Lock Screen and Dynamic Island show your current set and rest timer during a workout."
         }
         if restAlertsDenied {
             text += " Notifications are off, so you won't be alerted when rest ends in the background or reminded about a long workout."

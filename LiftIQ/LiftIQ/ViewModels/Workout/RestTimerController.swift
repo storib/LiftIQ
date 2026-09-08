@@ -14,7 +14,11 @@ final class RestTimerController {
     var secondsRemaining: Int = 0
     var totalSeconds: Int = 0
 
-    private var endDate: Date?
+    /// Readable so the Live Activity can count down on its own clock.
+    private(set) var endDate: Date?
+    /// Fired after every state transition (start, skip, adjust, expiry,
+    /// stop) — never per tick — so an observer can mirror the rest state.
+    var onStateChange: (() -> Void)?
     private var timer: Timer?
     private static let restNotificationId = "liftiq.rest-timer-complete"
     /// Invalidates in-flight notification-scheduling callbacks: bumped on
@@ -48,6 +52,7 @@ final class RestTimerController {
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        onStateChange?()
     }
 
     func skip() {
@@ -56,6 +61,7 @@ final class RestTimerController {
         secondsRemaining = 0
         isActive = false
         cancelRestEndNotification()
+        onStateChange?()
     }
 
     func adjust(by seconds: Int) {
@@ -70,6 +76,7 @@ final class RestTimerController {
         secondsRemaining = remaining
         totalSeconds = max(totalSeconds, remaining)
         scheduleRestEndNotification()
+        onStateChange?()
     }
 
     /// Re-syncs the displayed countdown from the wall clock. Called when the
@@ -99,6 +106,7 @@ final class RestTimerController {
         secondsRemaining = 0
         totalSeconds = 0
         cancelRestEndNotification()
+        onStateChange?()
     }
 
     // MARK: - Tick
@@ -130,6 +138,7 @@ final class RestTimerController {
             SoundEffects.restComplete()
             Haptics.success()
         }
+        onStateChange?()
     }
 
     // MARK: - Rest-End Notification

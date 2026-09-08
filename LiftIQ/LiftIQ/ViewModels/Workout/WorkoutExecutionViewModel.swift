@@ -64,6 +64,49 @@ final class WorkoutExecutionViewModel: Identifiable {
     }
     var completedSetIds: Set<String> = []
 
+    // MARK: - Live Activity
+
+    private let liveActivity: (any WorkoutLiveActivitying)?
+    private(set) var liveActivityStarted = false
+
+    /// Mirrors the session into the Lock Screen / Dynamic Island. Starts the
+    /// activity on the first call (after `start()` has rebuilt template
+    /// context, so supersets and ghost weights are right on resume), then
+    /// updates. Never ends it — that is finish/abandon's job, because the
+    /// screen disappearing (`stopTimers`) must leave the banner up.
+    func syncLiveActivity() {
+        guard let liveActivity, hasStarted, session.status == .inProgress else { return }
+        let state = WorkoutActivityStateBuilder.contentState(
+            session: session,
+            completedSetIds: completedSetIds,
+            groupMap: exerciseGroupMap,
+            groups: templateGroups,
+            setInputs: setInputs,
+            suggestedSetInputs: suggestedSetInputs,
+            unitSystem: unitSystem,
+            restEndDate: restTimer.isActive ? restTimer.endDate : nil,
+            restTotalSeconds: restTimer.isActive ? restTimer.totalSeconds : nil
+        )
+        if liveActivityStarted {
+            liveActivity.update(state)
+        } else {
+            liveActivity.start(
+                attributes: WorkoutActivityAttributes(
+                    workoutName: session.workoutName,
+                    startedAt: session.startedAt,
+                    sessionId: session.id
+                ),
+                state: state
+            )
+            liveActivityStarted = true
+        }
+    }
+
+    private func endLiveActivity() {
+        liveActivity?.end()
+        liveActivityStarted = false
+    }
+
     // MARK: - Beta signal
 
     private let betaEvents: any BetaEventLogging
@@ -192,13 +235,15 @@ final class WorkoutExecutionViewModel: Identifiable {
         progressService: any ProgressServicing,
         progressionService: ProgressionService,
         startSource: String = "unknown",
-        betaEvents: any BetaEventLogging = NoopBetaEventLogger()
+        betaEvents: any BetaEventLogging = NoopBetaEventLogger(),
+        liveActivity: (any WorkoutLiveActivitying)? = nil
     ) {
         self.workoutService = workoutService
         self.exerciseService = exerciseService
         self.progressService = progressService
         self.progressionService = progressionService
         self.betaEvents = betaEvents
+        self.liveActivity = liveActivity
         self.startSource = startSource
         self.isResumed = false
         self.userId = userId
@@ -207,6 +252,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         self.templateGroups = template.exerciseGroups
         buildGroupMap(from: template.exerciseGroups)
         initializeInputs()
+        restTimer.onStateChange = { [weak self] in self?.syncLiveActivity() }
     }
 
     // MARK: - Init (resume existing session)
@@ -217,13 +263,15 @@ final class WorkoutExecutionViewModel: Identifiable {
         exerciseService: any ExerciseServicing,
         progressService: any ProgressServicing,
         progressionService: ProgressionService,
-        betaEvents: any BetaEventLogging = NoopBetaEventLogger()
+        betaEvents: any BetaEventLogging = NoopBetaEventLogger(),
+        liveActivity: (any WorkoutLiveActivitying)? = nil
     ) {
         self.workoutService = workoutService
         self.exerciseService = exerciseService
         self.progressService = progressService
         self.progressionService = progressionService
         self.betaEvents = betaEvents
+        self.liveActivity = liveActivity
         self.startSource = "resume"
         self.isResumed = true
         self.userId = existingSession.userId
@@ -239,6 +287,7 @@ final class WorkoutExecutionViewModel: Identifiable {
                 completedSetIds.insert(setLog.id)
             }
         }
+        restTimer.onStateChange = { [weak self] in self?.syncLiveActivity() }
     }
 
     // MARK: - Start
@@ -266,13 +315,6 @@ final class WorkoutExecutionViewModel: Identifiable {
 
             // Persist the initial session
             try await workoutService.startSession(session)
-            if !isResumed {
-                betaEvents.log("session_started", [
-                    "source": startSource,
-                    "adapted": "none",
-                    "exercises": session.exerciseLogs.count,
-                ])
-            }
 
             // Load exercise details from the in-memory catalog.
             let exerciseIds = Set(session.exerciseLogs.map(\.exerciseId))
@@ -319,6 +361,16 @@ final class WorkoutExecutionViewModel: Identifiable {
 
             // Start elapsed timer
             startElapsedTimer()
+
+            syncLiveActivity()
+            if !isResumed {
+                betaEvents.log("session_started", [
+                    "source": startSource,
+                    "adapted": "none",
+                    "exercises": session.exerciseLogs.count,
+                    "liveActivity": liveActivityStarted,
+                ])
+            }
         } catch {
             hasStarted = false
             errorMessage = error.localizedDescription
@@ -589,7 +641,9 @@ final class WorkoutExecutionViewModel: Identifiable {
         Haptics.medium()
         let restInfo = restDuration(forExerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
         if restInfo.shouldTrigger {
-            restTimer.start(seconds: restInfo.seconds)
+            restTimer.start(seconds: restInfo.seconds)   // callback syncs the activity
+        } else {
+            syncLiveActivity()
         }
 
         // Check for PR against the session-cached records
@@ -690,6 +744,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         } catch {
             errorMessage = "Failed to save: \(error.localizedDescription)"
         }
+        syncLiveActivity()
     }
 
     // MARK: - Set Management
@@ -710,6 +765,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[exerciseLogIndex].sets.append(newSet)
         setInputs[newSet.id] = SetInput()
         renumberSets(exerciseLogIndex: exerciseLogIndex)
+        syncLiveActivity()
     }
 
     func removeSet(exerciseLogIndex: Int, setIndex: Int) async {
@@ -726,6 +782,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         setInputs.removeValue(forKey: setId)
 
         renumberSets(exerciseLogIndex: exerciseLogIndex)
+        syncLiveActivity()
     }
 
     func updateSetType(exerciseLogIndex: Int, setIndex: Int, newType: SetType) {
@@ -733,6 +790,7 @@ final class WorkoutExecutionViewModel: Identifiable {
               setIndex < session.exerciseLogs[exerciseLogIndex].sets.count else { return }
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].setType = newType
         renumberSets(exerciseLogIndex: exerciseLogIndex)
+        syncLiveActivity()
     }
 
     /// setNumber counts within each set type (warm-ups W1...Wn, working
@@ -829,6 +887,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
 
         swapTargetExerciseLogIndex = nil
+        syncLiveActivity()
     }
 
     // MARK: - Exercise Removal
@@ -899,6 +958,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         } catch {
             errorMessage = "Failed to save: \(error.localizedDescription)"
         }
+        syncLiveActivity()
     }
 
     // MARK: - AI Mid-Workout Modification
@@ -1011,6 +1071,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         } catch {
             errorMessage = "Failed to save changes: \(error.localizedDescription)"
         }
+        syncLiveActivity()
     }
 
     /// Plan-scope AI edit made mid-workout: the sheet has already saved the
@@ -1121,6 +1182,7 @@ final class WorkoutExecutionViewModel: Identifiable {
             // the lifter noticed; the service derives duration from the end.
             session = try await workoutService.completeSession(session, endingAt: session.inferredFinishDate())
             sessionReminder.cancel()
+            endLiveActivity()
             showingSummary = true
             await loadMilestones()
             betaEvents.log("session_finished", [
@@ -1159,6 +1221,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         do {
             try await workoutService.abandonSession(session)
             sessionReminder.cancel()
+            endLiveActivity()
         } catch {
             errorMessage = "Failed to abandon workout: \(error.localizedDescription)"
         }

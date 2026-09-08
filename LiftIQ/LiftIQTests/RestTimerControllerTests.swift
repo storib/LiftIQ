@@ -66,4 +66,35 @@ final class RestTimerControllerTests: XCTestCase {
         XCTAssertFalse(controller.isActive)
         XCTAssertEqual(controller.secondsRemaining, 0)
     }
+
+    func testOnStateChangeFiresOnTransitionsNotTicks() {
+        let (controller, clock) = makeTimer()
+        defer { controller.stop() }
+        var changes = 0
+        controller.onStateChange = { changes += 1 }
+
+        controller.start(seconds: 60)
+        XCTAssertEqual(changes, 1)
+        XCTAssertNotNil(controller.endDate)
+
+        clock.now += 10
+        controller.refreshFromWallClock()     // mid-rest tick: no transition
+        XCTAssertEqual(changes, 1)
+
+        controller.adjust(by: 30)
+        XCTAssertEqual(changes, 2)
+
+        clock.now += 200
+        controller.refreshFromWallClock()     // expiry
+        XCTAssertEqual(changes, 3)
+        XCTAssertNil(controller.endDate)
+
+        controller.start(seconds: 30)
+        controller.skip()
+        XCTAssertEqual(changes, 5)
+
+        controller.start(seconds: 30)
+        controller.stop()
+        XCTAssertEqual(changes, 7)
+    }
 }

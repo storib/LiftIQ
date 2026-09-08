@@ -272,4 +272,25 @@ final class DashboardStaleSessionTests: XCTestCase {
         XCTAssertEqual(vm.staleSession?.id, "s1")
         XCTAssertNil(vm.secondsUntilStale(workoutService: workout, now: t0.addingTimeInterval(Constants.staleSessionThresholdSeconds + 1)))
     }
+
+    func testRepairPathsEndAllLiveActivities() async {
+        let workout = FakeWorkoutService()
+        workout.activeSession = makeStaleSession(withSet: true)
+        let live = FakeLiveActivityController()
+        let vm = DashboardViewModel(referenceDate: t0)
+        await vm.load(workoutService: workout, healthKitService: FakeHealthKitService(), userId: "u1",
+                      referenceDate: t0.addingTimeInterval(30 * 3600), liveActivity: live)
+        XCTAssertEqual(live.endAllCount, 0, "an active session keeps its banner")
+
+        await vm.finishStaleSessionAtLastSet(workoutService: workout, healthKitService: FakeHealthKitService(), userId: "u1", liveActivity: live)
+        XCTAssertEqual(live.endAllCount, 2, "repair ends it, and the reload with no active session ends orphans")
+    }
+
+    func testLoadWithNoActiveSessionEndsOrphanActivities() async {
+        let live = FakeLiveActivityController()
+        let vm = DashboardViewModel(referenceDate: t0)
+        await vm.load(workoutService: FakeWorkoutService(), healthKitService: FakeHealthKitService(), userId: "u1",
+                      referenceDate: t0, liveActivity: live)
+        XCTAssertEqual(live.endAllCount, 1)
+    }
 }

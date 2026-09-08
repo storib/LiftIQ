@@ -2232,4 +2232,90 @@ final class WorkoutExecutionViewModelTests: XCTestCase {
         XCTAssertEqual(finished.first?.props["source"] as? String, "dashboard")
         XCTAssertNotNil(finished.first?.props["totalSets"])
     }
+
+    // MARK: - Live Activity
+
+    private func makeLiveVM(live: FakeLiveActivityController, workout: FakeWorkoutService) -> WorkoutExecutionViewModel {
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(id: "p1", exerciseId: "bench-press")],
+                          restBetweenRoundsSeconds: nil),
+        ])
+        return WorkoutExecutionViewModel(
+            template: template, userId: "u1", planId: nil,
+            workoutService: workout, exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(), progressionService: ProgressionService(),
+            liveActivity: live
+        )
+    }
+
+    func testStartRequestsLiveActivityOnceAndCompleteSetUpdatesWithRest() async {
+        let live = FakeLiveActivityController()
+        let vm = makeLiveVM(live: live, workout: FakeWorkoutService())
+        defer { vm.stopTimers() }
+
+        await vm.start(userUnitSystem: .metric)
+
+        XCTAssertEqual(live.started.count, 1)
+        XCTAssertEqual(live.started.first?.attributes.sessionId, vm.session.id)
+        XCTAssertEqual(live.started.first?.state.exerciseName, "Bench Press")
+        XCTAssertFalse(live.started.first?.state.isResting ?? true)
+
+        let firstWorking = vm.session.exerciseLogs[0].sets.firstIndex { $0.setType == .working } ?? 0
+        seedInput(vm, exercise: 0, set: firstWorking, weight: "60", reps: "8")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: firstWorking)
+
+        XCTAssertEqual(live.started.count, 1, "must update, never request a second activity")
+        XCTAssertTrue(live.latestState?.isResting ?? false)
+        XCTAssertEqual(live.latestState?.completedSets, 1)
+    }
+
+    func testStopTimersUpdatesButNeverEndsLiveActivity() async {
+        let live = FakeLiveActivityController()
+        let vm = makeLiveVM(live: live, workout: FakeWorkoutService())
+        await vm.start(userUnitSystem: .metric)
+        let firstWorking = vm.session.exerciseLogs[0].sets.firstIndex { $0.setType == .working } ?? 0
+        seedInput(vm, exercise: 0, set: firstWorking, weight: "60", reps: "8")
+        await vm.completeSet(exerciseLogIndex: 0, setIndex: firstWorking)
+        XCTAssertTrue(live.latestState?.isResting ?? false)
+
+        vm.stopTimers()   // what .onDisappear does
+
+        XCTAssertEqual(live.endCount, 0)
+        XCTAssertFalse(live.latestState?.isResting ?? true, "rest cleared, banner kept")
+    }
+
+    func testFinishAndAbandonEndLiveActivity() async {
+        let live = FakeLiveActivityController()
+        let vm = makeLiveVM(live: live, workout: FakeWorkoutService())
+        await vm.start(userUnitSystem: .metric)
+        await vm.finishWorkout()
+        XCTAssertEqual(live.endCount, 1)
+
+        let live2 = FakeLiveActivityController()
+        let vm2 = makeLiveVM(live: live2, workout: FakeWorkoutService())
+        await vm2.start(userUnitSystem: .metric)
+        await vm2.abandonWorkout()
+        XCTAssertEqual(live2.endCount, 1)
+    }
+
+    func testRemoveExerciseResyncsLiveActivity() async {
+        let live = FakeLiveActivityController()
+        let template = makeTemplate(groups: [
+            ExerciseGroup(id: "g1", groupType: .straight, exercises: [makePlanned(id: "p1", exerciseId: "bench-press")], restBetweenRoundsSeconds: nil),
+            ExerciseGroup(id: "g2", groupType: .straight, exercises: [makePlanned(id: "p2", exerciseId: "row")], restBetweenRoundsSeconds: nil),
+        ])
+        let vm = WorkoutExecutionViewModel(
+            template: template, userId: "u1", planId: nil,
+            workoutService: FakeWorkoutService(), exerciseService: FakeExerciseService(),
+            progressService: FakeProgressService(), progressionService: ProgressionService(),
+            liveActivity: live
+        )
+        defer { vm.stopTimers() }
+        await vm.start(userUnitSystem: .metric)
+        let before = live.latestState?.totalSets ?? 0
+
+        await vm.removeExercise(exerciseLogIndex: 1)
+
+        XCTAssertLessThan(live.latestState?.totalSets ?? before, before)
+    }
 }

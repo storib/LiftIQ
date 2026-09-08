@@ -41,7 +41,8 @@ final class DashboardViewModel {
         healthKitService: any HealthKitServicing,
         userId: String,
         referenceDate: Date = Date(),
-        progressService: (any ProgressServicing)? = nil
+        progressService: (any ProgressServicing)? = nil,
+        liveActivity: (any WorkoutLiveActivitying)? = nil
     ) async {
         // The dashboard view (and this view model) can stay alive across a
         // week boundary; snap the strip to the current week on every reload
@@ -58,6 +59,9 @@ final class DashboardViewModel {
             try await workoutService.loadRecentSessions(userId: userId)
             try await workoutService.loadActiveSession(userId: userId)
             staleSession = workoutService.activeSession.flatMap { $0.isLikelyForgotten(at: referenceDate) ? $0 : nil }
+            // No running session means no banner should be up (finished on
+            // another device, or the app was reinstalled mid-workout).
+            if workoutService.activeSession == nil { liveActivity?.endAll() }
 
             todayWorkout = Self.nextWorkout(
                 plan: workoutService.activePlan,
@@ -171,7 +175,8 @@ final class DashboardViewModel {
     func finishStaleSessionAtLastSet(
         workoutService: any WorkoutServicing,
         healthKitService: any HealthKitServicing,
-        userId: String
+        userId: String,
+        liveActivity: (any WorkoutLiveActivitying)? = nil
     ) async {
         guard let session = staleSession else { return }
         isRepairing = true
@@ -179,8 +184,9 @@ final class DashboardViewModel {
         do {
             try await workoutService.completeSession(session, endingAt: session.repairEndDate())
             SessionReminderScheduler.cancelPending()
+            liveActivity?.endAll()
             staleSession = nil
-            await load(workoutService: workoutService, healthKitService: healthKitService, userId: userId)
+            await load(workoutService: workoutService, healthKitService: healthKitService, userId: userId, liveActivity: liveActivity)
         } catch {
             repairError = "Couldn't finish workout: \(error.localizedDescription)"
         }
@@ -190,7 +196,8 @@ final class DashboardViewModel {
     func discardStaleSession(
         workoutService: any WorkoutServicing,
         healthKitService: any HealthKitServicing,
-        userId: String
+        userId: String,
+        liveActivity: (any WorkoutLiveActivitying)? = nil
     ) async {
         guard let session = staleSession else { return }
         isRepairing = true
@@ -198,8 +205,9 @@ final class DashboardViewModel {
         do {
             try await workoutService.abandonSession(session)
             SessionReminderScheduler.cancelPending()
+            liveActivity?.endAll()
             staleSession = nil
-            await load(workoutService: workoutService, healthKitService: healthKitService, userId: userId)
+            await load(workoutService: workoutService, healthKitService: healthKitService, userId: userId, liveActivity: liveActivity)
         } catch {
             repairError = "Couldn't discard workout: \(error.localizedDescription)"
         }

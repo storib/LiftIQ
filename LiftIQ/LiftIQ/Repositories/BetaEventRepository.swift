@@ -4,11 +4,12 @@ import FirebaseFirestore
 
 /// Appends one beta usage event. The rules require the caller's uid, a
 /// server timestamp, and exactly these fields; anything else is rejected.
-final class BetaEventRepository: BetaEventWriting {
-    private let db = Firestore.firestore()
-
+/// Stateless (Firestore's shared instance is fetched per write) so it is
+/// trivially Sendable for the detached logging task.
+struct BetaEventRepository: BetaEventWriting {
     func write(name: String, props: [String: any Sendable], appVersion: String, build: String) async throws {
         guard let userId = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
         var data: [String: Any] = [
             "userId": userId,
             "name": name,

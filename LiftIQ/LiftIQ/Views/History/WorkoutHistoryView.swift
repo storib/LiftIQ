@@ -80,7 +80,8 @@ struct WorkoutHistoryView: View {
             progressService: dependencies.progressService,
             progressionService: dependencies.progressionService,
             startSource: "history",
-            betaEvents: dependencies.betaEvents
+            betaEvents: dependencies.betaEvents,
+            liveActivity: dependencies.liveActivityController
         )
     }
 

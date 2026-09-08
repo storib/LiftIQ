@@ -12,6 +12,7 @@ final class AppDependencies {
     let healthKitService: HealthKitService
     let memoryService: MemoryService
     let betaEvents: BetaEventLogger
+    let liveActivityController: WorkoutLiveActivityController
 
     init() {
         let userRepo = UserRepository()
@@ -30,5 +31,6 @@ final class AppDependencies {
         self.progressionService = ProgressionService()
         self.memoryService = MemoryService(profileStore: authService)
         self.betaEvents = BetaEventLogger(writer: BetaEventRepository())
+        self.liveActivityController = WorkoutLiveActivityController()
     }
 }
