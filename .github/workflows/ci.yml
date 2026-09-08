@@ -45,6 +45,9 @@ jobs:
   ios-test:
     name: iOS Tests
     runs-on: macos-15
+    # A hung simulator once held the job for 45 minutes with no log; a
+    # healthy run takes ~10. Fail fast and let a rerun recover.
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: LiftIQ
