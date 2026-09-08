@@ -240,7 +240,10 @@ struct WorkoutExecutionView: View {
             await viewModel.start(
                 userUnitSystem: profile?.unitSystem ?? .metric,
                 userDefaultRestSeconds: profile?.effectiveDefaultRestSeconds ?? 60,
-                userRestOverride: profile?.defaultRestSeconds
+                userRestOverride: profile?.defaultRestSeconds,
+                weightIncrements: profile?.effectiveWeightIncrements ?? .standard,
+                exercisePreferences: profile?.exercisePreferences ?? [:],
+                activeEquipment: Set(profile?.effectiveGymSetup.equipment ?? Equipment.allCases)
             )
             // Ask before the first rest timer needs it — the prompt landing
             // mid-set (and gating that set's notification) was the old flow.

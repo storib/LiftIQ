@@ -336,3 +336,50 @@ final class FakeHealthKitService: HealthKitServicing {
     }
     func retryPendingReexports(sessions: [WorkoutSession]) async { retryBatches.append(sessions.map(\.id)) }
 }
+
+// MARK: - FakeProfileStore / FakeMemoryService
+
+@MainActor
+final class FakeProfileStore: ProfileStoring {
+    var currentProfile: UserProfile?
+    private(set) var savedProfiles: [UserProfile] = []
+    var updateError: Error?
+
+    init(profile: UserProfile? = nil) {
+        currentProfile = profile
+    }
+
+    func updateProfile(_ profile: UserProfile) async throws {
+        if let updateError { throw updateError }
+        savedProfiles.append(profile)
+        currentProfile = profile
+    }
+}
+
+@MainActor
+final class FakeMemoryService: MemoryServicing {
+    var preferences: [String: ExercisePreference] = [:]
+    var activeEquipment: Set<Equipment> = Set(Equipment.allCases)
+    var weightIncrements: WeightIncrements = .standard
+    private(set) var recordedAlternatives: [(exerciseId: String, replacement: String)] = []
+    private(set) var notes: [String: String?] = [:]
+    private(set) var avoided: [String: Bool] = [:]
+    private(set) var savedSetups: [[GymSetup]] = []
+    private(set) var savedIncrements: [WeightIncrements?] = []
+
+    func recordUsualAlternative(for exerciseId: String, replacement: String) async {
+        recordedAlternatives.append((exerciseId, replacement))
+        preferences[exerciseId, default: ExercisePreference()].usualAlternativeId = replacement
+    }
+    func setNote(_ note: String?, for exerciseId: String) async throws {
+        notes[exerciseId] = note
+        preferences[exerciseId, default: ExercisePreference()].note = note
+    }
+    func setAvoided(_ avoided: Bool, for exerciseId: String) async throws {
+        self.avoided[exerciseId] = avoided
+        preferences[exerciseId, default: ExercisePreference()].avoided = avoided
+    }
+    func saveGymSetups(_ setups: [GymSetup]) async throws { savedSetups.append(setups) }
+    func setWeightIncrements(_ increments: WeightIncrements?) async throws { savedIncrements.append(increments) }
+}
+

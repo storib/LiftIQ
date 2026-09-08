@@ -188,4 +188,23 @@ final class ProgressionServiceTests: XCTestCase {
         XCTAssertEqual(suggestion?.suggestedWeight, 0)
         XCTAssertEqual(suggestion?.reason, .bodyweight(bestReps: 15))
     }
+
+    // MARK: - Custom increments
+
+    func testIncreaseUsesCustomBarbellIncrement() {
+        let log = makeLog(sets: [(60, 12), (60, 12), (60, 12)])
+        let custom = WeightIncrements(barbellKg: 1.25, dumbbellKg: 1, machineKg: 5)
+        let suggestion = service.suggest(for: makePlanned(), previousLogs: [log], exerciseInfo: nil, increments: custom)
+        XCTAssertEqual(suggestion?.suggestedWeight, 61.25)
+    }
+
+    func testBackoffUsesCustomIncrement() {
+        let fail = { (id: String) in self.makeLog(id: id, sets: [(60, 6), (60, 6), (60, 5)]) }
+        let logs = [fail("log-1"), fail("log-2"), fail("log-3")]
+        let custom = WeightIncrements(barbellKg: 5, dumbbellKg: 1, machineKg: 5)
+        let suggestion = service.suggest(for: makePlanned(), previousLogs: logs, exerciseInfo: nil, increments: custom)
+        // 60 * 0.9 = 54 → rounded down to a 5 kg step = 50.
+        XCTAssertEqual(suggestion?.suggestedWeight, 50)
+        XCTAssertTrue(suggestion?.isStalled ?? false)
+    }
 }

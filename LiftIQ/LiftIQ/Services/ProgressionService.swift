@@ -50,7 +50,8 @@ final class ProgressionService {
     func suggest(
         for exercise: PlannedExercise,
         previousLogs: [ExerciseLog],
-        exerciseInfo: Exercise?
+        exerciseInfo: Exercise?,
+        increments: WeightIncrements = .standard
     ) -> ProgressionSuggestion? {
         guard let lastLog = previousLogs.first else { return nil }
         let workingSets = lastLog.sets.filter { $0.setType == .working }
@@ -72,7 +73,7 @@ final class ProgressionService {
             )
         }
 
-        let increment = weightIncrement(for: exerciseInfo)
+        let increment = increments.increment(for: exerciseInfo)
 
         // Anchor to the heaviest working set of the last session. Anchoring to
         // the first set undershoots badly for lifters who ramp across sets.
@@ -146,13 +147,6 @@ final class ProgressionService {
         guard let top = sets.map(\.weightKg).max() else { return nil }
         let topSets = sets.filter { $0.weightKg >= top - 0.001 }
         return topSets.contains { $0.reps >= repsMin } ? top : nil
-    }
-
-    private func weightIncrement(for exercise: Exercise?) -> Double {
-        guard let exercise else { return Constants.barbellIncrement }
-        if exercise.equipment.contains(.barbell) { return Constants.barbellIncrement }
-        if exercise.equipment.contains(.dumbbell) { return Constants.dumbbellIncrement }
-        return Constants.machineIncrement
     }
 
     /// ~10% reduction rounded down to a loadable increment, always at least

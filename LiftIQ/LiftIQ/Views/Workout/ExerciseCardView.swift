@@ -317,7 +317,7 @@ struct ExerciseCardView: View {
             let delta = UnitConversionService.convertWeight(s.suggestedWeight, to: unit) - previousDisplay
             // A jump of more than one step means the recent-best floor is
             // pulling the lifter back up after a light week.
-            if s.suggestedWeight - previousTopKg > Constants.barbellIncrement + 0.001 {
+            if s.suggestedWeight - previousTopKg > viewModel.weightIncrements.increment(for: exerciseDetail) + 0.001 {
                 return "Back to \(target) — your recent best"
             }
             return "Try \(target) (+\(delta.formatted(decimals: 1)) from last)"

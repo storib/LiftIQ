@@ -10,6 +10,7 @@ final class AppDependencies {
     let aiService: AIService
     let progressionService: ProgressionService
     let healthKitService: HealthKitService
+    let memoryService: MemoryService
 
     init() {
         let userRepo = UserRepository()
@@ -26,5 +27,6 @@ final class AppDependencies {
         self.progressService = ProgressService(progressRepository: progressRepo, prRepository: prRepo)
         self.aiService = AIService()
         self.progressionService = ProgressionService()
+        self.memoryService = MemoryService(profileStore: authService)
     }
 }

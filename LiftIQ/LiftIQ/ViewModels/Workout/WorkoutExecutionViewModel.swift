@@ -64,6 +64,16 @@ final class WorkoutExecutionViewModel: Identifiable {
     }
     var completedSetIds: Set<String> = []
 
+    // MARK: - Memory (from the profile, via start)
+
+    /// Loadable steps used by progression and the pill copy.
+    private(set) var weightIncrements: WeightIncrements = .standard
+    /// Notes, usual alternatives, avoided flags — read-only here; writes go
+    /// through `memory`.
+    var exercisePreferences: [String: ExercisePreference] = [:]
+    /// The default gym's equipment; swap candidates stay within it.
+    private(set) var activeEquipment: Set<Equipment> = Set(Equipment.allCases)
+
     // MARK: - Rest Timer
 
     let restTimer = RestTimerController()
@@ -220,7 +230,10 @@ final class WorkoutExecutionViewModel: Identifiable {
     func start(
         userUnitSystem: UnitSystem,
         userDefaultRestSeconds: Int = 60,
-        userRestOverride: Int? = nil
+        userRestOverride: Int? = nil,
+        weightIncrements: WeightIncrements = .standard,
+        exercisePreferences: [String: ExercisePreference] = [:],
+        activeEquipment: Set<Equipment> = Set(Equipment.allCases)
     ) async {
         guard !hasStarted else { return }
         hasStarted = true
@@ -228,6 +241,9 @@ final class WorkoutExecutionViewModel: Identifiable {
         unitSystem = userUnitSystem
         self.userDefaultRestSeconds = userDefaultRestSeconds
         self.userRestOverride = userRestOverride
+        self.weightIncrements = weightIncrements
+        self.exercisePreferences = exercisePreferences
+        self.activeEquipment = activeEquipment
 
         do {
             try await exerciseService.loadExercises()
@@ -755,7 +771,8 @@ final class WorkoutExecutionViewModel: Identifiable {
                let suggestion = progressionService.suggest(
                    for: planned,
                    previousLogs: recent,
-                   exerciseInfo: exerciseDetails[newExercise.id]
+                   exerciseInfo: exerciseDetails[newExercise.id],
+                   increments: weightIncrements
                ) {
                 progressionSuggestions[newExercise.id] = suggestion
             }
@@ -1218,7 +1235,8 @@ final class WorkoutExecutionViewModel: Identifiable {
             if let suggestion = progressionService.suggest(
                 for: planned,
                 previousLogs: logs,
-                exerciseInfo: exerciseDetails[exerciseId]
+                exerciseInfo: exerciseDetails[exerciseId],
+                increments: weightIncrements
             ) {
                 progressionSuggestions[exerciseId] = suggestion
             }

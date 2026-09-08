@@ -75,6 +75,26 @@ protocol ExerciseServicing: AnyObject {
     func getExercises(forEquipment equipment: Set<Equipment>) -> [Exercise]
 }
 
+/// The slice of AuthService that MemoryService needs: read the current
+/// profile, write it back. Small on purpose so tests can fake it.
+@MainActor
+protocol ProfileStoring: AnyObject {
+    var currentProfile: UserProfile? { get }
+    func updateProfile(_ profile: UserProfile) async throws
+}
+
+@MainActor
+protocol MemoryServicing: AnyObject {
+    var preferences: [String: ExercisePreference] { get }
+    var activeEquipment: Set<Equipment> { get }
+    var weightIncrements: WeightIncrements { get }
+    func recordUsualAlternative(for exerciseId: String, replacement: String) async
+    func setNote(_ note: String?, for exerciseId: String) async throws
+    func setAvoided(_ avoided: Bool, for exerciseId: String) async throws
+    func saveGymSetups(_ setups: [GymSetup]) async throws
+    func setWeightIncrements(_ increments: WeightIncrements?) async throws
+}
+
 @MainActor
 protocol HealthKitServicing: AnyObject {
     var isAvailable: Bool { get }
@@ -103,6 +123,10 @@ extension WorkoutServicing {
 }
 
 extension WorkoutService: WorkoutServicing {}
+extension AuthService: ProfileStoring {
+    var currentProfile: UserProfile? { currentUser?.profile }
+}
+extension MemoryService: MemoryServicing {}
 extension HealthKitService: HealthKitServicing {}
 extension ProgressService: ProgressServicing {}
 extension ExerciseService: ExerciseServicing {}
