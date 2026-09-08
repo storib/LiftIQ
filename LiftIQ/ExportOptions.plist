@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Headless TestFlight upload:
+	     xcodebuild archive -project LiftIQ.xcodeproj -scheme LiftIQ -destination "generic/platform=iOS" -archivePath build/LiftIQ.xcarchive
+	     xcodebuild -exportArchive -archivePath build/LiftIQ.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/export
+	     Xcode's saved Apple ID session authenticates the upload; no Organizer needed. -->
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>upload</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>teamID</key>
+	<string>93G47TS4YJ</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>
