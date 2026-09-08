@@ -7,6 +7,12 @@ import {
 import { describe, it, beforeAll, afterAll, beforeEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
+
+// The compat Firestore instance the test env hands out needs the compat
+// FieldValue for server timestamps.
+const serverTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
 
 let testEnv: RulesTestEnvironment;
 
@@ -771,6 +777,64 @@ describe("aiUsageLogs (server-only)", () => {
     await assertFails(
       db.collection("aiUsageLogs").doc("log-1").set({ userId: USER_A })
     );
+  });
+});
+
+// ══════════════════════════════════════════
+// Beta events (append-only from the app)
+// ══════════════════════════════════════════
+
+describe("betaEvents/{eventId}", () => {
+  const validEvent = () => ({
+    userId: USER_A,
+    name: "session_started",
+    props: { source: "dashboard", adapted: "none" },
+    createdAt: serverTimestamp(),
+    appVersion: "1.3.0",
+    build: "6",
+  });
+
+  it("allows a signed-in user to append an event about themselves", async () => {
+    const db = authedDb(USER_A);
+    await assertSucceeds(db.collection("betaEvents").add(validEvent()));
+  });
+
+  it("denies an event attributed to another user", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(db.collection("betaEvents").add({ ...validEvent(), userId: USER_B }));
+  });
+
+  it("denies a client-supplied createdAt", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(db.collection("betaEvents").add({ ...validEvent(), createdAt: new Date() }));
+  });
+
+  it("denies extra fields", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(db.collection("betaEvents").add({ ...validEvent(), email: "a@test.com" }));
+  });
+
+  it("denies an over-long or empty name", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(db.collection("betaEvents").add({ ...validEvent(), name: "x".repeat(65) }));
+    await assertFails(db.collection("betaEvents").add({ ...validEvent(), name: "" }));
+  });
+
+  it("denies unauthenticated writes", async () => {
+    await assertFails(unauthDb().collection("betaEvents").add(validEvent()));
+  });
+
+  it("denies read, update, and delete even for the owner", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().collection("betaEvents").doc("evt-1").set({
+        ...validEvent(),
+        createdAt: new Date(),
+      });
+    });
+    const db = authedDb(USER_A);
+    await assertFails(db.collection("betaEvents").doc("evt-1").get());
+    await assertFails(db.collection("betaEvents").doc("evt-1").update({ name: "changed" }));
+    await assertFails(db.collection("betaEvents").doc("evt-1").delete());
   });
 });
 

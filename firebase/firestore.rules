@@ -183,6 +183,27 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Beta usage events: append-only from the app, read by the owner via
+    // the Admin SDK. Top-level (like aiUsageLogs) so cross-user queries need
+    // only a composite index; deleteAccount purges them by userId. ──
+
+    function validBetaEvent() {
+      return hasOnlyFields(['userId', 'name', 'props', 'createdAt', 'appVersion', 'build'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 64
+        && request.resource.data.props is map
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.appVersion is string
+        && request.resource.data.build is string;
+    }
+
+    match /betaEvents/{eventId} {
+      allow create: if isSignedIn() && validBetaEvent();
+      allow read, update, delete: if false;
+    }
+
     // ── Deny everything else ──
 
     match /{document=**} {
