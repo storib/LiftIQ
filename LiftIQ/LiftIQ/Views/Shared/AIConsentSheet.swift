@@ -33,7 +33,8 @@ struct AIConsentSheet: View {
                             "Training schedule and session length",
                             "Injuries and exercise history",
                             "Your workout plan and any change requests you type",
-                            "For the weekly check-in: two weeks of session counts, volume, best sets, and difficulty ratings"
+                            "For the weekly check-in: two weeks of session counts, volume, best sets, and difficulty ratings",
+                            "When adapting a workout to another gym: that gym's equipment and any exercises you've chosen to avoid"
                         ]
                     )
 

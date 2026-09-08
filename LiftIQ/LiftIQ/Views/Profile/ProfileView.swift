@@ -133,7 +133,7 @@ struct ProfileView: View {
                 ))
 
                 if AIConsentManager.hasConsented {
-                    Text("Training profile, injury data, and recent session summaries may be sent to Anthropic (Claude AI) when generating plans or the weekly check-in.")
+                    Text("Training profile, injury data, recent session summaries, and your gym setups may be sent to Anthropic (Claude AI) when generating plans, adapting a workout to another gym, or running the weekly check-in.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {

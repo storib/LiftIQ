@@ -4,10 +4,12 @@ import Foundation
 /// session (`WorkoutSession.adaptation`) so the beta can see which
 /// adaptations get used and whether they stick. Flat, string-keyed
 /// enums — no payload enums — so Firestore encoding stays trivial.
-enum WorkoutAdaptationKind: String, Codable {
+enum WorkoutAdaptationKind: String, Codable, Identifiable {
     case shortOnTime
     case equipmentBusy
     case differentGym
+
+    var id: String { rawValue }
 }
 
 enum WorkoutChangeKind: String, Codable {

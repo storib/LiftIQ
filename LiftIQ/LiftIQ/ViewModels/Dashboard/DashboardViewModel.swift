@@ -5,6 +5,30 @@ import SwiftUI
 final class DashboardViewModel {
     var isLoading = false
     var todayWorkout: WorkoutTemplate?
+    /// Today's workout after an accepted "adapt" — held until Start, and
+    /// only while it still belongs to the recommended day of the same plan.
+    var adaptedWorkout: AdaptedWorkout?
+    private var activePlanId: String?
+
+    /// What Start Workout runs: the adaptation when it matches today's
+    /// recommended day, else the plan's template.
+    var effectiveTodayWorkout: WorkoutTemplate? {
+        if let adaptedWorkout, adaptedWorkout.sourceTemplateId == todayWorkout?.id, adaptedWorkout.planId == activePlanId {
+            return adaptedWorkout.template
+        }
+        return todayWorkout
+    }
+
+    func revertAdaptation() {
+        adaptedWorkout = nil
+    }
+
+    /// The "Change" menu picks a different day; an adaptation of the old
+    /// day must not follow it.
+    func selectWorkout(_ template: WorkoutTemplate) {
+        todayWorkout = template
+        adaptedWorkout = nil
+    }
     /// Consecutive weeks meeting the plan's training days (falls back to 2).
     /// Replaces the old day streak, which meant little to a 3-4×/week lifter.
     var weekStreak: Int = 0
@@ -67,6 +91,13 @@ final class DashboardViewModel {
                 plan: workoutService.activePlan,
                 sessions: workoutService.recentSessions
             )
+            activePlanId = workoutService.activePlan?.id
+            // A reload recomputes the recommended day; keep the adaptation
+            // only if it is still for that day of the same plan.
+            if let adaptedWorkout,
+               adaptedWorkout.sourceTemplateId != todayWorkout?.id || adaptedWorkout.planId != activePlanId {
+                self.adaptedWorkout = nil
+            }
             computeStats(from: workoutService.recentSessions)
         } catch {
             // Handle silently for dashboard
@@ -146,6 +177,7 @@ final class DashboardViewModel {
         next.blockNumber = plan.effectiveBlockNumber + 1
         try await workoutService.savePlan(next)
         blockReview = nil
+        adaptedWorkout = nil
         blockProgress = BlockProgress.compute(plan: next, sessions: completedSessions)
         // "Tweak with AI" hands in a rewritten plan; Up Next must point at
         // one of its days, not the template it replaced.

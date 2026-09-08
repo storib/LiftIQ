@@ -388,7 +388,8 @@ final class WorkoutExecutionViewModel: Identifiable {
             if !isResumed {
                 betaEvents.log("session_started", [
                     "source": startSource,
-                    "adapted": "none",
+                    "adapted": session.adaptation?.kind.rawValue ?? "none",
+                    "usedAI": session.adaptation?.usedAI ?? false,
                     "exercises": session.exerciseLogs.count,
                     "liveActivity": liveActivityStarted,
                 ])
@@ -1263,7 +1264,7 @@ final class WorkoutExecutionViewModel: Identifiable {
                 "completedSets": completedSetsCount,
                 "totalSets": totalSetsCount,
                 "milestones": milestones.count,
-                "adapted": "none",
+                "adapted": session.adaptation?.kind.rawValue ?? "none",
                 "source": startSource,
             ])
         } catch {

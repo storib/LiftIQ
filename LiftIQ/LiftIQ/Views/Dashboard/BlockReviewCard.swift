@@ -8,6 +8,8 @@ struct BlockReviewCard: View {
     let plan: WorkoutPlan
     let onKeepGoing: () -> Void
     let onPlanModified: (WorkoutPlan) -> Void
+    /// Beta signal for the two non-committing taps ("tweak" opens, "new" navigates).
+    var onAction: ((String) -> Void)? = nil
 
     @State private var showingModify = false
 
@@ -50,6 +52,7 @@ struct BlockReviewCard: View {
 
             HStack(spacing: 12) {
                 Button {
+                    onAction?("tweak-open")
                     showingModify = true
                 } label: {
                     Label("Tweak with AI", systemImage: "wand.and.stars")
@@ -58,6 +61,7 @@ struct BlockReviewCard: View {
                 }
                 NavigationLink {
                     TemplateBrowserView()
+                        .onAppear { onAction?("new") }
                 } label: {
                     Label("New program", systemImage: "plus.circle")
                         .font(.subheadline.weight(.semibold))

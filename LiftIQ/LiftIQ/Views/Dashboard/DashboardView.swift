@@ -9,9 +9,66 @@ struct DashboardView: View {
     @State private var healthError: String?
     @State private var showDiscardConfirmation = false
     @State private var weeklyCheckIn = WeeklyCheckInViewModel()
+    @State private var adaptRequest: WorkoutAdaptationKind?
+    @State private var showingAdaptedPreview = false
 
     private var unitSystem: UnitSystem {
         dependencies.authService.currentUser?.profile.unitSystem ?? .imperial
+    }
+
+    private func startTodayWorkout(_ workout: WorkoutTemplate) {
+        guard let userId = dependencies.authService.currentUserId else { return }
+        let vm = WorkoutExecutionViewModel(
+            template: workout,
+            userId: userId,
+            planId: dependencies.workoutService.activePlan?.id,
+            workoutService: dependencies.workoutService,
+            exerciseService: dependencies.exerciseService,
+            progressService: dependencies.progressService,
+            progressionService: dependencies.progressionService,
+            startSource: "dashboard",
+            betaEvents: dependencies.betaEvents,
+            liveActivity: dependencies.liveActivityController,
+            memory: dependencies.memoryService
+        )
+        // The session carries the adaptation so the beta can see which ones
+        // get used; the dashboard drops it once the workout is underway.
+        if let adapted = viewModel.adaptedWorkout, adapted.template.id == workout.id {
+            vm.session.adaptation = adapted.record
+            viewModel.revertAdaptation()
+        }
+        workoutExecutionVM = vm
+    }
+
+    private func adaptedBanner(_ adapted: AdaptedWorkout) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "bolt.badge.clock")
+                .foregroundStyle(Color.accentColor)
+            Text(adaptedSummary(adapted))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .lineLimit(1)
+            Spacer()
+            Button("Revert") { viewModel.revertAdaptation() }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .frame(minHeight: 36)
+        .background(Color.accentColor.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func adaptedSummary(_ adapted: AdaptedWorkout) -> String {
+        let count = adapted.changes.count
+        let changes = "\(count) change\(count == 1 ? "" : "s")"
+        switch adapted.record.kind {
+        case .shortOnTime: return "Adapted: ~\(adapted.minutesAfter) min · \(changes)"
+        case .equipmentBusy: return "Adapted: equipment busy · \(changes)"
+        case .differentGym: return "Adapted: different gym · \(changes)"
+        }
     }
 
     /// "Up Next · Block 1 · Week 3 of 6" once a plan has block progress.
@@ -196,13 +253,20 @@ struct DashboardView: View {
                     BlockReviewCard(
                         review: review,
                         plan: plan,
-                        onKeepGoing: { Task { await keepGoing(plan) } },
-                        onPlanModified: { modified in Task { await keepGoing(modified) } }
+                        onKeepGoing: {
+                            dependencies.betaEvents.log("block_review_action", ["action": "keep"])
+                            Task { await keepGoing(plan) }
+                        },
+                        onPlanModified: { modified in
+                            dependencies.betaEvents.log("block_review_action", ["action": "tweak"])
+                            Task { await keepGoing(modified) }
+                        },
+                        onAction: { action in dependencies.betaEvents.log("block_review_action", ["action": action]) }
                     )
                 }
 
                 // Next recommended workout — advances as plan days complete
-                if let workout = viewModel.todayWorkout {
+                if let workout = viewModel.effectiveTodayWorkout {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text(upNextLabel)
@@ -213,9 +277,9 @@ struct DashboardView: View {
                                 Menu {
                                     ForEach(plan.workouts) { template in
                                         Button {
-                                            viewModel.todayWorkout = template
+                                            viewModel.selectWorkout(template)
                                         } label: {
-                                            if template.id == workout.id {
+                                            if template.id == viewModel.todayWorkout?.id {
                                                 Label("Day \(template.dayNumber) · \(template.name)", systemImage: "checkmark")
                                             } else {
                                                 Text("Day \(template.dayNumber) · \(template.name)")
@@ -259,22 +323,17 @@ struct DashboardView: View {
                                 }
                             }
 
+                            if let adapted = viewModel.adaptedWorkout, adapted.template.id == workout.id {
+                                adaptedBanner(adapted)
+                            } else {
+                                AdaptChipsRow(
+                                    lastMinutes: UserDefaults.standard.object(forKey: AdaptWorkoutViewModel.lastMinutesKey) as? Int ?? 30,
+                                    onPick: { adaptRequest = $0 }
+                                )
+                            }
+
                             Button {
-                                if let userId = dependencies.authService.currentUserId {
-                                    workoutExecutionVM = WorkoutExecutionViewModel(
-                                        template: workout,
-                                        userId: userId,
-                                        planId: dependencies.workoutService.activePlan?.id,
-                                        workoutService: dependencies.workoutService,
-                                        exerciseService: dependencies.exerciseService,
-                                        progressService: dependencies.progressService,
-                                        progressionService: dependencies.progressionService,
-                                        startSource: "dashboard",
-                                        betaEvents: dependencies.betaEvents,
-            liveActivity: dependencies.liveActivityController,
-            memory: dependencies.memoryService
-                                    )
-                                }
+                                startTodayWorkout(workout)
                             } label: {
                                 Text("Start Workout")
                                     .font(.headline)
@@ -423,6 +482,27 @@ struct DashboardView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.repairError ?? "")
+        }
+        .sheet(item: $adaptRequest) { kind in
+            if let template = viewModel.todayWorkout,
+               let profile = dependencies.authService.currentUser?.profile,
+               let userId = dependencies.authService.currentUserId {
+                AdaptPreviewSheet(
+                    viewModel: AdaptWorkoutViewModel(
+                        kind: kind,
+                        template: template,
+                        profile: profile,
+                        userId: userId,
+                        exerciseService: dependencies.exerciseService,
+                        workoutService: dependencies.workoutService,
+                        aiService: dependencies.aiService,
+                        memory: dependencies.memoryService,
+                        betaEvents: dependencies.betaEvents
+                    ),
+                    onAccept: { adapted in viewModel.adaptedWorkout = adapted }
+                )
+                .environment(dependencies)
+            }
         }
         .fullScreenCover(item: $workoutExecutionVM) { vm in
             WorkoutExecutionView(viewModel: vm)

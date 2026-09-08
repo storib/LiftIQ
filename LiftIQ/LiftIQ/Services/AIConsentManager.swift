@@ -10,7 +10,9 @@ enum AIConsentManager {
     /// the user's free-text modification request.
     /// v3: the weekly check-in shares two weeks of session summaries —
     /// session counts, volume, best sets per lift, and difficulty ratings.
-    static let currentConsentVersion = 3
+    /// v4: adapting a workout to another gym may share the names of
+    /// exercises you've marked as avoided, so the AI can skip them.
+    static let currentConsentVersion = 4
 
     static var hasConsented: Bool {
         UserDefaults.standard.bool(forKey: consentKey)
