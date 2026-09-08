@@ -41,9 +41,9 @@ final class HealthKitServiceTests: XCTestCase {
         return (HealthKitService(workoutStore: store, defaults: defaults), store, defaults)
     }
 
-    private func makeSession(id: String = "s1", status: SessionStatus = .completed, completedAt: Date? = nil) -> WorkoutSession {
+    private func makeSession(id: String = "s1", userId: String = "u1", status: SessionStatus = .completed, completedAt: Date? = nil) -> WorkoutSession {
         WorkoutSession(
-            id: id, userId: "u1", planId: nil, workoutTemplateId: nil, workoutName: "Push",
+            id: id, userId: userId, planId: nil, workoutTemplateId: nil, workoutName: "Push",
             startedAt: t0, completedAt: completedAt ?? t0.addingTimeInterval(3600), status: status,
             exerciseLogs: [], durationSeconds: 3600, notes: nil, mood: nil
         )
@@ -56,7 +56,7 @@ final class HealthKitServiceTests: XCTestCase {
         XCTAssertEqual(store.deletedIds, ["s1"])
         XCTAssertEqual(store.saved.map(\.externalId), ["s1"])
         XCTAssertEqual(store.saved.first?.completedAt, t0.addingTimeInterval(3600))
-        XCTAssertTrue(service.pendingReexportSessionIds.isEmpty)
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "u1").isEmpty)
     }
 
     func testFailedDeleteNeverSavesAndStaysPending() async {
@@ -65,7 +65,7 @@ final class HealthKitServiceTests: XCTestCase {
         let ok = await service.reexportSession(makeSession())
         XCTAssertFalse(ok)
         XCTAssertTrue(store.saved.isEmpty, "a duplicate would have been created")
-        XCTAssertEqual(service.pendingReexportSessionIds, ["s1"])
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "u1"), ["s1"])
     }
 
     func testDeleteThenFailedSaveStaysPendingAndRetrySucceeds() async {
@@ -74,13 +74,13 @@ final class HealthKitServiceTests: XCTestCase {
         let ok = await service.reexportSession(makeSession())
         XCTAssertFalse(ok)
         XCTAssertEqual(store.deletedIds, ["s1"])
-        XCTAssertEqual(service.pendingReexportSessionIds, ["s1"])
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "u1"), ["s1"])
 
         store.saveError = nil
         await service.retryPendingReexports(sessions: [makeSession()])
 
         XCTAssertEqual(store.saved.map(\.externalId), ["s1"])
-        XCTAssertTrue(service.pendingReexportSessionIds.isEmpty)
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "u1").isEmpty)
     }
 
     func testUnauthorizedSharingIsNotCountedAsSuccess() async {
@@ -89,12 +89,12 @@ final class HealthKitServiceTests: XCTestCase {
         let ok = await service.reexportSession(makeSession())
         XCTAssertFalse(ok)
         XCTAssertTrue(store.saved.isEmpty)
-        XCTAssertEqual(service.pendingReexportSessionIds, ["s1"], "must survive until sharing is authorized")
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "u1"), ["s1"], "must survive until sharing is authorized")
 
         store.isWorkoutSharingAuthorized = true
         await service.retryPendingReexports(sessions: [makeSession()])
         XCTAssertEqual(store.saved.map(\.externalId), ["s1"])
-        XCTAssertTrue(service.pendingReexportSessionIds.isEmpty)
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "u1").isEmpty)
     }
 
     func testInvalidBoundsIsNotCountedAsSuccess() async {
@@ -102,7 +102,7 @@ final class HealthKitServiceTests: XCTestCase {
         let ok = await service.reexportSession(makeSession(completedAt: t0.addingTimeInterval(-60)))
         XCTAssertFalse(ok)
         XCTAssertTrue(store.saved.isEmpty)
-        XCTAssertEqual(service.pendingReexportSessionIds, ["s1"])
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "u1"), ["s1"])
     }
 
     func testPendingLedgerPersistsAcrossInstances() async {
@@ -111,7 +111,7 @@ final class HealthKitServiceTests: XCTestCase {
         _ = await service.reexportSession(makeSession())
 
         let again = HealthKitService(workoutStore: FakeSampleStore(), defaults: defaults)
-        XCTAssertEqual(again.pendingReexportSessionIds, ["s1"])
+        XCTAssertEqual(again.pendingReexportSessionIds(userId: "u1"), ["s1"])
     }
 
     func testRetryOnlyTouchesPendingCompletedSessions() async {
@@ -133,11 +133,11 @@ final class HealthKitServiceTests: XCTestCase {
         let (service, store, _) = makeService()
         store.saveError = StoreError.boom
         _ = await service.reexportSession(makeSession())
-        XCTAssertEqual(service.pendingReexportSessionIds, ["s1"])
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "u1"), ["s1"])
 
-        await service.deleteExportedSession(sessionId: "s1")
+        await service.deleteExportedSession(sessionId: "s1", userId: "u1")
 
-        XCTAssertTrue(service.pendingReexportSessionIds.isEmpty)
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "u1").isEmpty)
     }
 
     func testSyncDisabledSkipsWithoutPending() async {
@@ -145,13 +145,44 @@ final class HealthKitServiceTests: XCTestCase {
         let ok = await service.reexportSession(makeSession())
         XCTAssertFalse(ok)
         XCTAssertTrue(store.deletedIds.isEmpty)
-        XCTAssertTrue(service.pendingReexportSessionIds.isEmpty)
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "u1").isEmpty)
     }
 
     func testBestEffortExportSwallowsFailures() async {
         let (service, store, _) = makeService()
         store.saveError = StoreError.boom
         await service.exportSession(makeSession())
-        XCTAssertTrue(service.pendingReexportSessionIds.isEmpty, "a first export is not a replacement")
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "u1").isEmpty, "a first export is not a replacement")
+    }
+
+    // MARK: - Account scoping
+
+    func testPendingLedgerIsScopedByAccount() async {
+        // Account A's failed replacement must be invisible to account B on
+        // the same device: B's dashboard load reads only B's ledger, so it
+        // never looks A's session up under /users/B (where it's absent) and
+        // never deletes A's Health export as "gone".
+        let (service, store, _) = makeService()
+        store.saveError = StoreError.boom
+        _ = await service.reexportSession(makeSession(id: "a-session", userId: "A"))
+        store.saveError = nil
+
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "A"), ["a-session"])
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "B").isEmpty)
+
+        // B retrying with B's sessions — even one that reuses A's id in a
+        // hostile fixture — leaves A's entry alone.
+        await service.retryPendingReexports(sessions: [makeSession(id: "a-session", userId: "B")])
+        XCTAssertTrue(store.saved.isEmpty)
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "A"), ["a-session"])
+
+        // B deleting under its own account cannot clear A's entry either.
+        await service.deleteExportedSession(sessionId: "a-session", userId: "B")
+        XCTAssertEqual(service.pendingReexportSessionIds(userId: "A"), ["a-session"])
+
+        // A comes back: the retry runs and clears A's ledger.
+        await service.retryPendingReexports(sessions: [makeSession(id: "a-session", userId: "A")])
+        XCTAssertEqual(store.saved.map(\.externalId), ["a-session"])
+        XCTAssertTrue(service.pendingReexportSessionIds(userId: "A").isEmpty)
     }
 }

@@ -87,10 +87,10 @@ protocol HealthKitServicing: AnyObject {
     func disableActivityImport()
     func fetchExternalActivities(from startDate: Date, to endDate: Date) async throws -> [ExternalActivity]
     func exportSession(_ session: WorkoutSession) async
-    func deleteExportedSession(sessionId: String) async
+    func deleteExportedSession(sessionId: String, userId: String) async
     @discardableResult
     func reexportSession(_ session: WorkoutSession) async -> Bool
-    var pendingReexportSessionIds: Set<String> { get }
+    func pendingReexportSessionIds(userId: String) -> Set<String>
     func retryPendingReexports(sessions: [WorkoutSession]) async
 }
 

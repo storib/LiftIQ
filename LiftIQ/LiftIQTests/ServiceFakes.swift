@@ -322,10 +322,14 @@ final class FakeHealthKitService: HealthKitServicing {
     private(set) var reexportedSessionIds: [String] = []
     private(set) var retryBatches: [[String]] = []
     var reexportSucceeds = true
-    var pendingReexportSessionIds: Set<String> = []
+    var pendingReexportSessionIdsByUser: [String: Set<String>] = [:]
+
+    func pendingReexportSessionIds(userId: String) -> Set<String> {
+        pendingReexportSessionIdsByUser[userId] ?? []
+    }
 
     func exportSession(_ session: WorkoutSession) async { exportedSessionIds.append(session.id) }
-    func deleteExportedSession(sessionId: String) async { deletedSessionIds.append(sessionId) }
+    func deleteExportedSession(sessionId: String, userId: String) async { deletedSessionIds.append(sessionId) }
     func reexportSession(_ session: WorkoutSession) async -> Bool {
         reexportedSessionIds.append(session.id)
         return reexportSucceeds

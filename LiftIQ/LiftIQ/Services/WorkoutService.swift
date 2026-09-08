@@ -38,9 +38,11 @@ final class WorkoutService {
     /// A Health replacement that failed after a time edit gets another go on
     /// every dashboard load. Pending sessions are fetched by id — the edited
     /// workout may be older than any recent-sessions window — and one that
-    /// no longer exists is dropped from the ledger.
+    /// no longer exists is dropped from the ledger. Only the signed-in
+    /// account's ledger is read: another account's ids would resolve to
+    /// missing documents under this user and wrongly delete their exports.
     private func retryPendingHealthReplacements(userId: String) async {
-        let pending = healthKitService.pendingReexportSessionIds
+        let pending = healthKitService.pendingReexportSessionIds(userId: userId)
         guard !pending.isEmpty else { return }
         var sessions: [WorkoutSession] = []
         for sessionId in pending {
@@ -53,7 +55,7 @@ final class WorkoutService {
                     sessions.append(fetched)
                 } else {
                     // Gone from Firestore: nothing to replace, drop the entry.
-                    await healthKitService.deleteExportedSession(sessionId: sessionId)
+                    await healthKitService.deleteExportedSession(sessionId: sessionId, userId: userId)
                 }
             } catch {
                 // Transient read failure: leave it pending for next time.
@@ -154,7 +156,7 @@ final class WorkoutService {
             try? await prRepository.deleteRecord(userId: session.userId, recordId: recordId)
         }
         try await sessionRepository.deleteSession(userId: session.userId, sessionId: session.id)
-        await healthKitService.deleteExportedSession(sessionId: session.id)
+        await healthKitService.deleteExportedSession(sessionId: session.id, userId: session.userId)
         recentSessions.removeAll { $0.id == session.id }
         if activeSession?.id == session.id {
             activeSession = nil

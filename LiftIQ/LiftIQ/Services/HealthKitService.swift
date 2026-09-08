@@ -216,36 +216,38 @@ final class HealthKitService {
     /// failure matters: a failed delete must not be followed by an export
     /// (that would duplicate), and a successful delete followed by a failed
     /// or skipped export must be retried (or the workout is gone from
-    /// Health). Any failure records the session id for
-    /// `retryPendingReexports`; only a real save clears it.
+    /// Health). Any failure records the session under its owner in the
+    /// pending ledger; only a real save clears it.
     @discardableResult
     func reexportSession(_ session: WorkoutSession) async -> Bool {
         guard isSyncEnabled, isAvailable else { return false }
         do {
             try await workoutStore.deleteWorkouts(externalId: session.id)
             try await export(session)
-            removePending(session.id)
+            removePending(session.id, userId: session.userId)
             return true
         } catch {
-            addPending(session.id)
+            addPending(session.id, userId: session.userId)
             return false
         }
     }
 
-    /// Session ids whose Health replacement did not complete. Device-local,
-    /// since the exports themselves are. `WorkoutService` fetches these by
-    /// id (they may be older than any recent-sessions window) and passes
-    /// them to `retryPendingReexports`.
-    var pendingReexportSessionIds: Set<String> {
-        Set(defaults.stringArray(forKey: Self.pendingReexportKey) ?? [])
+    /// Session ids owned by `userId` whose Health replacement did not
+    /// complete. The ledger is device-local (the exports are) but scoped by
+    /// account: another account signed in on this device must never see,
+    /// retry, or clear these — looking one up under the wrong user finds no
+    /// document and would delete the owner's export.
+    func pendingReexportSessionIds(userId: String) -> Set<String> {
+        Set(pendingLedger[userId] ?? [])
     }
 
-    /// Retries replacements that failed earlier. A retry after a delete-
-    /// then-failed-export finds nothing to delete and simply exports.
+    /// Retries replacements that failed earlier, each checked against its
+    /// own owner's ledger. A retry after a delete-then-failed-export finds
+    /// nothing to delete and simply exports.
     func retryPendingReexports(sessions: [WorkoutSession]) async {
-        let pending = pendingReexportSessionIds
-        guard !pending.isEmpty, isSyncEnabled, isAvailable else { return }
-        for session in sessions where pending.contains(session.id) && session.status == .completed {
+        guard isSyncEnabled, isAvailable else { return }
+        for session in sessions
+        where session.status == .completed && pendingReexportSessionIds(userId: session.userId).contains(session.id) {
             await reexportSession(session)
         }
     }
@@ -253,16 +255,17 @@ final class HealthKitService {
     /// Best-effort removal of the HKWorkout exported for a deleted session.
     /// Only samples this app wrote can be deleted, which is exactly the set
     /// tagged with our external UUID. Also drops any pending replacement —
-    /// a session that no longer exists has nothing to replace.
-    func deleteExportedSession(sessionId: String) async {
-        removePending(sessionId)
+    /// a session that no longer exists has nothing to replace. Callers must
+    /// only pass ids that belong to the signed-in account.
+    func deleteExportedSession(sessionId: String, userId: String) async {
+        removePending(sessionId, userId: userId)
         guard isAvailable else { return }
         try? await workoutStore.deleteWorkouts(externalId: sessionId)
     }
 
     // MARK: - Export primitive and pending ledger
 
-    private static let pendingReexportKey = "liftiq.health.pendingReexportSessionIds"
+    private static let pendingReexportKey = "liftiq.health.pendingReexportByUser"
 
     /// Throws when the export can't happen — including the "skipped"
     /// cases, so a caller replacing a workout never mistakes a skip for a
@@ -275,15 +278,25 @@ final class HealthKitService {
         try await workoutStore.saveWorkout(startedAt: session.startedAt, completedAt: completedAt, externalId: session.id)
     }
 
-    private func addPending(_ id: String) {
-        var ids = pendingReexportSessionIds
-        ids.insert(id)
-        defaults.set(Array(ids).sorted(), forKey: Self.pendingReexportKey)
+    /// userId → pending session ids.
+    private var pendingLedger: [String: [String]] {
+        get { defaults.dictionary(forKey: Self.pendingReexportKey) as? [String: [String]] ?? [:] }
+        set { defaults.set(newValue, forKey: Self.pendingReexportKey) }
     }
 
-    private func removePending(_ id: String) {
-        var ids = pendingReexportSessionIds
+    private func addPending(_ id: String, userId: String) {
+        var ledger = pendingLedger
+        var ids = Set(ledger[userId] ?? [])
+        ids.insert(id)
+        ledger[userId] = Array(ids).sorted()
+        pendingLedger = ledger
+    }
+
+    private func removePending(_ id: String, userId: String) {
+        var ledger = pendingLedger
+        var ids = Set(ledger[userId] ?? [])
         guard ids.remove(id) != nil else { return }
-        defaults.set(Array(ids).sorted(), forKey: Self.pendingReexportKey)
+        ledger[userId] = ids.isEmpty ? nil : Array(ids).sorted()
+        pendingLedger = ledger
     }
 }
