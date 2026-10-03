@@ -273,6 +273,52 @@ describe("users/{userId}/personalRecords/{prId}", () => {
     );
   });
 
+  it("allows a duration PR (timed holds) up to an hour", async () => {
+    const db = authedDb(USER_A);
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-hold")
+        .set({ ...validPR, id: "pr-hold", type: "duration", value: 90, previousValue: 60 })
+    );
+    // Seconds get their own ceiling: 1000 kg is absurd, 1000 seconds is a
+    // 16-minute plank.
+    await assertSucceeds(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-hold-long")
+        .set({ ...validPR, id: "pr-hold-long", type: "duration", value: 1200, previousValue: 1000 })
+    );
+  });
+
+  it("denies a duration PR above the one-hour ceiling", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-hold-absurd")
+        .set({ ...validPR, id: "pr-hold-absurd", type: "duration", value: 3601 })
+    );
+  });
+
+  it("keeps the weight ceiling at 1000 for non-duration types", async () => {
+    const db = authedDb(USER_A);
+    await assertFails(
+      db
+        .collection("users")
+        .doc(USER_A)
+        .collection("personalRecords")
+        .doc("pr-weight-absurd")
+        .set({ ...validPR, id: "pr-weight-absurd", type: "weight", value: 1500 })
+    );
+  });
+
   it("denies PR with non-timestamp achievedAt", async () => {
     const db = authedDb(USER_A);
     await assertFails(

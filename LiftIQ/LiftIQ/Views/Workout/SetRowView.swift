@@ -10,16 +10,30 @@ struct SetRowView: View {
     @Binding var weightText: String
     @Binding var repsText: String
     @Binding var rpeText: String
+    /// Seconds held, for timed exercises. Replaces the reps column when
+    /// `tracksTime` is set; both bindings exist because the two values are
+    /// stored separately on the set log.
+    @Binding var durationText: String
     let previousWeight: Double?
     let previousReps: Int?
+    let previousDuration: Int?
     /// Suggested values (progression weight, warm-up ramp) in display units,
     /// ghosted ahead of the previous-session values. Tapping ✓ adopts them.
     let suggestedWeight: String?
     let suggestedReps: String?
-    /// Plan-prescribed reps, ghosted when there is no previous session to
-    /// repeat (first workout of a new program). Tapping ✓ adopts it.
+    let suggestedDuration: String?
+    /// Plan-prescribed reps (or seconds held), ghosted when there is no
+    /// previous session to repeat (first workout of a new program). Tapping
+    /// ✓ adopts it.
     let targetReps: Int?
-    let isBodyweight: Bool
+    /// The exercise is measured in seconds held, not reps.
+    let tracksTime: Bool
+    /// A weight is optional here: bodyweight and band work complete on reps
+    /// (or time) alone, and anything typed is added load.
+    let weightIsOptional: Bool
+    /// What to show in an empty weight field when none is needed — "BW" for
+    /// bodyweight movements, a dash for band work that has no kg at all.
+    let weightPlaceholder: String?
     let unitSystem: UnitSystem
     let isCompleted: Bool
     let isPersonalRecord: Bool
@@ -53,28 +67,13 @@ struct SetRowView: View {
             inputSurface(width: 60, field: .weight) {
                 ZStack {
                     if weightText.isEmpty, let suggested = suggestedWeight, !suggested.isEmpty {
-                        Text(suggested)
-                            .foregroundStyle(.tertiary)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .accessibilityHidden(true)
+                        ghostText(suggested)
                     } else if weightText.isEmpty, let prev = previousWeight, prev > 0 {
-                        Text(prev.formatted())
-                            .foregroundStyle(.tertiary)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .accessibilityHidden(true)
-                    } else if weightText.isEmpty && isBodyweight {
-                        // Bodyweight movements need no load; typing a weight
+                        ghostText(prev.formatted())
+                    } else if weightText.isEmpty, let weightPlaceholder {
+                        // Unloaded movements need no weight; typing one
                         // records *added* load (dip belt, vest).
-                        Text("BW")
-                            .foregroundStyle(.tertiary)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .accessibilityHidden(true)
+                        ghostText(weightPlaceholder)
                     }
                     TextField("", text: $weightText)
                         .keyboardType(.decimalPad)
@@ -83,7 +82,7 @@ struct SetRowView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .focused(focusedField, equals: focusTarget(.weight))
-                        .accessibilityLabel(isBodyweight ? "Added weight, optional" : "Weight")
+                        .accessibilityLabel(weightIsOptional ? "Added weight, optional" : "Weight")
                 }
             }
 
@@ -94,40 +93,13 @@ struct SetRowView: View {
                 .minimumScaleFactor(0.6)
                 .frame(width: 18)
 
-            // Reps input
-            inputSurface(width: 44, field: .reps) {
-                ZStack {
-                    if repsText.isEmpty, let suggested = suggestedReps, !suggested.isEmpty {
-                        Text(suggested)
-                            .foregroundStyle(.tertiary)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .accessibilityHidden(true)
-                    } else if repsText.isEmpty, let prev = previousReps, prev > 0 {
-                        Text("\(prev)")
-                            .foregroundStyle(.tertiary)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .accessibilityHidden(true)
-                    } else if repsText.isEmpty, let target = targetReps, target > 0 {
-                        Text("\(target)")
-                            .foregroundStyle(.tertiary)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .accessibilityHidden(true)
-                    }
-                    TextField("", text: $repsText)
-                        .keyboardType(.numberPad)
-                        .font(.subheadline)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .focused(focusedField, equals: focusTarget(.reps))
-                        .accessibilityLabel("Reps")
-                }
+            // Reps input — or seconds held, for timed exercises. Both use
+            // the `.reps` focus slot so the keyboard's prev/next chain is
+            // unchanged.
+            if tracksTime {
+                holdInput
+            } else {
+                repsInput
             }
 
             // RPE input (only for working sets)
@@ -183,6 +155,67 @@ struct SetRowView: View {
         // digits past xxLarge, so clamp the row and let minimumScaleFactor
         // absorb the rest until the row is rebuilt as a Grid.
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+    }
+
+    private var repsInput: some View {
+        inputSurface(width: 44, field: .reps) {
+            ZStack {
+                if repsText.isEmpty, let suggested = suggestedReps, !suggested.isEmpty {
+                    ghostText(suggested)
+                } else if repsText.isEmpty, let prev = previousReps, prev > 0 {
+                    ghostText("\(prev)")
+                } else if repsText.isEmpty, let target = targetReps, target > 0 {
+                    ghostText("\(target)")
+                }
+                TextField("", text: $repsText)
+                    .keyboardType(.numberPad)
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .focused(focusedField, equals: focusTarget(.reps))
+                    .accessibilityLabel("Reps")
+            }
+        }
+    }
+
+    /// Seconds-held column. Ghosts the progression target, then the
+    /// previous session's hold, then the plan's prescription — the same
+    /// priority order ✓ adopts in `completeSet`.
+    private var holdInput: some View {
+        inputSurface(width: 44, field: .reps) {
+            ZStack {
+                if durationText.isEmpty, let ghost = holdGhost {
+                    ghostText(ghost)
+                }
+                TextField("", text: $durationText)
+                    .keyboardType(.numberPad)
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .focused(focusedField, equals: focusTarget(.reps))
+                    .accessibilityLabel("Seconds held")
+            }
+        }
+    }
+
+    /// Ghosted suggestion behind an empty field: never read aloud, and
+    /// scaled down rather than clipped at larger text sizes.
+    private func ghostText(_ value: String) -> some View {
+        Text(value)
+            .foregroundStyle(.tertiary)
+            .font(.subheadline)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .accessibilityHidden(true)
+    }
+
+    private var holdGhost: String? {
+        if let suggestedDuration, !suggestedDuration.isEmpty { return suggestedDuration }
+        if let previousDuration, previousDuration > 0 { return "\(previousDuration)" }
+        if let targetReps, targetReps > 0 { return "\(targetReps)" }
+        return nil
     }
 
     // MARK: - Computed Helpers

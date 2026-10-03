@@ -9,6 +9,8 @@ struct WorkoutDayDetailView: View {
     // replaces it here without touching the saved plan.
     @State private var workout: WorkoutTemplate
     @State private var isTemporarilyModified = false
+    @State private var pendingRemoval: PlannedExercise?
+    @State private var removalError: String?
 
     init(workout: WorkoutTemplate) {
         _workout = State(initialValue: workout)
@@ -117,6 +119,19 @@ struct WorkoutDayDetailView: View {
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
+                        // A one-session AI edit isn't the saved plan, so a
+                        // permanent removal from it would mean something
+                        // else entirely; the row stays read-only until the
+                        // edit is saved or discarded.
+                        .swipeActions(edge: .trailing) {
+                            if !isTemporarilyModified, canRemove(planned) {
+                                Button(role: .destructive) {
+                                    pendingRemoval = planned
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -183,6 +198,30 @@ struct WorkoutDayDetailView: View {
                     }
                 }
             }
+        }
+        .confirmationDialog(
+            pendingRemoval.map { "Remove \(exerciseName(for: $0)) from this workout?" } ?? "Remove exercise?",
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { if !$0 { pendingRemoval = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingRemoval
+        ) { planned in
+            Button("Remove from my plan", role: .destructive) {
+                Task { await remove(planned) }
+            }
+            Button("Cancel", role: .cancel) { pendingRemoval = nil }
+        } message: { _ in
+            Text("This changes your saved plan. Workouts already completed keep their logged sets.")
+        }
+        .alert("Couldn't update your plan", isPresented: Binding(
+            get: { removalError != nil },
+            set: { if !$0 { removalError = nil } }
+        )) {
+            Button("OK", role: .cancel) { removalError = nil }
+        } message: {
+            Text(removalError ?? "")
         }
         .fullScreenCover(item: $workoutExecutionVM) { vm in
             WorkoutExecutionView(viewModel: vm)
@@ -272,6 +311,44 @@ struct WorkoutDayDetailView: View {
         let groupCount = workout.exerciseGroups.filter { $0.groupType != .straight }.count
         let groupText = groupCount > 0 ? " Includes \(groupCount) paired block\(groupCount == 1 ? "" : "s") to keep the pace up." : ""
         return "A \(workout.estimatedDurationMinutes)-minute \(targets.lowercased()) session built around \(exerciseCount) planned exercises.\(groupText)"
+    }
+
+    private func exerciseName(for planned: PlannedExercise) -> String {
+        dependencies.exerciseService.getExercise(id: planned.exerciseId)?.name ?? planned.exerciseId
+    }
+
+    /// Permanent removal is offered only when it leaves a workout behind —
+    /// `PlanEditor` refuses to empty a day.
+    private func canRemove(_ planned: PlannedExercise) -> Bool {
+        guard let plan = parentPlan else { return false }
+        return PlanEditor.canRemoveExercise(
+            plannedExerciseId: planned.id,
+            exerciseId: planned.exerciseId,
+            fromDayId: workout.id,
+            in: plan
+        )
+    }
+
+    private func remove(_ planned: PlannedExercise) async {
+        pendingRemoval = nil
+        guard let plan = parentPlan,
+              let updated = PlanEditor.removingExercise(
+                  plannedExerciseId: planned.id,
+                  exerciseId: planned.exerciseId,
+                  fromDayId: workout.id,
+                  in: plan
+              ) else {
+            removalError = "That's the only exercise left in this workout, so the plan is unchanged."
+            return
+        }
+        do {
+            try await dependencies.workoutService.savePlan(updated)
+            if let day = updated.workouts.first(where: { $0.id == workout.id }) {
+                workout = day
+            }
+        } catch {
+            removalError = error.localizedDescription
+        }
     }
 
     private func startWorkout(at logIndex: Int) {

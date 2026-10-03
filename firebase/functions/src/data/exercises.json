@@ -12,7 +12,8 @@
     "tips": ["Retract shoulder blades and arch upper back", "Keep feet flat on the floor", "Lower the bar with control to mid-chest"],
     "alternatives": ["dumbbell-bench-press", "machine-chest-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "barbell"]
+    "tags": ["chest", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "incline-barbell-bench-press",
@@ -27,7 +28,8 @@
     "tips": ["Keep your back pressed into the bench", "Use a slightly narrower grip than flat bench", "Lower the bar to upper chest near the collarbone"],
     "alternatives": ["incline-dumbbell-press", "machine-chest-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "barbell", "upper-chest"]
+    "tags": ["chest", "compound", "barbell", "upper-chest"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "dumbbell-bench-press",
@@ -42,7 +44,8 @@
     "tips": ["Keep a neutral wrist position", "Allow a deeper stretch at the bottom than barbell bench", "Press the dumbbells slightly inward at the top"],
     "alternatives": ["barbell-bench-press", "machine-chest-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "dumbbell"]
+    "tags": ["chest", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "incline-dumbbell-press",
@@ -57,7 +60,8 @@
     "tips": ["Don't set the incline too steep or shoulders will take over", "Keep elbows at roughly 45 degrees", "Control the descent for a full stretch"],
     "alternatives": ["incline-barbell-bench-press", "machine-chest-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "dumbbell", "upper-chest"]
+    "tags": ["chest", "compound", "dumbbell", "upper-chest"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "decline-barbell-bench-press",
@@ -72,7 +76,8 @@
     "tips": ["Use a spotter for safety", "Keep the bar path slightly curved toward your lower chest", "Don't go too heavy without a spotter"],
     "alternatives": ["dips-chest", "dumbbell-bench-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "barbell", "lower-chest"]
+    "tags": ["chest", "compound", "barbell", "lower-chest"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "dumbbell-fly",
@@ -87,7 +92,8 @@
     "tips": ["Maintain a slight bend in your elbows throughout", "Focus on stretching the chest at the bottom", "Don't go too heavy as this stresses the shoulder joint"],
     "alternatives": ["cable-fly", "pec-deck-machine"],
     "isCompound": false,
-    "tags": ["chest", "isolation", "dumbbell"]
+    "tags": ["chest", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "cable-fly",
@@ -102,7 +108,8 @@
     "tips": ["Lean slightly forward to engage the chest more", "Squeeze at the peak contraction", "Keep constant tension throughout the movement"],
     "alternatives": ["dumbbell-fly", "cable-crossover"],
     "isCompound": false,
-    "tags": ["chest", "isolation", "cables"]
+    "tags": ["chest", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "machine-chest-press",
@@ -117,7 +124,8 @@
     "tips": ["Adjust the seat so handles align with mid-chest", "Don't lock out elbows completely", "Focus on squeezing the chest at full extension"],
     "alternatives": ["barbell-bench-press", "dumbbell-bench-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "machines"]
+    "tags": ["chest", "compound", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "pec-deck-machine",
@@ -132,7 +140,8 @@
     "tips": ["Keep your back flat against the pad", "Don't let the weight stack slam at the bottom", "Focus on the squeeze at peak contraction"],
     "alternatives": ["dumbbell-fly", "cable-fly"],
     "isCompound": false,
-    "tags": ["chest", "isolation", "machines"]
+    "tags": ["chest", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "push-ups",
@@ -147,7 +156,8 @@
     "tips": ["Keep your body in a straight line from head to heels", "Engage your core throughout", "Don't flare your elbows too wide"],
     "alternatives": ["barbell-bench-press", "dumbbell-bench-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "bodyweight"]
+    "tags": ["chest", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "dips-chest",
@@ -162,7 +172,8 @@
     "tips": ["Lean forward to target the chest more", "Go to at least 90 degrees of elbow flexion", "Add weight with a belt once bodyweight becomes easy"],
     "alternatives": ["decline-barbell-bench-press", "push-ups"],
     "isCompound": true,
-    "tags": ["chest", "compound", "bodyweight"]
+    "tags": ["chest", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "cable-crossover",
@@ -177,7 +188,8 @@
     "tips": ["Keep a slight bend in your elbows", "Step forward enough to feel a stretch at the start", "Cross your hands slightly at the bottom for peak contraction"],
     "alternatives": ["cable-fly", "dumbbell-fly"],
     "isCompound": false,
-    "tags": ["chest", "isolation", "cables"]
+    "tags": ["chest", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "barbell-row",
@@ -192,7 +204,8 @@
     "tips": ["Keep your back flat and core braced", "Pull with your elbows, not your hands", "Don't use excessive body English"],
     "alternatives": ["dumbbell-row", "machine-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell"]
+    "tags": ["back", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "dumbbell-row",
@@ -207,7 +220,8 @@
     "tips": ["Keep your torso parallel to the floor", "Drive your elbow past your torso at the top", "Avoid rotating your torso as you row"],
     "alternatives": ["barbell-row", "machine-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "dumbbell"]
+    "tags": ["back", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "pull-ups",
@@ -222,7 +236,8 @@
     "tips": ["Initiate the pull by depressing your shoulder blades", "Avoid kipping or swinging", "Go all the way down to a dead hang each rep"],
     "alternatives": ["lat-pulldown", "chin-ups"],
     "isCompound": true,
-    "tags": ["back", "compound", "bodyweight"]
+    "tags": ["back", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "chin-ups",
@@ -237,7 +252,8 @@
     "tips": ["Supinated grip places more emphasis on biceps", "Keep your core engaged to prevent swinging", "Full range of motion from dead hang to chin over bar"],
     "alternatives": ["pull-ups", "lat-pulldown"],
     "isCompound": true,
-    "tags": ["back", "compound", "bodyweight"]
+    "tags": ["back", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "lat-pulldown",
@@ -252,7 +268,8 @@
     "tips": ["Lean back slightly and drive elbows down and back", "Don't pull behind the neck", "Control the eccentric phase"],
     "alternatives": ["pull-ups", "chin-ups"],
     "isCompound": true,
-    "tags": ["back", "compound", "cables"]
+    "tags": ["back", "compound", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "seated-cable-row",
@@ -267,7 +284,8 @@
     "tips": ["Keep your chest up and avoid rounding your back", "Squeeze your shoulder blades together at the end of each rep", "Don't lean too far back"],
     "alternatives": ["barbell-row", "machine-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "cables"]
+    "tags": ["back", "compound", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "t-bar-row",
@@ -282,7 +300,8 @@
     "tips": ["Keep your knees slightly bent", "Squeeze your back at the top of the movement", "Avoid rounding your lower back"],
     "alternatives": ["barbell-row", "dumbbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell"]
+    "tags": ["back", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "face-pull",
@@ -297,7 +316,8 @@
     "tips": ["Pull the rope apart as it comes toward your face", "Keep your elbows high", "Squeeze your rear delts and upper back at the end"],
     "alternatives": ["cable-rear-delt-fly", "rear-delt-fly-dumbbell"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "cables", "rear-delts"]
+    "tags": ["shoulders", "isolation", "cables", "rear-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "meadows-row",
@@ -312,7 +332,8 @@
     "tips": ["Use a staggered stance with the inside leg forward", "Drive your elbow up and back", "Get a full stretch at the bottom"],
     "alternatives": ["dumbbell-row", "barbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell"]
+    "tags": ["back", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "straight-arm-pulldown",
@@ -327,7 +348,8 @@
     "tips": ["Keep a slight bend in your elbows", "Squeeze your lats hard at the bottom", "Lean slightly forward at the hips for better range of motion"],
     "alternatives": ["lat-pulldown", "pull-ups"],
     "isCompound": false,
-    "tags": ["back", "isolation", "cables"]
+    "tags": ["back", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "machine-row",
@@ -342,7 +364,8 @@
     "tips": ["Adjust the chest pad so your arms can fully extend", "Don't lean back excessively", "Focus on the mind-muscle connection with your back"],
     "alternatives": ["seated-cable-row", "barbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "machines"]
+    "tags": ["back", "compound", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "pull-up-bar-inverted-row",
@@ -357,7 +380,8 @@
     "tips": ["Keep your body in a straight line like a plank", "Squeeze your shoulder blades at the top", "Lower the bar height to increase difficulty"],
     "alternatives": ["barbell-row", "seated-cable-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "bodyweight"]
+    "tags": ["back", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "deadlift",
@@ -372,7 +396,8 @@
     "tips": ["Keep the bar close to your body throughout", "Push the floor away rather than pulling the bar up", "Do not round your lower back", "Lock out by squeezing glutes at the top"],
     "alternatives": ["trap-bar-deadlift", "sumo-deadlift"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell"]
+    "tags": ["back", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "rack-pull",
@@ -387,7 +412,8 @@
     "tips": ["Set the pins at or just below the knee", "Focus on the lockout and squeeze your traps", "Use straps if grip is the limiting factor"],
     "alternatives": ["deadlift", "barbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell"]
+    "tags": ["back", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "overhead-press-barbell",
@@ -402,7 +428,8 @@
     "tips": ["Brace your core and squeeze your glutes", "Move your head out of the bar path, not the bar around your head", "Lock out fully at the top"],
     "alternatives": ["dumbbell-shoulder-press", "machine-shoulder-press"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "barbell"]
+    "tags": ["shoulders", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "dumbbell-shoulder-press",
@@ -417,7 +444,8 @@
     "tips": ["Keep your back against the bench for support", "Don't lock out aggressively at the top", "Control the descent to shoulder level"],
     "alternatives": ["overhead-press-barbell", "arnold-press"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "dumbbell"]
+    "tags": ["shoulders", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "arnold-press",
@@ -432,7 +460,8 @@
     "tips": ["Perform the rotation smoothly throughout the press", "Don't rush the movement", "Use lighter weight than a standard shoulder press"],
     "alternatives": ["dumbbell-shoulder-press", "overhead-press-barbell"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "dumbbell"]
+    "tags": ["shoulders", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "lateral-raise-dumbbell",
@@ -447,7 +476,8 @@
     "tips": ["Lead with your elbows, not your hands", "Slight bend in the elbows throughout", "Don't swing or use momentum"],
     "alternatives": ["cable-lateral-raise", "machine-shoulder-press"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "dumbbell", "side-delts"]
+    "tags": ["shoulders", "isolation", "dumbbell", "side-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "cable-lateral-raise",
@@ -462,7 +492,8 @@
     "tips": ["Cables provide constant tension unlike dumbbells", "Keep a slight lean away from the cable for a better range", "Control the negative for more time under tension"],
     "alternatives": ["lateral-raise-dumbbell", "upright-row"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "cables", "side-delts"]
+    "tags": ["shoulders", "isolation", "cables", "side-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "front-raise",
@@ -477,7 +508,8 @@
     "tips": ["Keep a slight bend in your elbows", "Don't swing the weight up", "Alternate arms or raise both simultaneously"],
     "alternatives": ["overhead-press-barbell", "dumbbell-shoulder-press"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "dumbbell", "front-delts"]
+    "tags": ["shoulders", "isolation", "dumbbell", "front-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "rear-delt-fly-dumbbell",
@@ -492,7 +524,8 @@
     "tips": ["Keep your torso nearly parallel to the floor", "Don't use momentum to swing the weights", "Squeeze at the top for a one-second hold"],
     "alternatives": ["cable-rear-delt-fly", "face-pull"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "dumbbell", "rear-delts"]
+    "tags": ["shoulders", "isolation", "dumbbell", "rear-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "cable-rear-delt-fly",
@@ -507,7 +540,8 @@
     "tips": ["Keep your arms at shoulder height", "Focus on squeezing the rear delts", "Use a light weight for proper form"],
     "alternatives": ["rear-delt-fly-dumbbell", "face-pull"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "cables", "rear-delts"]
+    "tags": ["shoulders", "isolation", "cables", "rear-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "machine-shoulder-press",
@@ -522,7 +556,8 @@
     "tips": ["Adjust the seat so handles start at shoulder level", "Keep your back pressed into the pad", "Don't fully lock out to keep tension on the delts"],
     "alternatives": ["overhead-press-barbell", "dumbbell-shoulder-press"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "machines"]
+    "tags": ["shoulders", "compound", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "upright-row",
@@ -537,7 +572,8 @@
     "tips": ["Use a wider grip to reduce shoulder impingement risk", "Don't pull higher than your shoulders", "Lead with your elbows, not your hands"],
     "alternatives": ["lateral-raise-dumbbell", "cable-lateral-raise"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "barbell"]
+    "tags": ["shoulders", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "face-pull-rear-delts",
@@ -552,7 +588,8 @@
     "tips": ["Externally rotate at the end to activate rear delts fully", "Use a lighter weight for higher reps", "Keep your elbows high throughout the pull"],
     "alternatives": ["rear-delt-fly-dumbbell", "cable-rear-delt-fly"],
     "isCompound": false,
-    "tags": ["shoulders", "isolation", "cables", "rear-delts"]
+    "tags": ["shoulders", "isolation", "cables", "rear-delts"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "barbell-shrug",
@@ -567,7 +604,8 @@
     "tips": ["Shrug straight up, don't roll your shoulders", "Hold the top position for a second", "Use straps if grip limits the weight you can use"],
     "alternatives": ["dumbbell-shrug", "rack-pull"],
     "isCompound": false,
-    "tags": ["traps", "isolation", "barbell"]
+    "tags": ["traps", "isolation", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "barbell-curl",
@@ -582,7 +620,8 @@
     "tips": ["Keep your elbows pinned at your sides", "Don't swing your body to generate momentum", "Squeeze at the top and control the negative"],
     "alternatives": ["dumbbell-curl", "ez-bar-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "barbell"]
+    "tags": ["biceps", "isolation", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "dumbbell-curl",
@@ -597,7 +636,8 @@
     "tips": ["Supinate your wrist as you curl for maximum bicep activation", "Alternate arms or curl both simultaneously", "Avoid swinging the weights up"],
     "alternatives": ["barbell-curl", "hammer-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "dumbbell"]
+    "tags": ["biceps", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "hammer-curl",
@@ -612,7 +652,8 @@
     "tips": ["Neutral grip targets the brachialis and brachioradialis", "Keep your elbows stationary", "Can be performed alternating or simultaneously"],
     "alternatives": ["dumbbell-curl", "cable-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "dumbbell"]
+    "tags": ["biceps", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "preacher-curl",
@@ -627,7 +668,8 @@
     "tips": ["Don't let your arms go completely straight at the bottom to avoid bicep strain", "Keep your upper arms flat on the pad throughout", "Use an EZ bar to reduce wrist strain"],
     "alternatives": ["ez-bar-curl", "concentration-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "barbell"]
+    "tags": ["biceps", "isolation", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "incline-dumbbell-curl",
@@ -642,7 +684,8 @@
     "tips": ["The incline puts a greater stretch on the long head of the bicep", "Keep your upper arms perpendicular to the floor", "Use lighter weight than standing curls"],
     "alternatives": ["dumbbell-curl", "preacher-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "dumbbell"]
+    "tags": ["biceps", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "cable-curl",
@@ -657,7 +700,8 @@
     "tips": ["Cables maintain constant tension throughout the rep", "Keep your elbows pinned to your sides", "Squeeze at the top contraction"],
     "alternatives": ["barbell-curl", "dumbbell-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "cables"]
+    "tags": ["biceps", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "ez-bar-curl",
@@ -672,7 +716,8 @@
     "tips": ["The angled grip reduces stress on the wrists", "Use the inner or outer grip to vary emphasis", "Keep strict form and avoid swinging"],
     "alternatives": ["barbell-curl", "dumbbell-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "ezBar"]
+    "tags": ["biceps", "isolation", "ezBar"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "concentration-curl",
@@ -687,7 +732,8 @@
     "tips": ["Brace your elbow firmly against your thigh", "Focus on the peak contraction at the top", "This isolates the bicep extremely well with no momentum"],
     "alternatives": ["preacher-curl", "dumbbell-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "dumbbell"]
+    "tags": ["biceps", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "tricep-pushdown",
@@ -702,7 +748,8 @@
     "tips": ["Keep your elbows pinned at your sides", "Don't lean forward excessively", "Squeeze the triceps at full extension"],
     "alternatives": ["overhead-tricep-extension-cable", "skull-crushers"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "cables"]
+    "tags": ["triceps", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "overhead-tricep-extension-cable",
@@ -717,7 +764,8 @@
     "tips": ["Keep your upper arms close to your head", "Get a full stretch on the tricep at the bottom", "Keep your elbows pointing forward"],
     "alternatives": ["cable-overhead-extension", "skull-crushers"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "cables"]
+    "tags": ["triceps", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "skull-crushers",
@@ -732,7 +780,8 @@
     "tips": ["Lower the bar to your forehead or just behind your head for a greater stretch", "Keep your upper arms perpendicular to the floor", "Use an EZ bar to reduce wrist strain"],
     "alternatives": ["tricep-pushdown", "overhead-tricep-extension-cable"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "barbell"]
+    "tags": ["triceps", "isolation", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "close-grip-bench-press",
@@ -747,7 +796,8 @@
     "tips": ["Keep your grip shoulder-width, not too narrow", "Tuck your elbows close to your body", "This is also a great chest builder"],
     "alternatives": ["skull-crushers", "tricep-dips"],
     "isCompound": true,
-    "tags": ["triceps", "compound", "barbell"]
+    "tags": ["triceps", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "tricep-dips",
@@ -762,7 +812,8 @@
     "tips": ["Stay upright to emphasize the triceps over the chest", "Don't go too deep to avoid shoulder strain", "Add weight with a belt for progressive overload"],
     "alternatives": ["close-grip-bench-press", "tricep-pushdown"],
     "isCompound": true,
-    "tags": ["triceps", "compound", "bodyweight"]
+    "tags": ["triceps", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "dumbbell-kickback",
@@ -777,7 +828,8 @@
     "tips": ["Keep your upper arm stationary and parallel to the floor", "Squeeze the tricep at full extension", "Use a light weight and focus on form"],
     "alternatives": ["tricep-pushdown", "cable-overhead-extension"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "dumbbell"]
+    "tags": ["triceps", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "cable-overhead-extension",
@@ -792,7 +844,8 @@
     "tips": ["Step forward to create tension at the start position", "Keep elbows close to your head", "Focus on the long head of the tricep with the overhead position"],
     "alternatives": ["overhead-tricep-extension-cable", "skull-crushers"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "cables"]
+    "tags": ["triceps", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "diamond-push-ups",
@@ -807,7 +860,8 @@
     "tips": ["Keep your elbows close to your body", "Maintain a straight body line", "Wider hand placement makes it easier if you need to regress"],
     "alternatives": ["close-grip-bench-press", "tricep-pushdown"],
     "isCompound": true,
-    "tags": ["triceps", "compound", "bodyweight"]
+    "tags": ["triceps", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "barbell-back-squat",
@@ -822,7 +876,8 @@
     "tips": ["Keep your chest up and core braced", "Push your knees out over your toes", "Drive through your whole foot, not just your heels", "Go to at least parallel depth"],
     "alternatives": ["front-squat", "leg-press"],
     "isCompound": true,
-    "tags": ["quads", "compound", "barbell"]
+    "tags": ["quads", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "front-squat",
@@ -837,7 +892,8 @@
     "tips": ["Keep your elbows high to prevent the bar from rolling", "This demands more ankle and thoracic mobility than back squats", "Go as deep as your mobility allows"],
     "alternatives": ["barbell-back-squat", "goblet-squat"],
     "isCompound": true,
-    "tags": ["quads", "compound", "barbell"]
+    "tags": ["quads", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "leg-press",
@@ -852,7 +908,8 @@
     "tips": ["Don't let your lower back round off the pad at the bottom", "Place feet higher for more glute and hamstring emphasis", "Never fully lock out your knees"],
     "alternatives": ["barbell-back-squat", "hack-squat"],
     "isCompound": true,
-    "tags": ["quads", "compound", "machines"]
+    "tags": ["quads", "compound", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "hack-squat",
@@ -867,7 +924,8 @@
     "tips": ["Keep your back flat against the pad throughout", "Lower foot placement emphasizes quads more", "Use full range of motion for best results"],
     "alternatives": ["leg-press", "barbell-back-squat"],
     "isCompound": true,
-    "tags": ["quads", "compound", "machines"]
+    "tags": ["quads", "compound", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "bulgarian-split-squat",
@@ -882,7 +940,8 @@
     "tips": ["Keep your torso upright", "Most of your weight should be on the front foot", "Don't let your front knee cave inward"],
     "alternatives": ["walking-lunges", "goblet-squat"],
     "isCompound": true,
-    "tags": ["quads", "compound", "dumbbell"]
+    "tags": ["quads", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "walking-lunges",
@@ -897,7 +956,8 @@
     "tips": ["Take long enough steps that your front knee stays behind your toe line", "Keep your torso upright", "Push off through the heel of the front foot"],
     "alternatives": ["bulgarian-split-squat", "reverse-lunge"],
     "isCompound": true,
-    "tags": ["quads", "compound", "dumbbell"]
+    "tags": ["quads", "compound", "dumbbell"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "leg-extension",
@@ -912,7 +972,8 @@
     "tips": ["Adjust the pad so it sits just above your ankles", "Pause at the top for a peak contraction", "Control the negative to maximize time under tension"],
     "alternatives": ["barbell-back-squat", "goblet-squat"],
     "isCompound": false,
-    "tags": ["quads", "isolation", "machines"]
+    "tags": ["quads", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "goblet-squat",
@@ -927,7 +988,8 @@
     "tips": ["Keep the weight close to your chest", "Push your knees out as you descend", "Great for learning proper squat mechanics"],
     "alternatives": ["barbell-back-squat", "front-squat"],
     "isCompound": true,
-    "tags": ["quads", "compound", "dumbbell"]
+    "tags": ["quads", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "step-ups",
@@ -942,7 +1004,8 @@
     "tips": ["Use a box height where your thigh is parallel at the start", "Don't push off with the back foot", "Keep your torso upright throughout"],
     "alternatives": ["walking-lunges", "bulgarian-split-squat"],
     "isCompound": true,
-    "tags": ["quads", "compound", "dumbbell"]
+    "tags": ["quads", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "sissy-squat",
@@ -957,7 +1020,8 @@
     "tips": ["Hold onto something for balance as you learn", "Keep your hips extended throughout", "This heavily isolates the quads with a deep stretch"],
     "alternatives": ["leg-extension", "goblet-squat"],
     "isCompound": false,
-    "tags": ["quads", "isolation", "bodyweight"]
+    "tags": ["quads", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "romanian-deadlift-barbell",
@@ -972,7 +1036,8 @@
     "tips": ["Keep the bar close to your legs the entire time", "Push your hips back, don't bend your back", "Stop when you feel a stretch, don't force extra range of motion"],
     "alternatives": ["dumbbell-romanian-deadlift", "stiff-leg-deadlift"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "barbell"]
+    "tags": ["hamstrings", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "dumbbell-romanian-deadlift",
@@ -987,7 +1052,8 @@
     "tips": ["Keep a slight bend in your knees", "Dumbbells allow a slightly different path than a barbell", "Focus on feeling the hamstring stretch"],
     "alternatives": ["romanian-deadlift-barbell", "single-leg-romanian-deadlift"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "dumbbell"]
+    "tags": ["hamstrings", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "lying-leg-curl",
@@ -1002,7 +1068,8 @@
     "tips": ["Don't lift your hips off the pad", "Squeeze your hamstrings at the top", "Control the eccentric phase for maximum muscle activation"],
     "alternatives": ["seated-leg-curl", "nordic-curl"],
     "isCompound": false,
-    "tags": ["hamstrings", "isolation", "machines"]
+    "tags": ["hamstrings", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "seated-leg-curl",
@@ -1017,7 +1084,8 @@
     "tips": ["Adjust the back pad so you feel a stretch at the start", "Don't let the weight slam on the return", "Squeeze your hamstrings at peak contraction"],
     "alternatives": ["lying-leg-curl", "nordic-curl"],
     "isCompound": false,
-    "tags": ["hamstrings", "isolation", "machines"]
+    "tags": ["hamstrings", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "nordic-curl",
@@ -1032,7 +1100,8 @@
     "tips": ["Start with negatives only if you cannot do the full movement", "Keep your hips extended, don't bend at the waist", "This is one of the best exercises for hamstring injury prevention"],
     "alternatives": ["lying-leg-curl", "romanian-deadlift-barbell"],
     "isCompound": false,
-    "tags": ["hamstrings", "isolation", "bodyweight"]
+    "tags": ["hamstrings", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "good-morning",
@@ -1047,7 +1116,8 @@
     "tips": ["Use a lighter weight than you would for squats", "Keep your back flat throughout", "Push your hips back, don't just bend forward"],
     "alternatives": ["romanian-deadlift-barbell", "stiff-leg-deadlift"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "barbell"]
+    "tags": ["hamstrings", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "stiff-leg-deadlift",
@@ -1062,7 +1132,8 @@
     "tips": ["Keep your legs straighter than an RDL for more hamstring emphasis", "Don't round your back", "Only go as low as your hamstring flexibility allows"],
     "alternatives": ["romanian-deadlift-barbell", "dumbbell-romanian-deadlift"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "barbell"]
+    "tags": ["hamstrings", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "single-leg-romanian-deadlift",
@@ -1077,7 +1148,8 @@
     "tips": ["Keep your hips square to the floor", "The back leg and torso should move as one unit", "Use a wall or rack for balance if needed"],
     "alternatives": ["dumbbell-romanian-deadlift", "romanian-deadlift-barbell"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "dumbbell"]
+    "tags": ["hamstrings", "compound", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "barbell-hip-thrust",
@@ -1092,7 +1164,8 @@
     "tips": ["Use a barbell pad for comfort", "Keep your chin tucked to maintain a neutral spine", "Squeeze your glutes hard at the top and hold for a second"],
     "alternatives": ["glute-bridge", "cable-pull-through"],
     "isCompound": true,
-    "tags": ["glutes", "compound", "barbell"]
+    "tags": ["glutes", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "glute-bridge-march",
@@ -1107,7 +1180,8 @@
     "tips": ["Squeeze your glutes at the top and hold briefly", "Push through your heels", "Add a dumbbell on your hips for extra resistance"],
     "alternatives": ["barbell-hip-thrust", "cable-pull-through"],
     "isCompound": false,
-    "tags": ["glutes", "isolation", "bodyweight"]
+    "tags": ["glutes", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "cable-kickback",
@@ -1122,7 +1196,8 @@
     "tips": ["Keep your core braced and avoid arching your lower back", "Squeeze the glute at full extension", "Control the movement in both directions"],
     "alternatives": ["barbell-hip-thrust", "glute-bridge"],
     "isCompound": false,
-    "tags": ["glutes", "isolation", "cables"]
+    "tags": ["glutes", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "sumo-deadlift",
@@ -1137,7 +1212,8 @@
     "tips": ["Push your knees out over your toes", "Keep your chest up and back flat", "The wider stance emphasizes glutes and adductors more than conventional"],
     "alternatives": ["deadlift", "barbell-hip-thrust"],
     "isCompound": true,
-    "tags": ["glutes", "compound", "barbell"]
+    "tags": ["glutes", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "cable-pull-through",
@@ -1152,7 +1228,8 @@
     "tips": ["This is a great hip hinge teaching tool", "Squeeze your glutes hard at the top", "Don't pull with your arms, drive with your hips"],
     "alternatives": ["barbell-hip-thrust", "glute-bridge"],
     "isCompound": true,
-    "tags": ["glutes", "compound", "cables"]
+    "tags": ["glutes", "compound", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "banded-clamshell",
@@ -1167,7 +1244,8 @@
     "tips": ["Keep your feet stacked together throughout", "Don't rotate your hips backward as you open", "Great for warm-ups and glute activation"],
     "alternatives": ["cable-kickback", "glute-bridge"],
     "isCompound": false,
-    "tags": ["glutes", "isolation", "bands"]
+    "tags": ["glutes", "isolation", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "reverse-lunge",
@@ -1182,7 +1260,8 @@
     "tips": ["Keep your torso upright throughout", "Step far enough back that both knees reach 90 degrees", "Push off the front heel to engage the glutes"],
     "alternatives": ["walking-lunges", "bulgarian-split-squat"],
     "isCompound": true,
-    "tags": ["glutes", "compound", "dumbbell"]
+    "tags": ["glutes", "compound", "dumbbell"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "standing-calf-raise",
@@ -1197,7 +1276,8 @@
     "tips": ["Get a full stretch at the bottom and a full squeeze at the top", "Pause for a second at the top of each rep", "Keep your legs straight to target the gastrocnemius"],
     "alternatives": ["seated-calf-raise", "leg-press-calf-raise"],
     "isCompound": false,
-    "tags": ["calves", "isolation", "machines"]
+    "tags": ["calves", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "seated-calf-raise",
@@ -1212,7 +1292,8 @@
     "tips": ["The seated position targets the soleus muscle more", "Use a slow tempo for maximum time under tension", "Get a full stretch at the bottom of each rep"],
     "alternatives": ["standing-calf-raise", "leg-press-calf-raise"],
     "isCompound": false,
-    "tags": ["calves", "isolation", "machines"]
+    "tags": ["calves", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "leg-press-calf-raise",
@@ -1227,7 +1308,8 @@
     "tips": ["Use a lighter weight than you would for leg press", "Keep the safety catches engaged", "Full range of motion is key for calf development"],
     "alternatives": ["standing-calf-raise", "seated-calf-raise"],
     "isCompound": false,
-    "tags": ["calves", "isolation", "machines"]
+    "tags": ["calves", "isolation", "machines"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "donkey-calf-raise",
@@ -1242,7 +1324,8 @@
     "tips": ["The hip-flexed position provides a greater calf stretch", "Can also be done with a partner on your back if no machine", "Focus on the stretch and squeeze at each end"],
     "alternatives": ["standing-calf-raise", "seated-calf-raise"],
     "isCompound": false,
-    "tags": ["calves", "isolation", "machines"]
+    "tags": ["calves", "isolation", "machines"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "plank",
@@ -1257,7 +1340,8 @@
     "tips": ["Don't let your hips sag or pike up", "Squeeze your glutes and brace your abs", "Breathe normally while holding the position"],
     "alternatives": ["dead-bug", "pallof-press"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "timeHold"
   },
   {
     "id": "cable-crunch",
@@ -1272,7 +1356,8 @@
     "tips": ["Focus on curling your spine, not just hinging at the hips", "Keep the rope at the same position relative to your head", "Exhale as you crunch down"],
     "alternatives": ["decline-sit-up", "bicycle-crunch"],
     "isCompound": false,
-    "tags": ["core", "isolation", "cables"]
+    "tags": ["core", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "hanging-leg-raise",
@@ -1287,7 +1372,8 @@
     "tips": ["Avoid swinging by keeping the movement controlled", "Curl your pelvis at the top for full ab engagement", "Bend your knees to make it easier"],
     "alternatives": ["cable-crunch", "decline-sit-up"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "ab-wheel-rollout",
@@ -1302,7 +1388,8 @@
     "tips": ["Start with partial range of motion and build up", "Keep your core braced and don't let your hips sag", "Squeeze your abs to pull yourself back"],
     "alternatives": ["plank", "hanging-leg-raise"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "woodchop-cable",
@@ -1317,7 +1404,8 @@
     "tips": ["Rotate through your torso, not just your arms", "Keep your arms relatively straight", "Can be done high-to-low or low-to-high"],
     "alternatives": ["russian-twist", "pallof-press"],
     "isCompound": false,
-    "tags": ["core", "isolation", "cables"]
+    "tags": ["core", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "russian-twist",
@@ -1332,7 +1420,8 @@
     "tips": ["Keep your chest up as you rotate", "Add weight by holding a dumbbell or medicine ball", "Lift your feet to increase difficulty"],
     "alternatives": ["woodchop-cable", "bicycle-crunch"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "bicycle-crunch",
@@ -1347,7 +1436,8 @@
     "tips": ["Don't pull on your neck with your hands", "Focus on the rotation, not just the crunch", "Fully extend each leg as you alternate"],
     "alternatives": ["cable-crunch", "russian-twist"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "dead-bug",
@@ -1362,7 +1452,8 @@
     "tips": ["Keep your lower back firmly pressed into the floor", "Move slowly and with control", "Exhale as you extend your limbs"],
     "alternatives": ["plank", "pallof-press"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "pallof-press",
@@ -1377,7 +1468,8 @@
     "tips": ["Don't let the cable rotate your torso", "Brace your core hard as you extend your arms", "This is an anti-rotation exercise, so resist the pull"],
     "alternatives": ["woodchop-cable", "plank"],
     "isCompound": false,
-    "tags": ["core", "isolation", "cables"]
+    "tags": ["core", "isolation", "cables"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "decline-sit-up",
@@ -1392,7 +1484,8 @@
     "tips": ["Cross your arms over your chest or hold a plate for resistance", "Focus on curling your spine up rather than hinging at the hips", "Control the descent to avoid using momentum"],
     "alternatives": ["cable-crunch", "hanging-leg-raise"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "dumbbell-shrug",
@@ -1407,7 +1500,8 @@
     "tips": ["Don't roll your shoulders, shrug straight up", "Hold the top position for a one-second squeeze", "Use straps if your grip gives out before your traps"],
     "alternatives": ["barbell-shrug", "rack-pull"],
     "isCompound": false,
-    "tags": ["traps", "isolation", "dumbbell"]
+    "tags": ["traps", "isolation", "dumbbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "farmers-walk",
@@ -1422,7 +1516,8 @@
     "tips": ["Keep your shoulders back and down", "Take short, controlled steps", "Brace your core as if someone is about to punch you in the stomach"],
     "alternatives": ["dumbbell-shrug", "trap-bar-deadlift"],
     "isCompound": true,
-    "tags": ["forearms", "compound", "dumbbell", "carry"]
+    "tags": ["forearms", "compound", "dumbbell", "carry"],
+    "trackingMode": "weightAndTime"
   },
   {
     "id": "power-clean",
@@ -1437,7 +1532,8 @@
     "tips": ["This is a technical lift that benefits from coaching", "The power comes from hip extension, not arm pulling", "Keep the bar close to your body throughout", "Practice with light weight until your form is solid"],
     "alternatives": ["deadlift", "kettlebell-swing"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell", "olympic"]
+    "tags": ["back", "compound", "barbell", "olympic"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "wrist-curl",
@@ -1452,7 +1548,8 @@
     "tips": ["Use a light weight and high reps for forearms", "Let the bar roll to your fingertips for extra range of motion", "Keep your forearms flat on your thighs"],
     "alternatives": ["reverse-wrist-curl", "farmers-walk"],
     "isCompound": false,
-    "tags": ["forearms", "isolation", "barbell"]
+    "tags": ["forearms", "isolation", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "reverse-wrist-curl",
@@ -1467,7 +1564,8 @@
     "tips": ["Use an even lighter weight than regular wrist curls", "This targets the wrist extensors on top of the forearm", "Perform slow, controlled reps"],
     "alternatives": ["wrist-curl", "farmers-walk"],
     "isCompound": false,
-    "tags": ["forearms", "isolation", "barbell"]
+    "tags": ["forearms", "isolation", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "trap-bar-deadlift",
@@ -1482,7 +1580,8 @@
     "tips": ["The neutral grip makes this easier on the lower back than conventional deadlifts", "Push the floor away with your feet", "Keep your chest up and core braced"],
     "alternatives": ["deadlift", "sumo-deadlift"],
     "isCompound": true,
-    "tags": ["back", "compound", "barbell"]
+    "tags": ["back", "compound", "barbell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "kettlebell-swing",
@@ -1497,7 +1596,8 @@
     "tips": ["The power comes from your hips, not your arms", "Squeeze your glutes hard at the top of each swing", "Keep your arms relaxed and let the hips do the work", "Brace your core at the top of each rep"],
     "alternatives": ["cable-pull-through", "barbell-hip-thrust"],
     "isCompound": true,
-    "tags": ["glutes", "compound", "kettlebell"]
+    "tags": ["glutes", "compound", "kettlebell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "smith-machine-squat",
@@ -1512,7 +1612,8 @@
     "tips": ["Place feet slightly forward to keep knees safe", "Keep chest up and core braced", "Use the fixed bar path to focus on leg drive"],
     "alternatives": ["barbell-back-squat", "leg-press"],
     "isCompound": true,
-    "tags": ["legs", "compound", "smithMachine"]
+    "tags": ["legs", "compound", "smithMachine"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "smith-machine-bench-press",
@@ -1527,7 +1628,8 @@
     "tips": ["Position the bench so the bar lines up with your mid-chest", "Use the fixed path as a stability aid for slightly heavier loads", "Keep shoulder blades retracted"],
     "alternatives": ["barbell-bench-press", "machine-chest-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "smithMachine"]
+    "tags": ["chest", "compound", "smithMachine"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "smith-machine-row",
@@ -1542,7 +1644,8 @@
     "tips": ["Keep the back flat and core braced", "Pull elbows back rather than up", "Squeeze the shoulder blades at the top"],
     "alternatives": ["barbell-row", "dumbbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "smithMachine"]
+    "tags": ["back", "compound", "smithMachine"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "smith-machine-shoulder-press",
@@ -1557,7 +1660,8 @@
     "tips": ["Avoid flaring elbows — keep them slightly forward", "Press in a straight line up", "Don't lock out aggressively"],
     "alternatives": ["barbell-overhead-press", "dumbbell-shoulder-press"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "smithMachine"]
+    "tags": ["shoulders", "compound", "smithMachine"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "smith-machine-romanian-deadlift",
@@ -1572,7 +1676,8 @@
     "tips": ["Keep the bar close to the body throughout", "Maintain a neutral spine", "Feel the stretch in the hamstrings before reversing"],
     "alternatives": ["romanian-deadlift", "dumbbell-romanian-deadlift"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "smithMachine"]
+    "tags": ["hamstrings", "compound", "smithMachine"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "band-pull-apart",
@@ -1587,7 +1692,8 @@
     "tips": ["Keep arms straight throughout", "Squeeze rear delts and mid-back at full stretch", "Move slowly and with control"],
     "alternatives": ["face-pull", "rear-delt-fly-dumbbell"],
     "isCompound": false,
-    "tags": ["rearDelts", "isolation", "bands"]
+    "tags": ["rearDelts", "isolation", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "band-row",
@@ -1602,7 +1708,8 @@
     "tips": ["Maintain an upright torso", "Pull the elbows back rather than up", "Pause briefly at the contraction"],
     "alternatives": ["seated-cable-row", "dumbbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "bands"]
+    "tags": ["back", "compound", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "band-chest-press",
@@ -1617,7 +1724,8 @@
     "tips": ["Step further away to increase resistance", "Squeeze the chest at full extension", "Keep core braced and torso steady"],
     "alternatives": ["push-up", "dumbbell-bench-press"],
     "isCompound": true,
-    "tags": ["chest", "compound", "bands"]
+    "tags": ["chest", "compound", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "band-bicep-curl",
@@ -1632,7 +1740,8 @@
     "tips": ["Keep the elbows pinned to your sides", "Squeeze biceps at the top", "Lower slowly to control the eccentric"],
     "alternatives": ["dumbbell-curl", "ez-bar-curl"],
     "isCompound": false,
-    "tags": ["biceps", "isolation", "bands"]
+    "tags": ["biceps", "isolation", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "band-lateral-raise",
@@ -1647,7 +1756,8 @@
     "tips": ["Lead with the elbows, not the wrists", "Keep a small bend in the elbows", "Avoid shrugging — keep traps relaxed"],
     "alternatives": ["lateral-raise-dumbbell", "machine-lateral-raise"],
     "isCompound": false,
-    "tags": ["sideDelts", "isolation", "bands"]
+    "tags": ["sideDelts", "isolation", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "band-squat",
@@ -1662,7 +1772,8 @@
     "tips": ["Use a heavy band for meaningful resistance", "Drive through the heels", "Keep chest up at the bottom of the squat"],
     "alternatives": ["bodyweight-squat", "goblet-squat"],
     "isCompound": true,
-    "tags": ["legs", "compound", "bands"]
+    "tags": ["legs", "compound", "bands"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "kettlebell-goblet-squat",
@@ -1677,7 +1788,8 @@
     "tips": ["Keep the chest tall and core braced", "Drive the knees out at the bottom", "Push through the whole foot to stand"],
     "alternatives": ["goblet-squat", "barbell-back-squat"],
     "isCompound": true,
-    "tags": ["legs", "compound", "kettlebell"]
+    "tags": ["legs", "compound", "kettlebell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "kettlebell-clean-and-press",
@@ -1692,7 +1804,8 @@
     "tips": ["Use the hips to drive the clean", "Catch the kettlebell softly at the rack", "Press in a straight line overhead"],
     "alternatives": ["dumbbell-shoulder-press", "barbell-overhead-press"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "kettlebell"]
+    "tags": ["shoulders", "compound", "kettlebell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "kettlebell-row",
@@ -1707,7 +1820,8 @@
     "tips": ["Keep the back flat", "Pull the elbow toward the hip, not out wide", "Pause at the top of each rep"],
     "alternatives": ["dumbbell-row", "single-arm-cable-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "kettlebell"]
+    "tags": ["back", "compound", "kettlebell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "kettlebell-romanian-deadlift",
@@ -1722,7 +1836,8 @@
     "tips": ["Keep the kettlebell close to the body", "Maintain a neutral spine", "Drive through the heels"],
     "alternatives": ["dumbbell-romanian-deadlift", "barbell-romanian-deadlift"],
     "isCompound": true,
-    "tags": ["hamstrings", "compound", "kettlebell"]
+    "tags": ["hamstrings", "compound", "kettlebell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "kettlebell-front-squat",
@@ -1737,7 +1852,8 @@
     "tips": ["Keep the elbows high to maintain torso position", "Brace the core hard before each rep", "Drive the knees out as you descend"],
     "alternatives": ["goblet-squat", "barbell-front-squat"],
     "isCompound": true,
-    "tags": ["legs", "compound", "kettlebell"]
+    "tags": ["legs", "compound", "kettlebell"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "ez-bar-skullcrusher",
@@ -1752,7 +1868,8 @@
     "tips": ["Keep the elbows pointing forward, not flared", "Move only at the elbow joint", "Use a moderate weight to protect the elbows"],
     "alternatives": ["overhead-tricep-extension-cable", "tricep-pushdown"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "ezBar"]
+    "tags": ["triceps", "isolation", "ezBar"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "ez-bar-overhead-tricep-extension",
@@ -1767,7 +1884,8 @@
     "tips": ["Keep the elbows close to the head", "Get a full stretch at the bottom", "Avoid flaring the elbows out"],
     "alternatives": ["overhead-tricep-extension-cable", "ez-bar-skullcrusher"],
     "isCompound": false,
-    "tags": ["triceps", "isolation", "ezBar"]
+    "tags": ["triceps", "isolation", "ezBar"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "ez-bar-row",
@@ -1782,7 +1900,8 @@
     "tips": ["Keep the back flat throughout", "Pull elbows back, not up", "Squeeze the shoulder blades at the top"],
     "alternatives": ["barbell-row", "dumbbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "ezBar"]
+    "tags": ["back", "compound", "ezBar"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "ez-bar-reverse-curl",
@@ -1797,7 +1916,8 @@
     "tips": ["Keep wrists firm", "Use lighter weight than a regular curl", "Squeeze the forearms at the top"],
     "alternatives": ["hammer-curl", "dumbbell-curl"],
     "isCompound": false,
-    "tags": ["forearms", "isolation", "ezBar"]
+    "tags": ["forearms", "isolation", "ezBar"],
+    "trackingMode": "weightAndReps"
   },
   {
     "id": "inverted-row",
@@ -1812,7 +1932,8 @@
     "tips": ["Keep the body in a straight line", "Lower with control", "Elevate the feet to make it harder"],
     "alternatives": ["pull-ups", "dumbbell-row"],
     "isCompound": true,
-    "tags": ["back", "compound", "bodyweight"]
+    "tags": ["back", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "toes-to-bar",
@@ -1827,7 +1948,8 @@
     "tips": ["Keep the legs as straight as you can", "Avoid swinging — use a strict tempo", "Build up via knee raises if needed"],
     "alternatives": ["hanging-leg-raise", "knee-raises"],
     "isCompound": true,
-    "tags": ["core", "compound", "bodyweight"]
+    "tags": ["core", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "knee-raises",
@@ -1842,7 +1964,8 @@
     "tips": ["Avoid swinging by bracing the core", "Pause at the top for an extra contraction", "Keep the descent slow"],
     "alternatives": ["hanging-leg-raise", "toes-to-bar"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "archer-pull-up",
@@ -1857,7 +1980,8 @@
     "tips": ["Keep the working side tight", "Build up via assisted pull-ups", "Move slowly to maintain control"],
     "alternatives": ["pull-ups", "chin-ups"],
     "isCompound": true,
-    "tags": ["lats", "compound", "bodyweight"]
+    "tags": ["lats", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "pistol-squat",
@@ -1872,7 +1996,8 @@
     "tips": ["Use a counterbalance with arms forward", "Build up via box squats first", "Keep the heel grounded"],
     "alternatives": ["bulgarian-split-squat", "single-leg-squat"],
     "isCompound": true,
-    "tags": ["legs", "compound", "bodyweight"]
+    "tags": ["legs", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "bodyweight-squat",
@@ -1887,7 +2012,8 @@
     "tips": ["Keep the chest up", "Drive the knees out", "Push through the whole foot"],
     "alternatives": ["goblet-squat", "barbell-back-squat"],
     "isCompound": true,
-    "tags": ["legs", "compound", "bodyweight"]
+    "tags": ["legs", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "diamond-push-up",
@@ -1902,7 +2028,8 @@
     "tips": ["Keep the elbows close to the body", "Maintain a straight body line", "Lower under control"],
     "alternatives": ["push-up", "tricep-pushdown"],
     "isCompound": true,
-    "tags": ["triceps", "compound", "bodyweight"]
+    "tags": ["triceps", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "decline-push-up",
@@ -1917,7 +2044,8 @@
     "tips": ["Keep the body in a straight line", "The higher the feet, the harder it is", "Brace the core throughout"],
     "alternatives": ["incline-barbell-bench-press", "push-up"],
     "isCompound": true,
-    "tags": ["chest", "compound", "bodyweight"]
+    "tags": ["chest", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "pike-push-up",
@@ -1932,7 +2060,8 @@
     "tips": ["Keep hips piked high", "Lower the head between the hands", "Build toward handstand push-ups"],
     "alternatives": ["machine-shoulder-press", "dumbbell-shoulder-press"],
     "isCompound": true,
-    "tags": ["shoulders", "compound", "bodyweight"]
+    "tags": ["shoulders", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "mountain-climber",
@@ -1947,7 +2076,8 @@
     "tips": ["Keep the hips down — don't pike up", "Brace the core throughout", "Move at a steady tempo"],
     "alternatives": ["plank", "hanging-leg-raise"],
     "isCompound": true,
-    "tags": ["core", "compound", "bodyweight"]
+    "tags": ["core", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "jump-squat",
@@ -1962,7 +2092,8 @@
     "tips": ["Land softly on the balls of your feet", "Reset between reps for clean form", "Use the arms to add momentum"],
     "alternatives": ["bodyweight-squat", "box-jump"],
     "isCompound": true,
-    "tags": ["legs", "compound", "bodyweight"]
+    "tags": ["legs", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "single-leg-glute-bridge",
@@ -1977,7 +2108,8 @@
     "tips": ["Keep the extended leg in line with the torso", "Pause at the top to maximize contraction", "Move slowly to avoid using momentum"],
     "alternatives": ["barbell-hip-thrust", "glute-bridge"],
     "isCompound": false,
-    "tags": ["glutes", "isolation", "bodyweight"]
+    "tags": ["glutes", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "glute-bridge",
@@ -1992,7 +2124,8 @@
     "tips": ["Keep the hips lifted throughout", "Move slowly to avoid rotating", "Squeeze the planted-side glute on each march"],
     "alternatives": ["barbell-hip-thrust", "single-leg-glute-bridge"],
     "isCompound": false,
-    "tags": ["glutes", "isolation", "bodyweight"]
+    "tags": ["glutes", "isolation", "bodyweight"],
+    "trackingMode": "repsOnly"
   },
   {
     "id": "side-plank",
@@ -2007,7 +2140,8 @@
     "tips": ["Stack the feet for full difficulty", "Keep the hips lifted", "Brace the core throughout"],
     "alternatives": ["plank", "pallof-press"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "timeHold"
   },
   {
     "id": "high-plank",
@@ -2022,7 +2156,8 @@
     "tips": ["Push the floor away through your hands", "Avoid sagging or hiking the hips", "Keep breathing steady"],
     "alternatives": ["side-plank", "mountain-climber"],
     "isCompound": false,
-    "tags": ["core", "isolation", "bodyweight"]
+    "tags": ["core", "isolation", "bodyweight"],
+    "trackingMode": "timeHold"
   },
   {
     "id": "bench-tricep-dip",
@@ -2037,6 +2172,7 @@
     "tips": ["Keep elbows pointing back, not flared", "Lower until the elbows are around 90 degrees", "Keep the hips close to the bench"],
     "alternatives": ["dips-chest", "tricep-pushdown"],
     "isCompound": true,
-    "tags": ["triceps", "compound", "bodyweight"]
+    "tags": ["triceps", "compound", "bodyweight"],
+    "trackingMode": "repsOnly"
   }
 ]

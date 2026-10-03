@@ -39,4 +39,11 @@ enum Formatters {
     static func durationString(from seconds: Int) -> String {
         durationFormatter.string(from: TimeInterval(seconds)) ?? "0m"
     }
+
+    /// A logged hold: plain seconds up to a minute ("45s"), then m:ss
+    /// ("1:30") — how lifters read a plank, not "90s".
+    static func holdString(from seconds: Int) -> String {
+        guard seconds >= 60 else { return "\(seconds)s" }
+        return timerString(from: seconds)
+    }
 }

@@ -66,10 +66,21 @@ struct SetLog: Codable, Identifiable, Hashable {
     /// can roll back exactly those records. Optional so documents written
     /// before this field existed keep decoding (decodeIfPresent).
     var personalRecordIds: [String]? = nil
+    /// Seconds held, for exercises measured in time rather than reps
+    /// (`TrackingMode.tracksTime`). Nil everywhere else, and optional-and-last
+    /// so existing documents decode unchanged.
+    var durationSeconds: Int? = nil
 
     var estimated1RM: Double {
         Epley.estimated1RM(weight: weightKg, reps: reps)
     }
+
+    /// Seconds held; 0 when this set isn't a timed one.
+    var heldSeconds: Int { durationSeconds ?? 0 }
+
+    /// True once the set carries real work — reps, or a hold time. Weight
+    /// alone never completes a set.
+    var hasLoggedWork: Bool { reps > 0 || heldSeconds > 0 }
 }
 
 // MARK: - Session Factory
@@ -80,10 +91,15 @@ extension WorkoutSession {
     /// sets (from the plan, or synthesized by WarmUpPlanner for the opening
     /// exercises) precede the working sets; setNumber counts within each set
     /// type so working sets always read 1...N.
-    static func create(from template: WorkoutTemplate, userId: String, planId: String?) -> WorkoutSession {
+    static func create(
+        from template: WorkoutTemplate,
+        userId: String,
+        planId: String?,
+        exercises: [String: Exercise] = [:]
+    ) -> WorkoutSession {
         var exerciseLogs: [ExerciseLog] = []
         var order = 0
-        let warmUpSpecs = WarmUpPlanner.specs(forGroups: template.exerciseGroups)
+        let warmUpSpecs = WarmUpPlanner.specs(forGroups: template.exerciseGroups, exercises: exercises)
 
         for group in template.exerciseGroups {
             for planned in group.exercises {

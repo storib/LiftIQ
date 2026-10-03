@@ -83,12 +83,15 @@ export const SAVE_WORKOUT_PLAN_TOOL = {
                         exerciseId: { type: "string" },
                         order: { type: "integer" },
                         sets: { type: "integer", minimum: 1, maximum: 10 },
-                        repsMin: { type: "integer", minimum: 1, maximum: 50 },
+                        // Seconds held for isometric holds, reps otherwise,
+                        // so the ceiling clears a long plank (matches
+                        // PlannedExerciseSchema).
+                        repsMin: { type: "integer", minimum: 1, maximum: 300 },
                         repsMax: {
                           type: "integer",
                           minimum: 1,
-                          maximum: 50,
-                          description: "Must be >= repsMin",
+                          maximum: 300,
+                          description: "Must be >= repsMin. Seconds held for isometric holds (plank).",
                         },
                         rirTarget: { type: ["number", "null"] },
                         rpeTarget: { type: ["number", "null"] },

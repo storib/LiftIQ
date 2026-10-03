@@ -152,8 +152,24 @@ enum WorkoutActivityStateBuilder {
     ) -> String {
         var parts = [setName(in: log, setIndex: setIndex)]
         let set = log.sets[setIndex]
-        if set.setType == .working,
-           let planned = groups.flatMap(\.exercises).first(where: { $0.exerciseId == log.exerciseId }) {
+        let planned = groups.flatMap(\.exercises).first { $0.exerciseId == log.exerciseId }
+        // The builder has no catalog, so a timed exercise announces itself
+        // through its seconds value: the VM only ever fills `duration` for
+        // exercises whose tracking mode is a hold.
+        let heldSeconds = max(
+            Int(setInputs[set.id]?.duration ?? "") ?? 0,
+            Int(suggested[set.id]?.duration ?? "") ?? 0
+        )
+        if heldSeconds > 0 {
+            if set.setType == .working, let planned, planned.repsMin > 0 {
+                let hold = HoldPrescription.seconds(for: planned)
+                parts.append(hold.min == hold.max
+                             ? "\(hold.min)s hold"
+                             : "\(hold.min)-\(hold.max)s hold")
+            } else {
+                parts.append("\(heldSeconds)s hold")
+            }
+        } else if set.setType == .working, let planned {
             parts.append(planned.repsMin == planned.repsMax ? "\(planned.repsMin) reps" : "\(planned.repsMin)-\(planned.repsMax) reps")
         } else if let reps = Int(setInputs[set.id]?.reps ?? ""), reps > 0 {
             parts.append("\(reps) reps")

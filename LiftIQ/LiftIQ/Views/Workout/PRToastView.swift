@@ -68,6 +68,8 @@ struct PRToastView: View {
             return "\(Int(personalRecord.value)) reps"
         case .volume:
             return "\(personalRecord.value.asWeight(unit: unitSystem)) volume"
+        case .duration:
+            return "\(Formatters.holdString(from: Int(personalRecord.value))) hold"
         }
     }
 
@@ -77,6 +79,8 @@ struct PRToastView: View {
             return UnitConversionService.weightLabel(for: unitSystem)
         case .reps:
             return "reps"
+        case .duration:
+            return "hold"
         }
     }
 }

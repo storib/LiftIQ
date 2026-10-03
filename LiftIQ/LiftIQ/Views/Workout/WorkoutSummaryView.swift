@@ -250,18 +250,19 @@ struct WorkoutSummaryView: View {
                 .padding(.horizontal)
 
             VStack(spacing: 0) {
+                // Logged work, not logged weight: bodyweight sets and timed
+                // holds belong in the breakdown too.
                 let logsWithSets = session.exerciseLogs.filter { log in
-                    log.sets.contains { $0.setType == .working && $0.weightKg > 0 }
+                    log.sets.contains { $0.setType == .working && $0.hasLoggedWork }
                 }
                 ForEach(logsWithSets) { log in
-                    let workingSets = log.sets.filter { $0.setType == .working && $0.weightKg > 0 }
+                    let workingSets = log.sets.filter { $0.setType == .working && $0.hasLoggedWork }
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(log.exerciseName)
                                 .font(.subheadline.weight(.medium))
-                            if let best = workingSets.max(by: { $0.estimated1RM < $1.estimated1RM }) {
-                                let w = UnitConversionService.convertWeight(best.weightKg, to: unitSystem)
-                                Text("Best: \(w.formatted()) \(UnitConversionService.weightLabel(for: unitSystem)) x \(best.reps)")
+                            if let best = bestSetLine(workingSets) {
+                                Text(best)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -429,6 +430,23 @@ struct WorkoutSummaryView: View {
         }
     }
 
+    /// The session's best working set for one exercise, phrased in whatever
+    /// that exercise is measured in.
+    private func bestSetLine(_ workingSets: [SetLog]) -> String? {
+        if let bestHold = workingSets.filter({ $0.heldSeconds > 0 }).max(by: { $0.heldSeconds < $1.heldSeconds }) {
+            return "Best: \(Formatters.holdString(from: bestHold.heldSeconds))"
+        }
+        let weighted = workingSets.filter { $0.weightKg > 0 }
+        if let best = weighted.max(by: { $0.estimated1RM < $1.estimated1RM }) {
+            let w = UnitConversionService.convertWeight(best.weightKg, to: unitSystem)
+            return "Best: \(w.formatted()) \(UnitConversionService.weightLabel(for: unitSystem)) x \(best.reps)"
+        }
+        if let best = workingSets.max(by: { $0.reps < $1.reps }), best.reps > 0 {
+            return "Best: \(best.reps) reps"
+        }
+        return nil
+    }
+
     private func prDescription(_ pr: PersonalRecord) -> String {
         switch pr.type {
         case .weight:
@@ -439,6 +457,8 @@ struct WorkoutSummaryView: View {
             return "\(Int(pr.value)) reps"
         case .volume:
             return "Volume: \(pr.value.asWeight(unit: unitSystem))"
+        case .duration:
+            return "Longest hold: \(Formatters.holdString(from: Int(pr.value)))"
         }
     }
 
