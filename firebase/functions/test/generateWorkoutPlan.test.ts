@@ -1,11 +1,45 @@
 import { describe, it, expect } from "vitest";
 import {
+  SAVE_WORKOUT_PLAN_TOOL,
   filterExercisesByEquipment,
   normalizePlan,
   serializeExercisesForPrompt,
   validatePlanShape,
 } from "../src/generateWorkoutPlan";
-import { WorkoutPlanSchema } from "../src/validators/schemas";
+import { PlannedExerciseSchema, WorkoutPlanSchema } from "../src/validators/schemas";
+
+describe("SAVE_WORKOUT_PLAN_TOOL", () => {
+  // The model is bounded by the tool schema and the result is bounded by Zod.
+  // If the two disagree, the model happily returns a plan the server then
+  // rejects — which is how a 30-60 second plank became an "internal error".
+  const plannedExerciseProperties = () => {
+    const schema = SAVE_WORKOUT_PLAN_TOOL.input_schema as any;
+    return schema.properties.workouts.items.properties.exerciseGroups.items
+      .properties.exercises.items.properties;
+  };
+
+  it("bounds reps the same way the validator does", () => {
+    const props = plannedExerciseProperties();
+    for (const bound of [props.repsMin.maximum, props.repsMax.maximum]) {
+      expect(PlannedExerciseSchema.safeParse({
+        id: "p1",
+        exerciseId: "plank",
+        order: 1,
+        sets: 3,
+        repsMin: 1,
+        repsMax: bound,
+        restSeconds: 60,
+        isOptional: false,
+      }).success).toBe(true);
+    }
+  });
+
+  it("lets the model prescribe a hold in seconds", () => {
+    const props = plannedExerciseProperties();
+    expect(props.repsMax.maximum).toBeGreaterThanOrEqual(60);
+    expect(props.repsMin.minimum).toBe(1);
+  });
+});
 
 describe("filterExercisesByEquipment", () => {
   const exercises = [

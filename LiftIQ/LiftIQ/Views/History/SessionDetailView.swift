@@ -164,9 +164,20 @@ struct SessionDetailView: View {
                     .foregroundStyle(Color.liftPR)
                     .accessibilityLabel("Personal record")
             }
-            Text("\(UnitConversionService.convertWeight(set.weightKg, to: unitSystem).formatted(decimals: 1)) \(weightUnit) \u{00D7} \(set.reps)")
+            Text(setSummary(set))
                 .font(.subheadline.weight(.medium))
         }
+    }
+
+    /// "60 kg × 8", or "45s" for a hold (with any added load in front).
+    private func setSummary(_ set: SetLog) -> String {
+        let weight = UnitConversionService.convertWeight(set.weightKg, to: unitSystem)
+        if set.heldSeconds > 0 {
+            let hold = Formatters.holdString(from: set.heldSeconds)
+            guard set.weightKg > 0 else { return hold }
+            return "\(weight.formatted(decimals: 1)) \(weightUnit) \u{00B7} \(hold)"
+        }
+        return "\(weight.formatted(decimals: 1)) \(weightUnit) \u{00D7} \(set.reps)"
     }
 
     private func editableSetRow(_ set: SetLog) -> some View {
@@ -190,19 +201,35 @@ struct SessionDetailView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            TextField("0", text: Binding(
-                get: { viewModel.repsInputs[set.id] ?? "" },
-                set: { viewModel.repsInputs[set.id] = $0 }
-            ))
-            .keyboardType(.numberPad)
-            .multilineTextAlignment(.trailing)
-            .frame(width: 50)
-            .textFieldStyle(.roundedBorder)
-            .accessibilityLabel("Reps, set \(set.setNumber)")
+            if set.durationSeconds != nil {
+                TextField("0", text: Binding(
+                    get: { viewModel.durationInputs[set.id] ?? "" },
+                    set: { viewModel.durationInputs[set.id] = $0 }
+                ))
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 50)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Seconds held, set \(set.setNumber)")
 
-            Text("reps")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("sec")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                TextField("0", text: Binding(
+                    get: { viewModel.repsInputs[set.id] ?? "" },
+                    set: { viewModel.repsInputs[set.id] = $0 }
+                ))
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 50)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Reps, set \(set.setNumber)")
+
+                Text("reps")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

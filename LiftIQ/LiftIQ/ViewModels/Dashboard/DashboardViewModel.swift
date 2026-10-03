@@ -34,6 +34,9 @@ final class DashboardViewModel {
     var weekStreak: Int = 0
     var blockProgress: BlockProgress?
     var blockReview: BlockReview?
+    /// The opt-in "you've been on this program a while" checkpoint. Nil
+    /// unless the lifter set a cadence in Profile and it has come due.
+    var programRefresh: ProgramRefresh?
     /// Completed sessions over the last ~year: feeds the week streak, block
     /// progress and the weekly check-in. Fetched once per load.
     private(set) var completedSessions: [WorkoutSession] = []
@@ -66,7 +69,10 @@ final class DashboardViewModel {
         userId: String,
         referenceDate: Date = Date(),
         progressService: (any ProgressServicing)? = nil,
-        liveActivity: (any WorkoutLiveActivitying)? = nil
+        liveActivity: (any WorkoutLiveActivitying)? = nil,
+        profile: UserProfile? = nil,
+        progressionService: ProgressionService? = nil,
+        exercises: [String: Exercise] = [:]
     ) async {
         // The dashboard view (and this view model) can stay alive across a
         // week boundary; snap the strip to the current week on every reload
@@ -104,7 +110,9 @@ final class DashboardViewModel {
         }
 
         await loadLongRange(workoutService: workoutService, progressService: progressService,
-                            userId: userId, referenceDate: referenceDate)
+                            userId: userId, referenceDate: referenceDate,
+                            profile: profile, progressionService: progressionService,
+                            exercises: exercises)
 
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) ?? weekStart
         do {
@@ -122,7 +130,10 @@ final class DashboardViewModel {
         workoutService: any WorkoutServicing,
         progressService: (any ProgressServicing)?,
         userId: String,
-        referenceDate: Date
+        referenceDate: Date,
+        profile: UserProfile? = nil,
+        progressionService: ProgressionService? = nil,
+        exercises: [String: Exercise] = [:]
     ) async {
         let plan = workoutService.activePlan
         let windowStart = calendar.date(byAdding: .weekOfYear, value: -Milestones.streakWindowWeeks, to: referenceDate) ?? .distantPast
@@ -139,10 +150,30 @@ final class DashboardViewModel {
         guard let plan else {
             blockProgress = nil
             blockReview = nil
+            programRefresh = nil
             return
         }
         let progress = BlockProgress.compute(plan: plan, sessions: sessions)
         blockProgress = progress
+
+        // The block review is the stronger, more specific checkpoint; only
+        // offer the time-based one when no block is waiting to be reviewed.
+        programRefresh = ProgramRefresh.due(
+            plan: plan,
+            cadenceWeeks: progress.isComplete ? nil : profile?.programRefreshWeeks,
+            planSessionDates: sessions.filter { $0.planId == plan.id }.map(\.startedAt),
+            holdingLifts: progressionService.map {
+                Self.holdingLiftCount(
+                    plan: plan,
+                    sessions: sessions,
+                    progressionService: $0,
+                    exercises: exercises
+                )
+            } ?? 0,
+            now: referenceDate,
+            calendar: calendar
+        )
+
         guard progress.isComplete else {
             blockReview = nil
             return
@@ -168,6 +199,85 @@ final class DashboardViewModel {
         )
     }
 
+    /// How many of the plan's lifts are currently stalled — the best
+    /// top-weight set has missed the rep floor at the same weight for
+    /// `Constants.stallThreshold` sessions running. A description of what has
+    /// happened, never a claim that progress has stopped: that would need far
+    /// more data than a few sessions can carry (see `StrengthTrend`).
+    static func holdingLiftCount(
+        plan: WorkoutPlan,
+        sessions: [WorkoutSession],
+        progressionService: ProgressionService,
+        exercises: [String: Exercise]
+    ) -> Int {
+        var logsByExercise: [String: [ExerciseLog]] = [:]
+        for session in sessions.filter({ $0.planId == plan.id }).sorted(by: { $0.startedAt > $1.startedAt }) {
+            for log in session.exerciseLogs {
+                guard logsByExercise[log.exerciseId, default: []].count < 5 else { continue }
+                logsByExercise[log.exerciseId, default: []].append(log)
+            }
+        }
+
+        var seen: Set<String> = []
+        var suggestions: [ProgressionSuggestion] = []
+        for day in plan.workouts {
+            for group in day.exerciseGroups {
+                for planned in group.exercises where seen.insert(planned.exerciseId).inserted {
+                    guard let logs = logsByExercise[planned.exerciseId], !logs.isEmpty else { continue }
+                    if let suggestion = progressionService.suggest(
+                        for: planned,
+                        previousLogs: logs,
+                        exerciseInfo: exercises[planned.exerciseId]
+                    ) {
+                        suggestions.append(suggestion)
+                    }
+                }
+            }
+        }
+        return ProgramRefresh.holdingLiftCount(suggestions)
+    }
+
+    /// "Keep going" on the switch-it-up card: the program is working, so
+    /// nothing about it changes — only the card's clock restarts, buying
+    /// another full cadence. Today's choices are deliberately left alone: an
+    /// accepted adaptation and a day picked from "Change" both survive,
+    /// because keeping the program is not a change to it.
+    func keepProgram(
+        plan: WorkoutPlan,
+        workoutService: any WorkoutServicing,
+        now: Date = Date()
+    ) async throws {
+        try await dismissProgramRefresh(plan: plan, workoutService: workoutService, now: now)
+    }
+
+    /// An accepted "Switch it up with AI" edit. The sheet has already saved
+    /// the rewritten plan, so Up Next must be re-derived from it the way
+    /// `startNextBlock` does: the day it pointed at may be gone or rewritten
+    /// in place, and an adaptation of the old day certainly doesn't apply to
+    /// the new one.
+    func applyRefreshedProgram(
+        plan: WorkoutPlan,
+        workoutService: any WorkoutServicing,
+        now: Date = Date()
+    ) async throws {
+        try await dismissProgramRefresh(plan: plan, workoutService: workoutService, now: now)
+        adaptedWorkout = nil
+        activePlanId = plan.id
+        todayWorkout = Self.nextWorkout(plan: plan, sessions: workoutService.recentSessions)
+    }
+
+    /// Stamps the dismissal both choices share.
+    private func dismissProgramRefresh(
+        plan: WorkoutPlan,
+        workoutService: any WorkoutServicing,
+        now: Date
+    ) async throws {
+        var next = plan
+        next.refreshPromptedAt = now
+        try await workoutService.savePlan(next)
+        programRefresh = nil
+    }
+
     /// "Keep going": starts the next block from now. The plan keeps its
     /// content; only the block boundary moves, so the review card retires
     /// and the week counter restarts.
@@ -177,6 +287,7 @@ final class DashboardViewModel {
         next.blockNumber = plan.effectiveBlockNumber + 1
         try await workoutService.savePlan(next)
         blockReview = nil
+        programRefresh = nil
         adaptedWorkout = nil
         blockProgress = BlockProgress.compute(plan: next, sessions: completedSessions)
         // "Tweak with AI" hands in a rewritten plan; Up Next must point at

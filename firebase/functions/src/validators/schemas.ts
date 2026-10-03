@@ -104,8 +104,12 @@ export const PlannedExerciseSchema = z.object({
   exerciseId: z.string(),
   order: z.number().int(),
   sets: z.number().int().min(1).max(10),
-  repsMin: z.number().int().min(1).max(50),
-  repsMax: z.number().int().min(1).max(50),
+  // Overloaded field: reps for ordinary lifts, SECONDS HELD for isometric
+  // holds (the plan carries no seconds field — see HoldPrescription on the
+  // client). The ceiling must therefore clear a long plank, not a rep count;
+  // the prompt is what keeps actual rep ranges sane per goal.
+  repsMin: z.number().int().min(1).max(300),
+  repsMax: z.number().int().min(1).max(300),
   rirTarget: z.number().int().nullable().optional(),
   rpeTarget: z.number().nullable().optional(),
   restSeconds: z.number().int().min(0).max(600),
@@ -160,6 +164,9 @@ export const WorkoutPlanSchema = z.object({
   // plan-scope AI edit would silently drop them and resurrect the review.
   blockStartedAt: z.string().datetime().nullable().optional(),
   blockNumber: z.number().int().min(1).nullable().optional(),
+  // Same reason: the "switch it up" card's snooze stamp must survive an AI
+  // edit, or dismissing it would be undone by the next plan-scope change.
+  refreshPromptedAt: z.string().datetime().nullable().optional(),
 });
 
 // modifyWorkout request: scope "plan" edits the whole plan permanently

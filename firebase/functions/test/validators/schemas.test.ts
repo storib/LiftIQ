@@ -161,6 +161,28 @@ describe("PlannedExerciseSchema", () => {
     ).toBe(true);
   });
 
+  it("accepts an isometric hold prescribed in seconds", () => {
+    // A hold's prescription travels in repsMin/repsMax as SECONDS, which is
+    // exactly what the generation prompt asks for ("30-60 second hold"). The
+    // old 50 ceiling rejected every plan containing one.
+    expect(
+      PlannedExerciseSchema.safeParse({
+        ...validPlanned,
+        exerciseId: "plank",
+        repsMin: 30,
+        repsMax: 60,
+      }).success,
+    ).toBe(true);
+    expect(
+      PlannedExerciseSchema.safeParse({ ...validPlanned, repsMin: 120, repsMax: 300 }).success,
+    ).toBe(true);
+  });
+
+  it("still rejects an absurd rep/second count", () => {
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, repsMax: 301 }).success).toBe(false);
+    expect(PlannedExerciseSchema.safeParse({ ...validPlanned, repsMin: 0 }).success).toBe(false);
+  });
+
   it("rejects sets out of 1..10 range", () => {
     expect(PlannedExerciseSchema.safeParse({ ...validPlanned, sets: 0 }).success).toBe(false);
     expect(PlannedExerciseSchema.safeParse({ ...validPlanned, sets: 11 }).success).toBe(false);

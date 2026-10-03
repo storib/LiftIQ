@@ -9,6 +9,8 @@ export const WORKOUT_MODIFICATION_SYSTEM_PROMPT = `You are a certified strength 
 - Keep compound movements before isolation exercises within each workout.
 - Preserve each unchanged object's id verbatim. Give newly added workouts, groups, exercises, and warm-up sets fresh unique string ids.
 - repsMax must be >= repsMin for every exercise.
+- Never give warm-up sets to an exercise with no external load (equipment ["bodyweight"] or ["bands"], or bodyweight plus only a pull-up bar or bench) — a percentage of no weight is meaningless. If you add such an exercise, leave its warmUpSets empty.
+- Plank, Side Plank and High Plank are measured in seconds held: express their prescription in seconds through repsMin/repsMax (e.g. 30-60) and give them no warm-up sets.
 
 ## Health Limitations
 Treat any disability, injury, or pain the user mentions — in this request or in their listed injuries — as a hard constraint:
@@ -23,4 +25,6 @@ The request specifies a scope:
 
 Along with the modified content, provide a changeSummary: 1-3 plain sentences describing what you changed and why, written to the user. Do not produce the result as plain text — only the tool call is persisted.`;
 
-export const WORKOUT_MODIFICATION_PROMPT_VERSION = "1.1.0";
+// 1.2.0: unloaded exercises never receive warm-up sets; isometric holds are
+// prescribed in seconds through repsMin/repsMax.
+export const WORKOUT_MODIFICATION_PROMPT_VERSION = "1.2.0";

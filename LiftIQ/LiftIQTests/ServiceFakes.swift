@@ -26,6 +26,9 @@ final class FakeWorkoutService: WorkoutServicing {
     var completeSessionError: Error?
     var abandonSessionError: Error?
     var savePlanError: Error?
+    /// When true, `savePlan` suspends until its task is cancelled instead of
+    /// returning — the offline-Firestore case.
+    var savePlanNeverAcknowledges = false
     var deletePlanError: Error?
     var loadError: Error?
     var recentLogsError: Error?
@@ -36,6 +39,8 @@ final class FakeWorkoutService: WorkoutServicing {
     private(set) var completedSessions: [WorkoutSession] = []
     private(set) var abandonedSessions: [WorkoutSession] = []
     private(set) var savedPlans: [WorkoutPlan] = []
+    /// Every `savePlan` call, acknowledged or not.
+    private(set) var savePlanAttempts: [WorkoutPlan] = []
     private(set) var deletedPlanIds: [String] = []
     private(set) var loadPlansUserIds: [String] = []
     private(set) var loadRecentSessionsUserIds: [String] = []
@@ -80,6 +85,17 @@ final class FakeWorkoutService: WorkoutServicing {
     }
 
     func savePlan(_ plan: WorkoutPlan) async throws {
+        // Recorded before any suspension: Firestore applies a write to its
+        // local cache the moment it is enqueued, whatever the network does.
+        savePlanAttempts.append(plan)
+        if savePlanNeverAcknowledges {
+            // Stands in for an offline `WriteBatch.commit()`: the data is
+            // queued, but the acknowledgement this await wants never comes.
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+            return
+        }
         if let savePlanError { throw savePlanError }
         savedPlans.append(plan)
         plans.append(plan)
@@ -240,6 +256,19 @@ final class FakeProgressService: ProgressServicing {
                 exerciseName: exerciseName,
                 type: .estimated1RM,
                 value: setLog.estimated1RM,
+                previousValue: nil,
+                achievedAt: Date(),
+                sessionId: sessionId
+            ))
+        }
+        if prTypesToDetect.contains(.duration) {
+            prs.append(PersonalRecord(
+                id: UUID().uuidString,
+                userId: userId,
+                exerciseId: exerciseId,
+                exerciseName: exerciseName,
+                type: .duration,
+                value: Double(setLog.heldSeconds),
                 previousValue: nil,
                 achievedAt: Date(),
                 sessionId: sessionId

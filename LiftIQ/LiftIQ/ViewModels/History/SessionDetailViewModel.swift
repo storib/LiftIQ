@@ -17,6 +17,10 @@ final class SessionDetailViewModel {
     /// Keyed by SetLog.id — set inputs are never index-addressed.
     var weightInputs: [String: String] = [:]
     var repsInputs: [String: String] = [:]
+    /// Seconds held, for sets logged as timed holds. A set is a hold exactly
+    /// when it was saved with a `durationSeconds`, so history needs no
+    /// catalog lookup to know which field to edit.
+    var durationInputs: [String: String] = [:]
 
     /// Start/end being edited. Only completed sessions have a meaningful
     /// end (an export in Apple Health), so only they get the pickers.
@@ -61,10 +65,15 @@ final class SessionDetailViewModel {
     func beginEditing(unitSystem: UnitSystem) {
         weightInputs = [:]
         repsInputs = [:]
+        durationInputs = [:]
         for set in session.exerciseLogs.flatMap(\.sets) {
             let display = UnitConversionService.convertWeight(set.weightKg, to: unitSystem)
             weightInputs[set.id] = display.formatted(decimals: 1)
-            repsInputs[set.id] = String(set.reps)
+            if let held = set.durationSeconds {
+                durationInputs[set.id] = String(held)
+            } else {
+                repsInputs[set.id] = String(set.reps)
+            }
         }
         startInput = session.startedAt
         endInput = session.completedAt ?? session.startedAt.addingTimeInterval(TimeInterval(session.durationSeconds))
@@ -90,6 +99,10 @@ final class SessionDetailViewModel {
                 }
                 if let text = repsInputs[setId], let reps = Int(text), reps >= 0 {
                     updated.exerciseLogs[logIndex].sets[setIndex].reps = reps
+                }
+                if let text = durationInputs[setId], let held = Int(text), held >= 0 {
+                    updated.exerciseLogs[logIndex].sets[setIndex].durationSeconds =
+                        min(held, Constants.maxHoldSeconds)
                 }
             }
         }

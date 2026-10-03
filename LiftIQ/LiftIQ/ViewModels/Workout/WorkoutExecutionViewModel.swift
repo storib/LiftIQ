@@ -8,6 +8,9 @@ struct SetInput: Hashable {
     var weight = ""
     var reps = ""
     var rpe = ""
+    /// Seconds held, for exercises measured in time (planks). Separate from
+    /// `reps` so a hold is never mistaken for a rep count anywhere downstream.
+    var duration = ""
 }
 
 extension Dictionary where Value == SetInput {
@@ -221,9 +224,22 @@ final class WorkoutExecutionViewModel: Identifiable {
         return current
     }
 
-    /// The saved plan this session was started from, when it's still loaded;
-    /// enables the "Entire plan" scope in the mid-workout AI modify sheet.
+    /// Set whenever this session changes the saved plan, and read back by
+    /// `planForAIModification` below.
+    private var locallyEditedPlan: WorkoutPlan?
+
+    /// The plan this session edits: this session's own copy when it has made
+    /// a permanent change, else the saved one. Enables the "Entire plan"
+    /// scope in the mid-workout AI modify sheet, and is the base every
+    /// permanent edit builds on.
+    ///
+    /// The in-session copy has to win. `workoutService.plans` only refreshes
+    /// once the server acknowledges a write, so a pending removal would
+    /// otherwise hand the AI sheet (or a second removal) a plan that still
+    /// lists the exercise — and accepting that edit would write it back.
+    /// Nil when the originating plan is gone, which hides those entry points.
     var planForAIModification: WorkoutPlan? {
+        if let locallyEditedPlan { return locallyEditedPlan }
         guard let planId = session.planId else { return nil }
         return workoutService.plans.first { $0.id == planId }
     }
@@ -279,7 +295,25 @@ final class WorkoutExecutionViewModel: Identifiable {
         self.startSource = startSource
         self.isResumed = false
         self.userId = userId
-        self.session = WorkoutSession.create(from: template, userId: userId, planId: planId)
+        // The catalog is loaded at launch (ContentView) and served
+        // cache-first, so this lookup is normally populated — unloaded
+        // exercises must not be given warm-up rows to begin with. `start()`
+        // prunes any that slipped through once the catalog is in.
+        var catalog: [String: Exercise] = [:]
+        for group in template.exerciseGroups {
+            for planned in group.exercises where catalog[planned.exerciseId] == nil {
+                if let info = exerciseService.getExercise(id: planned.exerciseId) {
+                    catalog[planned.exerciseId] = info
+                }
+            }
+        }
+        self.exerciseDetails = catalog
+        self.session = WorkoutSession.create(
+            from: template,
+            userId: userId,
+            planId: planId,
+            exercises: catalog
+        )
         self.template = template
         self.templateGroups = template.exerciseGroups
         buildGroupMap(from: template.exerciseGroups)
@@ -347,9 +381,6 @@ final class WorkoutExecutionViewModel: Identifiable {
         do {
             try await exerciseService.loadExercises()
 
-            // Persist the initial session
-            try await workoutService.startSession(session)
-
             // Load exercise details from the in-memory catalog.
             let exerciseIds = Set(session.exerciseLogs.map(\.exerciseId))
             for exerciseId in exerciseIds {
@@ -361,6 +392,11 @@ final class WorkoutExecutionViewModel: Identifiable {
                     }
                 }
             }
+            pruneUnloadedWarmUps()
+
+            // Persist after pruning so the stored session never carries
+            // warm-up rows the catalog says don't belong.
+            try await workoutService.startSession(session)
 
             // Resumed sessions arrive without template context; rebuild it
             // from the plan so superset rest and progression suggestions work.
@@ -609,9 +645,11 @@ final class WorkoutExecutionViewModel: Identifiable {
         // over the previous-session ghost — they're what the row displays.
         var weightDisplay = Double(input.weight) ?? 0
         var reps = Int(input.reps) ?? 0
+        var heldSeconds = Int(input.duration) ?? 0
         let rpe = Double(input.rpe)
 
         let exerciseId = session.exerciseLogs[exerciseLogIndex].exerciseId
+        let mode = trackingMode(forExerciseId: exerciseId)
         // A typed weight that differs from the ghost is the lifter overriding
         // the suggestion — the signal the beta most wants to see.
         if weightDisplay > 0,
@@ -635,9 +673,16 @@ final class WorkoutExecutionViewModel: Identifiable {
                 reps = r
                 input.reps = suggested.reps
             }
+            if heldSeconds <= 0, let d = Int(suggested.duration), d > 0 {
+                heldSeconds = d
+                input.duration = suggested.duration
+            }
             setInputs[setId] = input
         }
-        if weightDisplay <= 0 || reps <= 0,
+        // Only consult the previous session when something is still missing;
+        // for a hold that's the seconds, not the reps.
+        let missingPrimary = mode.tracksTime ? heldSeconds <= 0 : reps <= 0
+        if weightDisplay <= 0 || missingPrimary,
            let prevSet = previousSet(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
             if weightDisplay <= 0 && prevSet.weightKg > 0 {
                 weightDisplay = UnitConversionService.convertWeight(prevSet.weightKg, to: unitSystem)
@@ -647,25 +692,40 @@ final class WorkoutExecutionViewModel: Identifiable {
                 reps = prevSet.reps
                 input.reps = "\(prevSet.reps)"
             }
+            if heldSeconds <= 0 && prevSet.heldSeconds > 0 {
+                heldSeconds = prevSet.heldSeconds
+                input.duration = "\(prevSet.heldSeconds)"
+            }
             setInputs[setId] = input
         }
 
         // First-session fallback: with no history to ghost, tapping ✓ adopts
-        // the plan's rep target so a brand-new program still completes in one
-        // tap once a weight is chosen.
-        if reps <= 0, let target = targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
+        // the plan's target so a brand-new program still completes in one
+        // tap once a weight is chosen. A hold's target is in seconds.
+        if mode.tracksTime {
+            if heldSeconds <= 0,
+               let target = targetHoldSeconds(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
+                heldSeconds = target
+                input.duration = "\(target)"
+                setInputs[setId] = input
+            }
+        } else if reps <= 0, let target = targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex) {
             reps = target
             input.reps = "\(target)"
             setInputs[setId] = input
         }
 
-        // Bodyweight movements are loaded by the lifter, so reps alone
-        // complete the set; an entered weight is added load.
-        let isBodyweight = exerciseDetails[exerciseId]?.isBodyweight ?? false
-        guard reps > 0 && (weightDisplay > 0 || isBodyweight) else {
+        // What makes a set complete depends on how the exercise is measured:
+        // a hold needs seconds, everything else needs reps, and only
+        // externally loaded movements need a weight (bodyweight and band work
+        // treat an entered weight as added load).
+        heldSeconds = min(heldSeconds, Constants.maxHoldSeconds)
+        let hasWork = mode.tracksTime ? heldSeconds > 0 : reps > 0
+        guard hasWork && (weightDisplay > 0 || !mode.requiresWeight) else {
             Haptics.error()
             return
         }
+        if mode.tracksTime { reps = 0 }
 
         // Convert to kg for storage
         let weightKg = UnitConversionService.convertToKg(weightDisplay, from: unitSystem)
@@ -673,6 +733,7 @@ final class WorkoutExecutionViewModel: Identifiable {
         // Update the set log
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].weightKg = weightKg
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].reps = reps
+        session.exerciseLogs[exerciseLogIndex].sets[setIndex].durationSeconds = mode.tracksTime ? heldSeconds : nil
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].rpe = rpe
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].completedAt = Date()
 
@@ -773,6 +834,7 @@ final class WorkoutExecutionViewModel: Identifiable {
 
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].weightKg = 0
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].reps = 0
+        session.exerciseLogs[exerciseLogIndex].sets[setIndex].durationSeconds = nil
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].rpe = nil
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].isPersonalRecord = false
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].personalRecordIds = nil
@@ -833,6 +895,46 @@ final class WorkoutExecutionViewModel: Identifiable {
         session.exerciseLogs[exerciseLogIndex].sets[setIndex].setType = newType
         renumberSets(exerciseLogIndex: exerciseLogIndex)
         syncLiveActivity()
+    }
+
+    /// The catalog entry for an exercise, falling back to the service in
+    /// case the session was built before the catalog finished loading.
+    /// `completeSet` depends on this: an unknown exercise would be treated as
+    /// externally loaded and refuse a bodyweight set.
+    func exerciseInfo(for exerciseId: String) -> Exercise? {
+        if let cached = exerciseDetails[exerciseId] { return cached }
+        guard let fetched = exerciseService.getExercise(id: exerciseId) else { return nil }
+        exerciseDetails[exerciseId] = fetched
+        return fetched
+    }
+
+    /// How this exercise's sets are measured; `weightAndReps` when the
+    /// catalog has nothing to say.
+    func trackingMode(forExerciseId exerciseId: String) -> TrackingMode {
+        exerciseInfo(for: exerciseId)?.effectiveTrackingMode ?? .weightAndReps
+    }
+
+    /// Drops warm-up rows from exercises that carry no external load — a
+    /// 50%-of-a-pull-up ramp is meaningless, and plans generated before the
+    /// prompt forbade it still prescribe them. Completed rows are left alone:
+    /// logged work is never deleted behind the lifter's back.
+    private func pruneUnloadedWarmUps() {
+        for logIndex in session.exerciseLogs.indices {
+            let exerciseId = session.exerciseLogs[logIndex].exerciseId
+            guard let info = exerciseInfo(for: exerciseId), !info.allowsWarmUpSets else { continue }
+            let doomed = session.exerciseLogs[logIndex].sets.filter {
+                $0.setType == .warmUp && $0.completedAt == nil && !completedSetIds.contains($0.id)
+            }
+            guard !doomed.isEmpty else { continue }
+            let doomedIds = Set(doomed.map(\.id))
+            session.exerciseLogs[logIndex].sets.removeAll { doomedIds.contains($0.id) }
+            for id in doomedIds {
+                setInputs.removeValue(forKey: id)
+                suggestedSetInputs.removeValue(forKey: id)
+                completedSetIds.remove(id)
+            }
+            renumberSets(exerciseLogIndex: logIndex)
+        }
     }
 
     /// setNumber counts within each set type (warm-ups W1...Wn, working
@@ -927,12 +1029,16 @@ final class WorkoutExecutionViewModel: Identifiable {
             completedSetIds.remove(setId)
             session.exerciseLogs[index].sets[setIndex].weightKg = 0
             session.exerciseLogs[index].sets[setIndex].reps = 0
+            session.exerciseLogs[index].sets[setIndex].durationSeconds = nil
             session.exerciseLogs[index].sets[setIndex].rpe = nil
             session.exerciseLogs[index].sets[setIndex].isPersonalRecord = false
             session.exerciseLogs[index].sets[setIndex].personalRecordIds = nil
             session.exerciseLogs[index].sets[setIndex].completedAt = nil
             setInputs[setId] = SetInput()
         }
+        // Swapping a barbell lift for pull-ups must not leave a 50%/70%
+        // ramp behind; all the sets were just reset, so none are completed.
+        pruneUnloadedWarmUps()
 
         previousLogs.removeValue(forKey: oldExerciseId)
         progressionSuggestions.removeValue(forKey: oldExerciseId)
@@ -985,14 +1091,60 @@ final class WorkoutExecutionViewModel: Identifiable {
 
     // MARK: - Exercise Removal
 
+    /// The in-flight plan write from a `.plan`-scope removal. Firestore
+    /// applies the batch to its local cache the moment it is enqueued, but
+    /// `WriteBatch.commit()` only *completes* on a server acknowledgement,
+    /// which never arrives offline. The save therefore runs alongside
+    /// today's removal rather than in front of it — tests await this handle.
+    private(set) var planRemovalSaveTask: Task<Void, Never>?
+
+    /// How far a manual removal reaches.
+    enum RemovalScope {
+        /// Today's session only; the saved plan still prescribes it.
+        case session
+        /// Today's session *and* the plan day it came from, permanently.
+        case plan
+    }
+
+    /// Whether this exercise can also be dropped from the saved plan — false
+    /// when the session has no plan loaded, the plan day is gone, or it is
+    /// the day's only exercise. The card uses it to decide whether to offer
+    /// the permanent option at all.
+    func canRemoveFromPlan(exerciseLogIndex: Int) -> Bool {
+        guard let plan = planForAIModification,
+              let dayId = session.workoutTemplateId,
+              session.exerciseLogs.indices.contains(exerciseLogIndex) else { return false }
+        let log = session.exerciseLogs[exerciseLogIndex]
+        return PlanEditor.canRemoveExercise(
+            plannedExerciseId: log.plannedExerciseId,
+            exerciseId: log.exerciseId,
+            fromDayId: dayId,
+            in: plan
+        )
+    }
+
     /// Removes an entire exercise from the live session (long-press on its
     /// card). Completed sets are discarded and their PRs rolled back, so the
     /// view must confirm with the user first. The exercise also leaves its
     /// template group, keeping the position-based group map, warm-up specs,
     /// and the AI-modify projection aligned with the remaining logs.
-    func removeExercise(exerciseLogIndex: Int) async {
+    ///
+    /// With `scope: .plan` the saved plan day loses the slot too, so the
+    /// exercise stops coming back next time. That edit is resolved up front
+    /// but written off the critical path (`enqueuePlanRemoval`), so the
+    /// removal the lifter asked for always lands — a plan save that fails,
+    /// or that no server ever acknowledges, costs them a message, not the
+    /// tap.
+    func removeExercise(exerciseLogIndex: Int, scope: RemovalScope = .session) async {
         guard session.exerciseLogs.count > 1,
               exerciseLogIndex < session.exerciseLogs.count else { return }
+
+        // Resolve the plan edit while the indices still line up, and enqueue
+        // its write without awaiting the acknowledgement — today's removal
+        // must land on screen whether or not the device is online.
+        if scope == .plan {
+            enqueuePlanRemoval(exerciseLogIndex: exerciseLogIndex)
+        }
 
         for setIndex in session.exerciseLogs[exerciseLogIndex].sets.indices {
             await rollBackPersonalRecords(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
@@ -1054,6 +1206,52 @@ final class WorkoutExecutionViewModel: Identifiable {
         syncLiveActivity()
     }
 
+    /// Drops the exercise's slot from the saved plan day and starts the
+    /// write. Addressed by slot identity (`plannedExerciseId`), so a swapped
+    /// slot and a removed one are never confused.
+    ///
+    /// Nothing here is awaited: the plan edit is computed synchronously (so
+    /// it sees the session before the removal shifts it) and the write runs
+    /// in `planRemovalSaveTask`. A session started from an adapted or
+    /// AI-edited day keeps its own template, so the plan's new shape can't
+    /// resurrect the slot on resume either way.
+    private func enqueuePlanRemoval(exerciseLogIndex: Int) {
+        guard let plan = planForAIModification,
+              let dayId = session.workoutTemplateId else {
+            errorMessage = "Removed for today — your saved plan couldn't be found."
+            return
+        }
+        let log = session.exerciseLogs[exerciseLogIndex]
+        guard let updated = PlanEditor.removingExercise(
+            plannedExerciseId: log.plannedExerciseId,
+            exerciseId: log.exerciseId,
+            fromDayId: dayId,
+            in: plan
+        ) else {
+            errorMessage = "Removed for today — it's the only exercise left in that plan day, so the plan is unchanged."
+            return
+        }
+        // Record the edit immediately so a second removal in the same
+        // session builds on this one rather than on the service's older copy.
+        locallyEditedPlan = updated
+        let exerciseId = log.exerciseId
+        let planId = plan.id
+        // Deliberately not cancelling an earlier save: its write is already
+        // queued in Firestore, and cancelling would only drop its reporting.
+        planRemovalSaveTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.workoutService.savePlan(updated)
+                self.betaEvents.log("exercise_removed_from_plan", [
+                    "exerciseId": exerciseId,
+                    "planId": planId,
+                ])
+            } catch {
+                self.errorMessage = "Removed for today — saving the change to your plan failed."
+            }
+        }
+    }
+
     // MARK: - AI Mid-Workout Modification
 
     /// Applies an AI-modified template to the live session without losing
@@ -1065,7 +1263,12 @@ final class WorkoutExecutionViewModel: Identifiable {
     /// with warm-ups, history ghosts, and progression prefills.
     func applyModifiedWorkout(_ modified: WorkoutTemplate) async {
         // Fresh logs supply new exercises' warm-ups and set counts.
-        let fresh = WorkoutSession.create(from: modified, userId: userId, planId: session.planId)
+        let fresh = WorkoutSession.create(
+            from: modified,
+            userId: userId,
+            planId: session.planId,
+            exercises: exerciseDetails
+        )
 
         var unmatched = session.exerciseLogs
         var mergedLogs: [ExerciseLog] = []
@@ -1133,6 +1336,9 @@ final class WorkoutExecutionViewModel: Identifiable {
         }
         setInputs = inputs
         completedSetIds.formIntersection(Set(inputs.keys))
+        // Newly added exercises arrived with whatever warm-ups the template
+        // prescribed; the catalog decides whether they make sense.
+        pruneUnloadedWarmUps()
 
         // The modified rep ranges may change progression advice even for a
         // retained exercise. One bounded session query refreshes every active
@@ -1180,6 +1386,9 @@ final class WorkoutExecutionViewModel: Identifiable {
     /// day occupying this session's dayNumber. If the AI removed this day
     /// from the plan entirely, the running session is left untouched.
     func applyModifiedPlan(_ plan: WorkoutPlan) async {
+        // The sheet already saved this plan; it supersedes any in-session
+        // removals we were tracking.
+        locallyEditedPlan = plan
         let day = plan.workouts.first { $0.id == session.workoutTemplateId }
             ?? template.flatMap { current in
                 plan.workouts.first { $0.dayNumber == current.dayNumber }
@@ -1414,6 +1623,9 @@ final class WorkoutExecutionViewModel: Identifiable {
                 if let rpe = set.rpe {
                     input.rpe = rpe.formatted(decimals: 1)
                 }
+                if set.heldSeconds > 0 {
+                    input.duration = "\(set.heldSeconds)"
+                }
                 setInputs[set.id] = input
             }
         }
@@ -1471,11 +1683,29 @@ final class WorkoutExecutionViewModel: Identifiable {
     func targetReps(exerciseLogIndex: Int, setIndex: Int) -> Int? {
         guard exerciseLogIndex < session.exerciseLogs.count else { return nil }
         let log = session.exerciseLogs[exerciseLogIndex]
-        guard setIndex < log.sets.count,
+        guard !trackingMode(forExerciseId: log.exerciseId).tracksTime,
+              setIndex < log.sets.count,
               log.sets[setIndex].setType == .working,
               let planned = plannedExercise(for: log.exerciseId),
               planned.repsMin > 0 else { return nil }
         return planned.repsMin
+    }
+
+    /// The prescribed hold for a timed exercise, in seconds — see
+    /// `HoldPrescription` for why the plan's rep range is read this way.
+    func targetHoldSeconds(exerciseLogIndex: Int, setIndex: Int) -> Int? {
+        guard exerciseLogIndex < session.exerciseLogs.count else { return nil }
+        let log = session.exerciseLogs[exerciseLogIndex]
+        guard setIndex < log.sets.count else { return nil }
+        return holdPrescription(forExerciseId: log.exerciseId)?.min
+    }
+
+    /// The slot's hold prescription, or nil when this exercise isn't timed.
+    func holdPrescription(forExerciseId exerciseId: String) -> (min: Int, max: Int)? {
+        guard trackingMode(forExerciseId: exerciseId).tracksTime,
+              let planned = plannedExercise(for: exerciseId),
+              planned.repsMin > 0 else { return nil }
+        return HoldPrescription.seconds(for: planned)
     }
 
     /// Previous-session set matching this one by set type and position within
@@ -1499,11 +1729,35 @@ final class WorkoutExecutionViewModel: Identifiable {
     /// delete before typing their own numbers.
     private func computeSuggestedInputs() {
         suggestedSetInputs.removeAll()
-        let warmUpSpecs = WarmUpPlanner.specs(forGroups: templateGroups)
+        let warmUpSpecs = WarmUpPlanner.specs(forGroups: templateGroups, exercises: exerciseDetails)
 
         for i in session.exerciseLogs.indices {
             let exerciseId = session.exerciseLogs[i].exerciseId
             let suggestion = progressionSuggestions[exerciseId]
+
+            // Timed holds ghost seconds instead of weight/reps: the
+            // progression target when there is history, else the plan's
+            // prescribed hold.
+            if trackingMode(forExerciseId: exerciseId).tracksTime {
+                for j in session.exerciseLogs[i].sets.indices
+                where session.exerciseLogs[i].sets[j].heldSeconds == 0 {
+                    let set = session.exerciseLogs[i].sets[j]
+                    // Each fallback only counts when it carries a real
+                    // value — a previous set logged at 0s must not swallow
+                    // the plan's prescription.
+                    var seconds = suggestion?.suggestedHoldSeconds ?? 0
+                    if seconds <= 0 {
+                        seconds = previousSet(exerciseLogIndex: i, setIndex: j)?.heldSeconds ?? 0
+                    }
+                    if seconds <= 0 {
+                        seconds = targetHoldSeconds(exerciseLogIndex: i, setIndex: j) ?? 0
+                    }
+                    if seconds > 0 {
+                        suggestedSetInputs[set.id, default: SetInput()].duration = "\(seconds)"
+                    }
+                }
+                continue
+            }
 
             // The working weight the warm-up ramp builds toward.
             var workingKg: Double = 0

@@ -28,6 +28,10 @@ struct UserProfile: Codable, Hashable {
     var gymSetups: [GymSetup]? = nil
     var exercisePreferences: [String: ExercisePreference]? = nil
     var weightIncrementsKg: WeightIncrements? = nil
+    /// How often (in weeks) to be asked whether to switch the program up.
+    /// Nil or 0 means never — the feature is opt-in, so nothing changes for
+    /// anyone who doesn't set it. See `ProgramRefresh`.
+    var programRefreshWeeks: Int? = nil
 }
 
 /// A named set of available equipment. The default setup mirrors

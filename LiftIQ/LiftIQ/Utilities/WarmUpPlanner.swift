@@ -11,10 +11,21 @@ enum WarmUpPlanner {
     /// circuit groups never get warm-ups — their rest logic pairs sets across
     /// the group's exercises by set index, which extra warm-up rows would
     /// misalign.
-    static func specs(forGroups groups: [ExerciseGroup]) -> [String: [WarmUpSet]] {
+    ///
+    /// `exercises` supplies the catalog entries for the planned ids. An
+    /// exercise that carries no external load gets no warm-ups at all, not
+    /// even ones the plan prescribes: a ramp to 50% of a pull-up is
+    /// meaningless. Ids missing from the lookup keep the old position-based
+    /// behavior; `WorkoutExecutionViewModel.start` prunes those rows once the
+    /// catalog has loaded.
+    static func specs(
+        forGroups groups: [ExerciseGroup],
+        exercises: [String: Exercise] = [:]
+    ) -> [String: [WarmUpSet]] {
         var result: [String: [WarmUpSet]] = [:]
         for (groupIndex, group) in groups.enumerated() where group.groupType == .straight {
             for (exerciseIndex, planned) in group.exercises.enumerated() {
+                if let info = exercises[planned.exerciseId], !info.allowsWarmUpSets { continue }
                 if let explicit = planned.warmUpSets, !explicit.isEmpty {
                     result[planned.exerciseId] = explicit.map(normalized)
                 } else if groupIndex < 2 && exerciseIndex == 0 {

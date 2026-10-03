@@ -87,6 +87,24 @@ struct DashboardView: View {
         )
     }
 
+    /// Both switch-it-up choices restart the card's clock; only an accepted
+    /// AI edit also re-points Up Next, since only it changed the program.
+    private func dismissRefresh(_ plan: WorkoutPlan, modified: Bool) async {
+        do {
+            if modified {
+                try await viewModel.applyRefreshedProgram(
+                    plan: plan, workoutService: dependencies.workoutService
+                )
+            } else {
+                try await viewModel.keepProgram(
+                    plan: plan, workoutService: dependencies.workoutService
+                )
+            }
+        } catch {
+            viewModel.repairError = "Couldn't save that: \(error.localizedDescription)"
+        }
+    }
+
     private func keepGoing(_ plan: WorkoutPlan) async {
         do {
             try await viewModel.startNextBlock(plan: plan, workoutService: dependencies.workoutService)
@@ -262,6 +280,23 @@ struct DashboardView: View {
                             Task { await keepGoing(modified) }
                         },
                         onAction: { action in dependencies.betaEvents.log("block_review_action", ["action": action]) }
+                    )
+                } else if let refresh = viewModel.programRefresh,
+                          let plan = dependencies.workoutService.activePlan {
+                    ProgramRefreshCard(
+                        refresh: refresh,
+                        plan: plan,
+                        onKeepGoing: {
+                            dependencies.betaEvents.log("program_refresh_action", ["action": "keep"])
+                            Task { await dismissRefresh(plan, modified: false) }
+                        },
+                        onPlanModified: { modified in
+                            dependencies.betaEvents.log("program_refresh_action", ["action": "tweak"])
+                            Task { await dismissRefresh(modified, modified: true) }
+                        },
+                        onAction: { action in
+                            dependencies.betaEvents.log("program_refresh_action", ["action": action])
+                        }
                     )
                 }
 
@@ -653,7 +688,12 @@ struct DashboardView: View {
             healthKitService: dependencies.healthKitService,
             userId: userId,
             progressService: dependencies.progressService,
-            liveActivity: dependencies.liveActivityController
+            liveActivity: dependencies.liveActivityController,
+            profile: dependencies.authService.currentUser?.profile,
+            progressionService: dependencies.progressionService,
+            exercises: Dictionary(
+                uniqueKeysWithValues: dependencies.exerciseService.exercises.map { ($0.id, $0) }
+            )
         )
         prepareWeeklyCheckIn()
     }

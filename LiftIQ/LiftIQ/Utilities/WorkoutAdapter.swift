@@ -39,7 +39,7 @@ enum WorkoutAdapter {
 
     /// Rough session length: setup + warm-ups + sets + the rest between them.
     static func estimatedMinutes(_ template: WorkoutTemplate, context: Context) -> Int {
-        let warmUps = WarmUpPlanner.specs(forGroups: template.exerciseGroups)
+        let warmUps = WarmUpPlanner.specs(forGroups: template.exerciseGroups, exercises: context.exercises)
         var seconds = 0
         for group in template.exerciseGroups where !group.exercises.isEmpty {
             if group.groupType == .straight || group.exercises.count == 1 {

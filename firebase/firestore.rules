@@ -52,9 +52,11 @@ service cloud.firestore {
     }
 
     /// Mirrors the Swift PersonalRecord model exactly. The client creates
-    /// 'weight' and 'estimated1RM' records for weighted sets and 'reps'
-    /// records for bodyweight sets (ProgressService.checkForPRs);
-    /// previousValue is optional and omitted when nil.
+    /// 'weight' and 'estimated1RM' records for weighted sets, 'reps' records
+    /// for bodyweight sets, and 'duration' records (seconds held) for timed
+    /// holds (ProgressService.checkForPRs); previousValue is optional and
+    /// omitted when nil. Durations get their own ceiling: 1000 kg is an
+    /// absurd lift, 1000 seconds is a 16-minute plank.
     function validPersonalRecord(userId) {
       return ownershipInvariant(userId)
         && hasOnlyFields(['id', 'userId', 'exerciseId', 'exerciseName', 'type',
@@ -62,10 +64,11 @@ service cloud.firestore {
         && request.resource.data.id is string
         && request.resource.data.exerciseId is string
         && request.resource.data.exerciseName is string
-        && request.resource.data.type in ['weight', 'estimated1RM', 'reps']
+        && request.resource.data.type in ['weight', 'estimated1RM', 'reps', 'duration']
         && request.resource.data.value is number
         && request.resource.data.value > 0
-        && request.resource.data.value <= 1000
+        && request.resource.data.value <=
+             (request.resource.data.type == 'duration' ? 3600 : 1000)
         && (!('previousValue' in request.resource.data)
             || request.resource.data.previousValue is number)
         && request.resource.data.achievedAt is timestamp

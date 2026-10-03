@@ -452,6 +452,8 @@ struct ProgressDashboardView: View {
         switch pr.type {
         case .reps:
             return "\(pr.type.displayName): \(Int(pr.value))"
+        case .duration:
+            return "\(pr.type.displayName): \(Formatters.holdString(from: Int(pr.value)))"
         case .weight, .estimated1RM, .volume:
             let value = UnitConversionService.convertWeight(pr.value, to: unitSystem)
             return "\(pr.type.displayName): \(value.formatted()) \(weightUnit)"

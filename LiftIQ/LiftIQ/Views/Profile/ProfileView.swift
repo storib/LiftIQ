@@ -16,6 +16,8 @@ struct ProfileView: View {
     @State private var sessionReminderEnabled = SessionReminderScheduler.isEnabled
     @State private var liveActivityEnabled = WorkoutLiveActivityController.isEnabled
     @State private var betaEventsEnabled = BetaEventLogger.isEnabled
+    /// 0 means "never ask" — the switch-it-up checkpoint is opt-in.
+    @State private var programRefreshWeeks: Int = 0
 
     var body: some View {
         List {
@@ -85,6 +87,12 @@ struct ProfileView: View {
                     }
                     NavigationLink("Weight Increments") {
                         WeightIncrementsView()
+                    }
+                    Picker("Switch Up My Program", selection: $programRefreshWeeks) {
+                        Text("Never").tag(0)
+                        ForEach(ProgramRefresh.cadenceOptions, id: \.self) { weeks in
+                            Text("Every \(weeks) weeks").tag(weeks)
+                        }
                     }
                     Toggle("Long Workout Reminder", isOn: $sessionReminderEnabled)
                     Toggle("Show Workout on Lock Screen", isOn: $liveActivityEnabled)
@@ -174,6 +182,7 @@ struct ProfileView: View {
             if let profile = dependencies.authService.currentUser?.profile {
                 defaultRestSeconds = profile.effectiveDefaultRestSeconds
                 customRestEnabled = profile.defaultRestSeconds != nil
+                programRefreshWeeks = profile.programRefreshWeeks ?? 0
             }
         }
         .task {
@@ -194,6 +203,9 @@ struct ProfileView: View {
         }
         .onChange(of: betaEventsEnabled) { _, enabled in
             BetaEventLogger.isEnabled = enabled
+        }
+        .onChange(of: programRefreshWeeks) { _, weeks in
+            Task { await persistProgramRefresh(weeks) }
         }
         .onChange(of: customRestEnabled) { _, enabled in
             // Toggling is a deliberate action — persist immediately rather
@@ -299,6 +311,9 @@ struct ProfileView: View {
         if liveActivityEnabled {
             text += " The Lock Screen and Dynamic Island show your current set and rest timer during a workout."
         }
+        if programRefreshWeeks > 0 {
+            text += " After \(programRefreshWeeks) weeks on one program, the dashboard offers to switch it up — it never changes your plan on its own."
+        }
         if restAlertsDenied {
             text += " Notifications are off, so you won't be alerted when rest ends in the background or reminded about a long workout."
         }
@@ -327,6 +342,21 @@ struct ProfileView: View {
         saveRestTask?.cancel()
         let value = customRestEnabled ? defaultRestSeconds : nil
         saveRestTask = Task { await persistDefaultRest(value) }
+    }
+
+    /// Stores the switch-it-up cadence; 0 ("Never") is stored as nil so the
+    /// feature stays off for everyone who hasn't chosen one.
+    private func persistProgramRefresh(_ weeks: Int) async {
+        let value = weeks > 0 ? weeks : nil
+        guard var profile = dependencies.authService.currentUser?.profile,
+              profile.programRefreshWeeks != value else { return }
+        profile.programRefreshWeeks = value
+        do {
+            try await dependencies.authService.updateProfile(profile)
+        } catch {
+            settingsError = "That setting couldn't be saved. Check your connection and try again."
+            programRefreshWeeks = dependencies.authService.currentUser?.profile.programRefreshWeeks ?? 0
+        }
     }
 
     /// nil means "follow the program's rest values"; a value overrides them.

@@ -20,6 +20,9 @@ struct WorkoutPlan: Codable, Identifiable, Hashable {
     /// source-compatible and existing documents decode unchanged.
     var blockStartedAt: Date? = nil
     var blockNumber: Int? = nil
+    /// When the lifter last dismissed the "switch it up" card for this plan,
+    /// which restarts its clock (`ProgramRefresh.anchorDate`).
+    var refreshPromptedAt: Date? = nil
 
     var effectiveBlockStart: Date { blockStartedAt ?? createdAt }
     var effectiveBlockNumber: Int { blockNumber ?? 1 }

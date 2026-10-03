@@ -43,7 +43,8 @@ final class ProgressService {
     /// session-scoped cache) and persists any new records. No Firestore reads.
     /// Weighted sets earn weight/e1RM records; unweighted (bodyweight) sets
     /// earn reps records instead — zero-value weight PRs would be rejected by
-    /// the Firestore rules and read as broken in the UI.
+    /// the Firestore rules and read as broken in the UI. Timed holds earn a
+    /// duration record (seconds) on top of whatever their load warrants.
     func checkForPRs(userId: String, exerciseId: String, exerciseName: String, setLog: SetLog, sessionId: String, existingPRs: [PersonalRecord]) async throws -> [PersonalRecord] {
         var newPRs: [PersonalRecord] = []
 
@@ -63,6 +64,16 @@ final class ProgressService {
             newPRs.append(pr)
         }
 
+        // A timed hold's record is its longest hold. e1RM is meaningless
+        // without reps, so a weighted carry earns a weight PR but never an
+        // estimated-1RM one.
+        if setLog.heldSeconds > 0 {
+            let bestHold = existingPRs.filter { $0.type == .duration }.max(by: { $0.value < $1.value })
+            if Double(setLog.heldSeconds) > (bestHold?.value ?? 0) {
+                try await record(type: .duration, value: Double(setLog.heldSeconds), previous: bestHold?.value)
+            }
+        }
+
         if setLog.weightKg > 0 {
             let bestWeight = existingPRs.filter { $0.type == .weight }.max(by: { $0.value < $1.value })
             if setLog.weightKg > (bestWeight?.value ?? 0) {
@@ -70,7 +81,7 @@ final class ProgressService {
             }
 
             let best1RM = existingPRs.filter { $0.type == .estimated1RM }.max(by: { $0.value < $1.value })
-            if setLog.estimated1RM > (best1RM?.value ?? 0) {
+            if setLog.reps > 0, setLog.estimated1RM > (best1RM?.value ?? 0) {
                 try await record(type: .estimated1RM, value: setLog.estimated1RM, previous: best1RM?.value)
             }
         } else if setLog.reps > 0 {

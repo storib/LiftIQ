@@ -32,6 +32,19 @@ struct ExerciseCardView: View {
         exerciseLog.flatMap { viewModel.progressionSuggestions[$0.exerciseId] }
     }
 
+    /// How this exercise is measured — drives the column header, which input
+    /// the row shows, and whether ✓ needs a weight.
+    private var trackingMode: TrackingMode {
+        exerciseDetail?.effectiveTrackingMode ?? .weightAndReps
+    }
+
+    /// Empty-weight-field hint: bodyweight movements say so, band work has
+    /// no weight to enter at all, and loaded lifts get nothing.
+    private var weightPlaceholder: String? {
+        guard trackingMode.requiresWeight == false else { return nil }
+        return exerciseDetail?.isBodyweight == true ? "BW" : "\u{2014}"
+    }
+
     var body: some View {
         if let exerciseLog {
             card(exerciseLog)
@@ -134,7 +147,7 @@ struct ExerciseCardView: View {
                     Text("WEIGHT")
                         .frame(width: 78)
                     Spacer().frame(width: 18)
-                    Text("REPS")
+                    Text(trackingMode.tracksTime ? "SECONDS" : "REPS")
                         .frame(width: 60)
                     Text("RPE")
                         .frame(width: 48)
@@ -160,12 +173,19 @@ struct ExerciseCardView: View {
                         weightText: $viewModel.setInputs[setId: setLog.id].weight,
                         repsText: $viewModel.setInputs[setId: setLog.id].reps,
                         rpeText: $viewModel.setInputs[setId: setLog.id].rpe,
+                        durationText: $viewModel.setInputs[setId: setLog.id].duration,
                         previousWeight: prevWeight,
                         previousReps: prevSet?.reps,
+                        previousDuration: prevSet?.durationSeconds,
                         suggestedWeight: viewModel.suggestedSetInputs[setLog.id]?.weight,
                         suggestedReps: viewModel.suggestedSetInputs[setLog.id]?.reps,
-                        targetReps: viewModel.targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex),
-                        isBodyweight: exerciseDetail?.isBodyweight ?? false,
+                        suggestedDuration: viewModel.suggestedSetInputs[setLog.id]?.duration,
+                        targetReps: trackingMode.tracksTime
+                            ? viewModel.targetHoldSeconds(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex)
+                            : viewModel.targetReps(exerciseLogIndex: exerciseLogIndex, setIndex: setIndex),
+                        tracksTime: trackingMode.tracksTime,
+                        weightIsOptional: !trackingMode.requiresWeight,
+                        weightPlaceholder: weightPlaceholder,
                         unitSystem: viewModel.unitSystem,
                         isCompleted: viewModel.completedSetIds.contains(setLog.id),
                         isPersonalRecord: setLog.isPersonalRecord,
@@ -256,17 +276,41 @@ struct ExerciseCardView: View {
             isPresented: $showingRemoveConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Remove Exercise", role: .destructive) {
+            Button("Just for today", role: .destructive) {
                 Task {
-                    await viewModel.removeExercise(exerciseLogIndex: exerciseLogIndex)
+                    await viewModel.removeExercise(exerciseLogIndex: exerciseLogIndex, scope: .session)
+                }
+            }
+            if viewModel.canRemoveFromPlan(exerciseLogIndex: exerciseLogIndex) {
+                Button("Remove from my plan", role: .destructive) {
+                    Task {
+                        await viewModel.removeExercise(exerciseLogIndex: exerciseLogIndex, scope: .plan)
+                    }
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(completedSetCount > 0
-                 ? "This deletes \(completedSetCount) completed set\(completedSetCount == 1 ? "" : "s") and any PRs they earned."
-                 : "Removes this exercise from the current workout.")
+            Text(removeMessage)
         }
+    }
+
+    /// Spells out both halves of the choice: what today loses either way,
+    /// and that the plan keeps prescribing this exercise unless the
+    /// permanent option is taken.
+    private var removeMessage: String {
+        var lines: [String] = []
+        if completedSetCount > 0 {
+            lines.append(
+                "This deletes \(completedSetCount) completed set"
+                + "\(completedSetCount == 1 ? "" : "s") and any PRs they earned."
+            )
+        }
+        if viewModel.canRemoveFromPlan(exerciseLogIndex: exerciseLogIndex) {
+            lines.append("\"Just for today\" leaves your saved plan alone; \"Remove from my plan\" also drops it from this workout day for good.")
+        } else {
+            lines.append("Removes this exercise from the current workout.")
+        }
+        return lines.joined(separator: " ")
     }
 
     private var completedSetCount: Int {
@@ -280,7 +324,7 @@ struct ExerciseCardView: View {
         case .increase: return (.green, "arrow.up.right.circle.fill")
         case .stall: return (.orange, "arrow.uturn.down.circle.fill")
         case .holdRebuilding: return (.secondary, "arrow.up.circle")
-        case .holdNearTarget, .holdFloorMissed, .bodyweight: return (.secondary, "equal.circle.fill")
+        case .holdNearTarget, .holdFloorMissed, .bodyweight, .hold: return (.secondary, "equal.circle.fill")
         }
     }
 
@@ -309,6 +353,7 @@ struct ExerciseCardView: View {
     /// bodyweight suggestion with no previous data has nothing to say yet.
     private func shouldShowSuggestionPill(_ s: ProgressionSuggestion) -> Bool {
         if case .bodyweight = s.reason { return previousLog != nil }
+        if case .hold = s.reason { return previousLog != nil }
         return true
     }
 
@@ -328,6 +373,14 @@ struct ExerciseCardView: View {
         switch s.reason {
         case .bodyweight:
             return "Hit \(s.suggestedRepsMax) reps to progress"
+
+        case .hold(let bestSeconds, let targetSeconds):
+            let best = Formatters.holdString(from: bestSeconds)
+            let target = Formatters.holdString(from: targetSeconds)
+            if targetSeconds > s.suggestedRepsMax {
+                return "Held \(best) last time — add \(Constants.holdProgressionStepSeconds)s and go for \(target)"
+            }
+            return "Held \(best) last time — hold \(target) to move up"
 
         case .increase(let previousTopKg):
             let previousDisplay = UnitConversionService.convertWeight(previousTopKg, to: unit)
@@ -385,8 +438,14 @@ struct ExerciseCardView: View {
         let repRange = planned.repsMin == planned.repsMax
             ? "\(planned.repsMin)"
             : "\(planned.repsMin)-\(planned.repsMax)"
+        // A hold's prescription travels in repsMin/repsMax as seconds.
+        let hold = HoldPrescription.seconds(for: planned)
+        let holdRange = hold.min == hold.max ? "\(hold.min)" : "\(hold.min)-\(hold.max)"
+        let prescription = trackingMode.tracksTime
+            ? "\(planned.sets)×\(holdRange)s"
+            : "\(planned.sets)×\(repRange) reps"
         return VStack(alignment: .leading, spacing: 4) {
-            Label("First time — aim for \(planned.sets)×\(repRange) reps", systemImage: "flag.checkered")
+            Label("First time — aim for \(prescription)", systemImage: "flag.checkered")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.accentColor)
             Text(firstTimeBody(planned))
@@ -401,7 +460,10 @@ struct ExerciseCardView: View {
     }
 
     private func firstTimeBody(_ planned: PlannedExercise) -> String {
-        if exerciseDetail?.isBodyweight == true {
+        if trackingMode.tracksTime {
+            return "Hold as long as you can keep good form, log the seconds, and tap the circle."
+        }
+        if !trackingMode.requiresWeight {
             return "Log your reps and tap the circle — enter a weight only if you add extra load."
         }
         // Anchored to repsMin because that's what ✓ adopts on a first
@@ -414,10 +476,18 @@ struct ExerciseCardView: View {
     }
 
     private func previousSessionLine(_ prevLog: ExerciseLog) -> some View {
-        let workingSets = prevLog.sets.filter { $0.setType == .working && $0.weightKg > 0 }
-        let descriptions = workingSets.map { set in
-            let w = UnitConversionService.convertWeight(set.weightKg, to: viewModel.unitSystem)
-            return "\(w.formatted()) x \(set.reps)"
+        let descriptions: [String]
+        if trackingMode.tracksTime {
+            descriptions = prevLog.sets
+                .filter { $0.setType == .working && $0.heldSeconds > 0 }
+                .map { Formatters.holdString(from: $0.heldSeconds) }
+        } else {
+            descriptions = prevLog.sets
+                .filter { $0.setType == .working && $0.weightKg > 0 }
+                .map { set in
+                    let w = UnitConversionService.convertWeight(set.weightKg, to: viewModel.unitSystem)
+                    return "\(w.formatted()) x \(set.reps)"
+                }
         }
         return Text("Last: \(descriptions.joined(separator: ", "))")
             .font(.caption)

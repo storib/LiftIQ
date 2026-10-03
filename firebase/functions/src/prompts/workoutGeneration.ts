@@ -44,12 +44,18 @@ If the injury notes contain specific guidance (e.g., "doctor said no overhead pr
 - General Fitness: 60-120 seconds
 
 ## Warm-up Sets
-- Include 2-3 warm-up sets for the first compound exercise of each workout
+- Include 2-3 warm-up sets for the first externally loaded compound exercise of each workout
 - Warm-up sets: empty bar / 40% / 60% of working weight
+- Never add warm-up sets to an exercise with no external load (equipment ["bodyweight"] or ["bands"], or bodyweight plus only a pull-up bar or bench) — a percentage of no weight is meaningless. Pull-ups, push-ups, dips and planks get none, even when they open the workout.
+
+## Isometric Holds
+- Plank, Side Plank and High Plank are measured in seconds held, not reps. Express the prescription in seconds through repsMin/repsMax (e.g. repsMin 30, repsMax 60 for a 30-60 second hold) and give them no warm-up sets.
 
 ## Output Format
 Return the plan by calling the \`save_workout_plan\` tool exactly once with the complete WorkoutPlan object. The tool's input_schema defines the required structure. Do not produce the plan as plain text — only the tool call will be persisted.`;
 
 // 2.2.0: exercise database moved from the user message into a cached system
 // block (compact JSON, projected fields, sorted by id) for prompt caching.
-export const WORKOUT_GENERATION_PROMPT_VERSION = "2.2.0";
+// 2.3.0: no warm-up sets for unloaded exercises; isometric holds prescribed
+// in seconds through repsMin/repsMax (the client logs them as hold time).
+export const WORKOUT_GENERATION_PROMPT_VERSION = "2.3.0";

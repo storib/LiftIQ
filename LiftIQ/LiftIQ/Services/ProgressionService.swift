@@ -23,6 +23,10 @@ enum ProgressionReason: Equatable {
     case stall(stuckKg: Double, sessions: Int)
     /// No external load logged: progress by reps; never increment or stall.
     case bodyweight(bestReps: Int)
+    /// A timed hold (plank): progress by seconds. `bestSeconds` is the
+    /// longest working hold last session; `targetSeconds` is what moves the
+    /// lifter up (the prescription's ceiling, or 5s past it once reached).
+    case hold(bestSeconds: Int, targetSeconds: Int)
 }
 
 extension ProgressionReason {
@@ -35,6 +39,7 @@ extension ProgressionReason {
         case .holdRebuilding: return "holdRebuilding"
         case .stall: return "stall"
         case .bodyweight: return "bodyweight"
+        case .hold: return "hold"
         }
     }
 }
@@ -46,6 +51,9 @@ struct ProgressionSuggestion: Equatable {
     let suggestedRepsMin: Int
     let suggestedRepsMax: Int
     let reason: ProgressionReason
+    /// Seconds to aim for on a timed hold; nil for rep-counted exercises.
+    /// Declared last with a default so existing call sites stay unchanged.
+    var suggestedHoldSeconds: Int? = nil
 
     /// An acute load-management signal ("back off ~10% and rebuild"), not a
     /// long-term plateau claim — per-session data is far too noisy for that
@@ -73,6 +81,26 @@ final class ProgressionService {
 
         let repsMin = exercise.repsMin
         let repsMax = max(exercise.repsMin, exercise.repsMax)
+
+        // Timed holds progress in seconds. The prescription carries the
+        // target as repsMin/repsMax (the plan has no separate seconds
+        // field), so repsMax is the ceiling to reach; once reached, add 5s.
+        if exerciseInfo?.tracksTime == true {
+            let bestSeconds = workingSets.map(\.heldSeconds).max() ?? 0
+            guard bestSeconds > 0 else { return nil }
+            let hold = HoldPrescription.seconds(for: exercise)
+            let target = bestSeconds >= hold.max
+                ? bestSeconds + Constants.holdProgressionStepSeconds
+                : hold.max
+            return ProgressionSuggestion(
+                exerciseId: exercise.exerciseId,
+                suggestedWeight: 0,
+                suggestedRepsMin: hold.min,
+                suggestedRepsMax: hold.max,
+                reason: .hold(bestSeconds: bestSeconds, targetSeconds: target),
+                suggestedHoldSeconds: target
+            )
+        }
 
         // Unloaded movements progress by reps only. Without this branch a
         // bodyweight lift at max reps would suggest 0 + increment kg.
