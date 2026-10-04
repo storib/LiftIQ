@@ -11,9 +11,10 @@ import {
 } from "./validators/schemas";
 import { CLAUDE_MODEL_SMALL } from "./models";
 import { assertWithinDailyQuota } from "./rateLimit";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
@@ -103,7 +104,7 @@ export const generateWeeklyInsights = onCall(
       throw new HttpsError("invalid-argument", "Invalid weekly insights request.");
     }
 
-    const db = admin.firestore();
+    const db = getFirestore();
     await assertWithinDailyQuota(db, request.auth.uid, "generateWeeklyInsights", 7);
 
     const userPrompt = buildWeeklyInsightsUserPrompt(parsedRequest.data);
@@ -150,7 +151,7 @@ export const generateWeeklyInsights = onCall(
         promptVersion: WEEKLY_INSIGHTS_PROMPT_VERSION,
         inputTokens: message.usage.input_tokens,
         outputTokens: message.usage.output_tokens,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
 
       return parsed.data;

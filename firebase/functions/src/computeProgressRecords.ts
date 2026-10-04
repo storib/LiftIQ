@@ -1,7 +1,8 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 type SetLog = {
   setType?: string;
@@ -163,7 +164,7 @@ export const computeProgressRecords = onDocumentWritten(
 
     const userId = event.params.userId;
     const sessionId = event.params.sessionId;
-    const db = admin.firestore();
+    const db = getFirestore();
     const recordCollection = db
       .collection("users")
       .doc(userId)

@@ -1,10 +1,11 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { Firestore, getFirestore } from "firebase-admin/firestore";
 import { timingSafeEqual } from "crypto";
 import exercises from "./data/exercises.json";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 const adminSeedKey = defineSecret("ADMIN_SEED_KEY");
 
@@ -30,7 +31,7 @@ export const seedExerciseDatabase = onRequest(
       return;
     }
 
-    const db = admin.firestore();
+    const db = getFirestore();
     let batch = db.batch();
     let pendingWrites = 0;
     let count = 0;

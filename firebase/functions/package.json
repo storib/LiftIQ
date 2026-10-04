@@ -12,18 +12,18 @@
     "test:watch": "vitest"
   },
   "engines": {
-    "node": "20"
+    "node": "24"
   },
   "main": "lib/index.js",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "firebase-admin": "^12.0.0",
-    "firebase-functions": "^6.0.0",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
-    "@types/node": "^20.0.0",
+    "@types/node": "^24.19.1",
     "typescript": "^5.4.0",
     "vitest": "^4.1.4"
   },

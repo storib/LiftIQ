@@ -1,7 +1,9 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { Firestore, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 // Top-level collections keyed by userId (aiUsageLogs, betaEvents) sit outside
 // /users/{uid}, so recursiveDelete on the user document does not touch them.
@@ -11,7 +13,7 @@ if (!admin.apps.length) admin.initializeApp();
 const USER_KEYED_COLLECTIONS = ["aiUsageLogs", "betaEvents"] as const;
 
 export async function deleteUserKeyedCollection(
-  db: admin.firestore.Firestore,
+  db: Firestore,
   collection: string,
   userId: string,
 ): Promise<void> {
@@ -41,7 +43,7 @@ export const deleteAccount = onCall({ enforceAppCheck: true }, async (request) =
   }
 
   const userId = request.auth.uid;
-  const db = admin.firestore();
+  const db = getFirestore();
   const userRef = db.collection("users").doc(userId);
 
   try {
@@ -49,7 +51,7 @@ export const deleteAccount = onCall({ enforceAppCheck: true }, async (request) =
     for (const collection of USER_KEYED_COLLECTIONS) {
       await deleteUserKeyedCollection(db, collection, userId);
     }
-    await admin.auth().deleteUser(userId);
+    await getAuth().deleteUser(userId);
   } catch (error: any) {
     throw new HttpsError(
       "internal",

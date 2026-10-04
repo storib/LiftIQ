@@ -11,9 +11,10 @@ import {
 } from "./validators/schemas";
 import { CLAUDE_MODEL_SMALL } from "./models";
 import { assertWithinDailyQuota } from "./rateLimit";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
@@ -63,7 +64,7 @@ export const analyzePlateau = onCall(
     const { exercise, history, userProfile, currentProgramWeek } =
       parsedRequest.data;
 
-    const db = admin.firestore();
+    const db = getFirestore();
     await assertWithinDailyQuota(db, request.auth.uid, "analyzePlateau", 20);
 
     const userPrompt = `Analyze this exercise performance data:
@@ -116,7 +117,7 @@ Determine if the user has plateaued and recommend adjustments, then call the sav
         promptVersion: PLATEAU_ANALYSIS_PROMPT_VERSION,
         inputTokens: message.usage.input_tokens,
         outputTokens: message.usage.output_tokens,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
 
       return parsedAnalysis.data;

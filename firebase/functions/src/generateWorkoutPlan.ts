@@ -11,10 +11,11 @@ import {
 } from "./validators/schemas";
 import { CLAUDE_MODEL, THINKING_DISABLED } from "./models";
 import { assertWithinDailyQuota } from "./rateLimit";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { randomUUID } from "node:crypto";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
@@ -341,7 +342,7 @@ export const generateWorkoutPlan = onCall(
       templateType,
     } = parsedRequest.data;
 
-    const db = admin.firestore();
+    const db = getFirestore();
     await assertWithinDailyQuota(db, request.auth.uid, "generateWorkoutPlan", 5);
 
     // Load exercise database
@@ -453,7 +454,7 @@ When the plan is finalized, call the save_workout_plan tool with the complete pl
           cacheReadInputTokens,
           attempts: attempts.length,
           success,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
       } catch (logError: any) {
         console.error("aiUsageLogs write failed", {

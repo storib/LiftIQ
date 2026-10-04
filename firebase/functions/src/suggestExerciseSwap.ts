@@ -11,9 +11,10 @@ import {
 } from "./validators/schemas";
 import { CLAUDE_MODEL_SMALL } from "./models";
 import { assertWithinDailyQuota } from "./rateLimit";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, Firestore, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
@@ -66,7 +67,7 @@ export const suggestExerciseSwap = onCall(
     const { currentExercise, availableEquipment, otherExercisesInWorkout } =
       parsedRequest.data;
 
-    const db = admin.firestore();
+    const db = getFirestore();
     await assertWithinDailyQuota(db, request.auth.uid, "suggestExerciseSwap", 20);
 
     const availableEquipmentSet = new Set<string>(availableEquipment);
@@ -170,7 +171,7 @@ Choose the best 3-5 replacements and call the save_exercise_swaps tool.`;
         promptVersion: EXERCISE_SWAP_PROMPT_VERSION,
         inputTokens: message.usage.input_tokens,
         outputTokens: message.usage.output_tokens,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
 
       return result;

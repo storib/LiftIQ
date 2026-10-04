@@ -1,5 +1,5 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
+import { Firestore, Timestamp } from "firebase-admin/firestore";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -8,12 +8,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // writes an aiUsageLogs entry per invocation (success or failure), so the
 // log doubles as the rate-limit ledger — no extra counter collection needed.
 export async function assertWithinDailyQuota(
-  db: admin.firestore.Firestore,
+  db: Firestore,
   userId: string,
   functionName: string,
   maxPerDay: number,
 ): Promise<void> {
-  const since = admin.firestore.Timestamp.fromMillis(Date.now() - DAY_MS);
+  const since = Timestamp.fromMillis(Date.now() - DAY_MS);
   const snapshot = await db
     .collection("aiUsageLogs")
     .where("userId", "==", userId)

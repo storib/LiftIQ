@@ -19,9 +19,10 @@ import {
 } from "./generateWorkoutPlan";
 import { CLAUDE_MODEL, THINKING_DISABLED } from "./models";
 import { assertWithinDailyQuota } from "./rateLimit";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) admin.initializeApp();
+if (!getApps().length) initializeApp();
 
 const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
@@ -167,7 +168,7 @@ export const modifyWorkout = onCall(
       experienceLevel,
     } = parsedRequest.data;
 
-    const db = admin.firestore();
+    const db = getFirestore();
     await assertWithinDailyQuota(db, request.auth.uid, "modifyWorkout", 10);
 
     const exercisesSnap = await db.collection("exercises").get();
@@ -254,7 +255,7 @@ Apply the request and call the ${tool.name} tool exactly once.`;
           cacheReadInputTokens: sum((u) => u.cache_read_input_tokens),
           attempts: attempts.length,
           success,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
       } catch (logError: any) {
         console.error("aiUsageLogs write failed", { message: logError?.message, success });
