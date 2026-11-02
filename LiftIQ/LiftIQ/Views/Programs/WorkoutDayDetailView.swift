@@ -237,7 +237,7 @@ struct WorkoutDayDetailView: View {
                     .font(.title2)
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(Color.accentColor)
+                    .background(Color.liftButtonFill)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 VStack(alignment: .leading, spacing: 6) {

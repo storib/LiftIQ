@@ -36,30 +36,18 @@ struct CoachSuggestionCard: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button {
+            Button(suggestion.lifts.count == 1 ? "Suggest a change" : "Suggest changes") {
                 onAction?("open")
                 showingModify = true
-            } label: {
-                Text(suggestion.lifts.count == 1 ? "Suggest a change" : "Suggest changes")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color.accentColor)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
+            .buttonStyle(.liftTinted)
 
             Button("Not now", action: onDismiss)
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .padding(16)
-        .background(Color.accentColor.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 1)
-        )
+        .liftCard()
         .padding(.horizontal)
         .onAppear { onAction?("shown") }
         .sheet(isPresented: $showingModify) {

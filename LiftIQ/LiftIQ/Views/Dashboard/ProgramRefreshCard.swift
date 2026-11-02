@@ -43,15 +43,8 @@ struct ProgramRefreshCard: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button(action: onKeepGoing) {
-                Text("Keep going")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color.accentColor)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
+            Button("Keep going", action: onKeepGoing)
+                .buttonStyle(.liftTinted)
 
             HStack(spacing: 12) {
                 Button {
@@ -72,19 +65,7 @@ struct ProgramRefreshCard: View {
                 }
             }
         }
-        .padding(16)
-        .background(
-            LinearGradient(
-                colors: [Color.accentColor.opacity(0.14), Color.accentColor.opacity(0.05)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 1)
-        )
+        .liftCard()
         .padding(.horizontal)
         .sheet(isPresented: $showingModify) {
             AIModifySheet(

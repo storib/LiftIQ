@@ -344,7 +344,7 @@ struct WorkoutExecutionView: View {
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color.accentColor)
+                        .background(Color.liftButtonFill)
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }

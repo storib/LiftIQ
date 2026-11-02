@@ -17,6 +17,7 @@ struct WorkoutPlanListView: View {
                         TemplateBrowserView()
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(Color.liftButtonFill)
                 }
             }
 
@@ -34,8 +35,8 @@ struct WorkoutPlanListView: View {
                                         .font(.caption2)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
-                                        .background(Color.green.opacity(0.2))
-                                        .foregroundStyle(.green)
+                                        .background(Color.liftSuccess.opacity(0.15))
+                                        .foregroundStyle(Color.liftSuccess)
                                         .clipShape(Capsule())
                                 }
                             }

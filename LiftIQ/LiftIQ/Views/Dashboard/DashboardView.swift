@@ -141,21 +141,12 @@ struct DashboardView: View {
                 }
                 Spacer()
             }
-            Button {
+            Button("Resume Workout") {
                 resume(activeSession)
-            } label: {
-                Text("Resume Workout")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color.liftWarning)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
+            .buttonStyle(.liftFilled(fill: .liftWarningFill))
         }
-        .padding()
-        .background(Color.liftWarning.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .liftCard(attention: .liftWarningSurface)
         .padding(.horizontal)
     }
 
@@ -178,17 +169,10 @@ struct DashboardView: View {
                 Spacer()
             }
             if session.lastCompletedSetAt != nil {
-                Button {
+                Button("Finish at last set") {
                     Task { await finishStale() }
-                } label: {
-                    Text("Finish at last set")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.liftWarning)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
+                .buttonStyle(.liftFilled(fill: .liftWarningFill))
                 .disabled(viewModel.isRepairing)
             }
             HStack(spacing: 12) {
@@ -201,9 +185,7 @@ struct DashboardView: View {
             }
             .disabled(viewModel.isRepairing)
         }
-        .padding()
-        .background(Color.liftWarning.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .liftCard(attention: .liftWarningSurface)
         .padding(.horizontal)
         .confirmationDialog("Discard this workout?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
             Button("Discard Workout", role: .destructive) {
@@ -258,7 +240,7 @@ struct DashboardView: View {
                         if viewModel.weekStreak > 0 {
                             Label("\(viewModel.weekStreak) wk", systemImage: "flame.fill")
                                 .font(.headline)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.liftPR)
                                 .accessibilityLabel("\(viewModel.weekStreak) week training streak")
                         }
                     }
@@ -267,6 +249,112 @@ struct DashboardView: View {
 
                 weekOverview
 
+                // Active session recovery
+                if let activeSession = dependencies.workoutService.activeSession,
+                   workoutExecutionVM == nil {
+                    if let stale = viewModel.staleSession, stale.id == activeSession.id {
+                        staleSessionCard(stale)
+                    } else {
+                        activeSessionCard(activeSession)
+                    }
+                }
+
+                // Next recommended workout — advances as plan days complete
+                if let workout = viewModel.effectiveTodayWorkout {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(upNextLabel)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if let plan = dependencies.workoutService.activePlan, plan.workouts.count > 1 {
+                                Menu {
+                                    ForEach(plan.workouts) { template in
+                                        Button {
+                                            viewModel.selectWorkout(template)
+                                        } label: {
+                                            if template.id == viewModel.todayWorkout?.id {
+                                                Label("Day \(template.dayNumber) · \(template.name)", systemImage: "checkmark")
+                                            } else {
+                                                Text("Day \(template.dayNumber) · \(template.name)")
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Label("Change", systemImage: "arrow.triangle.2.circlepath")
+                                        .font(.caption.weight(.medium))
+                                }
+                                .accessibilityLabel("Choose a different workout")
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(workout.name)
+                                .font(.title2.bold())
+
+                            HStack(spacing: 16) {
+                                Label("\(workout.exerciseGroups.flatMap(\.exercises).count) exercises", systemImage: "dumbbell.fill")
+                                Label("~\(workout.estimatedDurationMinutes) min", systemImage: "clock")
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                            if let progress = viewModel.blockProgress,
+                               progress.isDeloadWeek(dependencies.workoutService.activePlan?.deloadWeek) {
+                                Label("Deload week (optional): keep the weights, cut a set or two.", systemImage: "leaf")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack {
+                                ForEach(workout.targetMuscleGroups, id: \.self) { group in
+                                    Text(group.displayName)
+                                        .font(.caption2)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.accentColor.opacity(0.1))
+                                        .clipShape(Capsule())
+                                }
+                            }
+
+                            if let adapted = viewModel.adaptedWorkout, adapted.template.id == workout.id {
+                                adaptedBanner(adapted)
+                            } else {
+                                AdaptChipsRow(
+                                    lastMinutes: UserDefaults.standard.object(forKey: AdaptWorkoutViewModel.lastMinutesKey) as? Int ?? 30,
+                                    onPick: { adaptRequest = $0 }
+                                )
+                            }
+
+                            Button("Start Workout") {
+                                startTodayWorkout(workout)
+                            }
+                            .buttonStyle(.liftFilled)
+                            .padding(.top, 4)
+                        }
+                        .liftCard()
+                    }
+                    .padding(.horizontal)
+                } else if dependencies.workoutService.activePlan == nil && !viewModel.isLoading {
+                    // No active plan
+                    VStack(spacing: 12) {
+                        EmptyStateView(
+                            icon: "plus.circle",
+                            title: "No active program",
+                            message: "Create a workout plan to get started"
+                        )
+                        NavigationLink("Browse Programs") {
+                            TemplateBrowserView()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.liftButtonFill)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal)
+                }
+
+                // Supporting cards: checkpoints and suggestions sit below
+                // Up Next so they never compete with starting the workout.
                 if let review = viewModel.blockReview, let plan = dependencies.workoutService.activePlan {
                     BlockReviewCard(
                         review: review,
@@ -318,118 +406,6 @@ struct DashboardView: View {
                     )
                 }
 
-                // Next recommended workout — advances as plan days complete
-                if let workout = viewModel.effectiveTodayWorkout {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text(upNextLabel)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            if let plan = dependencies.workoutService.activePlan, plan.workouts.count > 1 {
-                                Menu {
-                                    ForEach(plan.workouts) { template in
-                                        Button {
-                                            viewModel.selectWorkout(template)
-                                        } label: {
-                                            if template.id == viewModel.todayWorkout?.id {
-                                                Label("Day \(template.dayNumber) · \(template.name)", systemImage: "checkmark")
-                                            } else {
-                                                Text("Day \(template.dayNumber) · \(template.name)")
-                                            }
-                                        }
-                                    }
-                                } label: {
-                                    Label("Change", systemImage: "arrow.triangle.2.circlepath")
-                                        .font(.caption.weight(.medium))
-                                }
-                                .accessibilityLabel("Choose a different workout")
-                            }
-                        }
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(workout.name)
-                                .font(.title3.bold())
-
-                            HStack(spacing: 16) {
-                                Label("\(workout.exerciseGroups.flatMap(\.exercises).count) exercises", systemImage: "dumbbell.fill")
-                                Label("~\(workout.estimatedDurationMinutes) min", systemImage: "clock")
-                            }
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                            if let progress = viewModel.blockProgress,
-                               progress.isDeloadWeek(dependencies.workoutService.activePlan?.deloadWeek) {
-                                Label("Deload week (optional): keep the weights, cut a set or two.", systemImage: "leaf")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            HStack {
-                                ForEach(workout.targetMuscleGroups, id: \.self) { group in
-                                    Text(group.displayName)
-                                        .font(.caption2)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.accentColor.opacity(0.1))
-                                        .clipShape(Capsule())
-                                }
-                            }
-
-                            if let adapted = viewModel.adaptedWorkout, adapted.template.id == workout.id {
-                                adaptedBanner(adapted)
-                            } else {
-                                AdaptChipsRow(
-                                    lastMinutes: UserDefaults.standard.object(forKey: AdaptWorkoutViewModel.lastMinutesKey) as? Int ?? 30,
-                                    onPick: { adaptRequest = $0 }
-                                )
-                            }
-
-                            Button {
-                                startTodayWorkout(workout)
-                            } label: {
-                                Text("Start Workout")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color.accentColor)
-                                    .foregroundStyle(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                            .padding(.top, 4)
-                        }
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                    .padding(.horizontal)
-                } else if dependencies.workoutService.activePlan == nil && !viewModel.isLoading {
-                    // No active plan
-                    VStack(spacing: 12) {
-                        EmptyStateView(
-                            icon: "plus.circle",
-                            title: "No active program",
-                            message: "Create a workout plan to get started"
-                        )
-                        NavigationLink("Browse Programs") {
-                            TemplateBrowserView()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal)
-                }
-
-                // Active session recovery
-                if let activeSession = dependencies.workoutService.activeSession,
-                   workoutExecutionVM == nil {
-                    if let stale = viewModel.staleSession, stale.id == activeSession.id {
-                        staleSessionCard(stale)
-                    } else {
-                        activeSessionCard(activeSession)
-                    }
-                }
-
                 // Quick Stats
                 HStack(spacing: 12) {
                     StatCardView(
@@ -475,8 +451,8 @@ struct DashboardView: View {
                             } label: {
                                 SessionRowContent(session: session, unitSystem: unitSystem)
                                     .padding()
-                                    .background(Color(.secondarySystemGroupedBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .background(Color.liftCardBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: LiftLayout.controlRadius))
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -491,6 +467,7 @@ struct DashboardView: View {
             }
             .padding(.vertical)
         }
+        .defaultScrollAnchor(designPreviewScrollAnchor)
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Dashboard")
         .refreshable {
@@ -562,6 +539,12 @@ struct DashboardView: View {
                 .environment(dependencies)
         }
         .task {
+            #if DEBUG
+            if let seed = DesignPreview.dashboardSeed {
+                viewModel = seed
+                return
+            }
+            #endif
             await reloadDashboard()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -636,7 +619,7 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 60)
             .foregroundStyle(isSelected ? Color.white : Color.primary)
-            .background(isSelected ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+            .background(isSelected ? Color.liftButtonFill : Color.liftCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay {
                 if day.isToday && !isSelected {
@@ -660,17 +643,38 @@ struct DashboardView: View {
         )
         let activities = viewModel.activities(on: viewModel.selectedDate)
 
-        VStack(alignment: .leading, spacing: 10) {
-            Text(viewModel.selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                .font(.subheadline.weight(.semibold))
+        let offersHealth = dependencies.healthKitService.isAvailable
+            && !dependencies.healthKitService.isActivityImportEnabled
 
-            if sessions.isEmpty && activities.isEmpty {
+        if sessions.isEmpty && activities.isEmpty {
+            // An empty day is one line, so Up Next stays near the top; the
+            // Health entry point rides along as a compact trailing button.
+            HStack(spacing: 8) {
+                Text(viewModel.selectedDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                    .font(.subheadline.weight(.semibold))
                 Text(viewModel.selectedDate > Date() ? "Nothing here yet" : "No activity recorded")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 6)
-            } else {
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                if offersHealth {
+                    Button {
+                        Task { await connectAppleHealth() }
+                    } label: {
+                        Label("Apple Health", systemImage: "heart.text.square")
+                            .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityLabel("Show Apple Health activity")
+                }
+            }
+            .frame(minHeight: 44)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(viewModel.selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                    .font(.subheadline.weight(.semibold))
+
                 ForEach(sessions) { session in
                     NavigationLink {
                         SessionDetailView(session: session)
@@ -683,20 +687,28 @@ struct DashboardView: View {
                 ForEach(activities) { activity in
                     ExternalActivityRow(activity: activity, unitSystem: unitSystem)
                 }
-            }
 
-            if dependencies.healthKitService.isAvailable,
-               !dependencies.healthKitService.isActivityImportEnabled {
-                Button {
-                    Task { await connectAppleHealth() }
-                } label: {
-                    Label("Show Apple Health Activity", systemImage: "heart.text.square")
-                        .font(.subheadline.weight(.medium))
+                if offersHealth {
+                    Button {
+                        Task { await connectAppleHealth() }
+                    } label: {
+                        Label("Show Apple Health Activity", systemImage: "heart.text.square")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .padding(.top, 2)
                 }
-                .padding(.top, 2)
             }
+            .padding(.bottom, 2)
         }
-        .padding(.bottom, 2)
+    }
+
+    /// Lets the debug design harness screenshot the bottom of the Dashboard.
+    private var designPreviewScrollAnchor: UnitPoint? {
+        #if DEBUG
+        return DesignPreview.isActive && DesignPreview.scrollsToBottom ? .bottom : nil
+        #else
+        return nil
+        #endif
     }
 
     private func reloadDashboard() async {
@@ -813,8 +825,8 @@ struct StatCardView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(LiftLayout.cardPadding)
+        .background(Color.liftCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: LiftLayout.cardRadius))
     }
 }

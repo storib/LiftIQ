@@ -33,7 +33,7 @@ struct SignInView: View {
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.liftDanger)
                     .multilineTextAlignment(.center)
             }
 

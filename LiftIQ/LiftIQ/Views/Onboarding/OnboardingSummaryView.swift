@@ -46,7 +46,7 @@ struct OnboardingSummaryView: View {
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.liftDanger)
             }
         }
         .padding(.top, 32)

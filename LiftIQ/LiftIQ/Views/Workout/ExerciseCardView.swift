@@ -321,8 +321,8 @@ struct ExerciseCardView: View {
 
     private func pillStyle(_ reason: ProgressionReason) -> (tint: Color, icon: String) {
         switch reason {
-        case .increase: return (.green, "arrow.up.right.circle.fill")
-        case .stall: return (.orange, "arrow.uturn.down.circle.fill")
+        case .increase: return (Color.liftSuccess, "arrow.up.right.circle.fill")
+        case .stall: return (Color.liftWarning, "arrow.uturn.down.circle.fill")
         case .holdRebuilding: return (.secondary, "arrow.up.circle")
         case .holdNearTarget, .holdFloorMissed, .bodyweight, .hold: return (.secondary, "equal.circle.fill")
         }

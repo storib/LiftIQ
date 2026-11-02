@@ -72,7 +72,7 @@ struct OnboardingContainerView: View {
                         .font(.headline)
                         .padding(.horizontal, 32)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor)
+                        .background(Color.liftButtonFill)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }

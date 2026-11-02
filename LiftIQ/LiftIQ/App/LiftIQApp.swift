@@ -9,13 +9,31 @@ struct LiftIQApp: App {
 
     init() {
         Self.configureFirebase()
-        _dependencies = State(initialValue: AppDependencies())
+        let dependencies = AppDependencies()
+        #if DEBUG
+        if DesignPreview.isActive { DesignPreview.seed(dependencies) }
+        #endif
+        _dependencies = State(initialValue: dependencies)
     }
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if DesignPreview.isActive {
+                MainTabView()
+                    .environment(dependencies)
+                    .task {
+                        try? await Task.sleep(for: .seconds(1))
+                        DesignPreview.reapplyUser(dependencies)
+                    }
+            } else {
+                ContentView()
+                    .environment(dependencies)
+            }
+            #else
             ContentView()
                 .environment(dependencies)
+            #endif
         }
     }
 

@@ -122,7 +122,7 @@ struct SessionDetailView: View {
             Text("Time")
         } footer: {
             if let message = viewModel.timeValidationMessage {
-                Text(message).foregroundStyle(.red)
+                Text(message).foregroundStyle(Color.liftDanger)
             } else {
                 Text("Changing the times also updates this workout in Apple Health.")
             }

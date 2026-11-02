@@ -43,7 +43,7 @@ struct ErrorView: View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Color.liftWarning)
             Text("Something went wrong")
                 .font(.title3.bold())
             Text(message)
@@ -53,6 +53,7 @@ struct ErrorView: View {
             if let retry = retryAction {
                 Button("Try Again", action: retry)
                     .buttonStyle(.borderedProminent)
+                    .tint(Color.liftButtonFill)
             }
         }
         .padding(40)

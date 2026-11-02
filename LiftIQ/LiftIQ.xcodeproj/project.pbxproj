@@ -110,6 +110,7 @@
 		8F776B89B35CE50C8E95E2BD /* ExperienceLevelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCE5C9FCB7DFE0EE087A564 /* ExperienceLevelView.swift */; };
 		9069F06FC9121BC9A50F8E8C /* ForgottenSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ADD0A0A9D44E7234DDD5A1A /* ForgottenSessionTests.swift */; };
 		911B3B831E6F5F94411D8C54 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E938A2B86F7F81BA274741C1 /* FirebaseFirestore */; };
+		926D1B5D7B35C1417BAE4142 /* DesignPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7D8F8BB18CD35B618FD305 /* DesignPreview.swift */; };
 		92BFD7A37FA1C680B645C377 /* ExerciseSwapSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62EED9D9CAC1DB0B50FD330 /* ExerciseSwapSheet.swift */; };
 		93CDE64CCFC5FBDE5CC11C63 /* BetaEventLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A2314BA146EADBE224CF83 /* BetaEventLogger.swift */; };
 		96BBFAFE470E0708784052CE /* ExternalActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE33D6EFCF9A6813D7E0F9F1 /* ExternalActivity.swift */; };
@@ -228,6 +229,7 @@
 		0B18E7507C95C48772937198 /* WarmUpAndBodyweightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarmUpAndBodyweightTests.swift; sourceTree = "<group>"; };
 		0C2921AC8CAA5FDA1014FB41 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0DE7750F35E46F614AFABFA6 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		0F7D8F8BB18CD35B618FD305 /* DesignPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignPreview.swift; sourceTree = "<group>"; };
 		0FE93EC0608669383B8C6358 /* YouTubePlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubePlayerView.swift; sourceTree = "<group>"; };
 		10D4A17A3F4773AB3CE4C7F3 /* EquipmentPickerGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentPickerGrid.swift; sourceTree = "<group>"; };
 		10F1AECA4C518F460EED8BB7 /* MuscleGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleGroup.swift; sourceTree = "<group>"; };
@@ -413,6 +415,7 @@
 			children = (
 				C56EB68DCC438AE16F7A3EE8 /* AppDependencies.swift */,
 				ED01BB87C9043D9518812616 /* ContentView.swift */,
+				0F7D8F8BB18CD35B618FD305 /* DesignPreview.swift */,
 				9C4EE8799CD8C8349AD453A1 /* LiftIQApp.swift */,
 				4958070EC6D6287CDAE3A84D /* MainTabView.swift */,
 			);
@@ -1061,6 +1064,7 @@
 				C9268C3E784A4320A64D1F9A /* DashboardView.swift in Sources */,
 				D9F783BA08309579772DCE78 /* DashboardViewModel.swift in Sources */,
 				60FDEB8EF11881C61596A868 /* Date+Extensions.swift in Sources */,
+				926D1B5D7B35C1417BAE4142 /* DesignPreview.swift in Sources */,
 				064FA7DEB76B64AFED51E1D0 /* Double+Extensions.swift in Sources */,
 				B9AAB218BEA1FDA6F3087D5B /* EditEquipmentView.swift in Sources */,
 				E3618B4D0F949D923846FDE8 /* EmailValidator.swift in Sources */,

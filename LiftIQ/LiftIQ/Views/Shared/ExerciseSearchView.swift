@@ -60,8 +60,8 @@ struct ExerciseSearchView: View {
                                     .font(.caption2)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(Color.orange.opacity(0.15))
-                                    .foregroundStyle(.orange)
+                                    .background(Color(.tertiarySystemFill))
+                                    .foregroundStyle(.secondary)
                                     .clipShape(Capsule())
                             }
                         }

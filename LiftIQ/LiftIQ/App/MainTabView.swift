@@ -42,7 +42,6 @@ struct MainTabView: View {
             }
             .tag(3)
         }
-        .tint(.blue)
         .onAppear {
             if !hasSeenGettingStarted {
                 showingGettingStarted = true
