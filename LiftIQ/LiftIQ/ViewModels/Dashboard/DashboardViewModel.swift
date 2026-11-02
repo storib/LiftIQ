@@ -37,6 +37,10 @@ final class DashboardViewModel {
     /// The opt-in "you've been on this program a while" checkpoint. Nil
     /// unless the lifter set a cadence in Profile and it has come due.
     var programRefresh: ProgramRefresh?
+    /// "Want the AI to suggest a change?" for stalled lifts. Shown only when
+    /// neither checkpoint card is, and hidden once dismissed or acted on.
+    var coachSuggestion: CoachSuggestion?
+    private let coachSuggestionStore: CoachSuggestionStore
     /// Completed sessions over the last ~year: feeds the week streak, block
     /// progress and the weekly check-in. Fetched once per load.
     private(set) var completedSessions: [WorkoutSession] = []
@@ -53,8 +57,13 @@ final class DashboardViewModel {
     private let calendar: Calendar
     private var weekStart: Date
 
-    init(referenceDate: Date = Date(), calendar: Calendar = .current) {
+    init(
+        referenceDate: Date = Date(),
+        calendar: Calendar = .current,
+        coachSuggestionStore: CoachSuggestionStore = CoachSuggestionStore()
+    ) {
         self.calendar = calendar
+        self.coachSuggestionStore = coachSuggestionStore
         selectedDate = calendar.startOfDay(for: referenceDate)
         weekStart = referenceDate.startOfWeek(using: calendar)
     }
@@ -151,10 +160,34 @@ final class DashboardViewModel {
             blockProgress = nil
             blockReview = nil
             programRefresh = nil
+            coachSuggestion = nil
             return
         }
         let progress = BlockProgress.compute(plan: plan, sessions: sessions)
         blockProgress = progress
+
+        let slotSuggestions = progressionService.map {
+            Self.currentSuggestions(plan: plan, sessions: sessions, progressionService: $0, exercises: exercises)
+        } ?? []
+        // Reloads that don't pass the progression service (e.g. after a
+        // session delete) can't judge stalls: leave the card and the snoozes
+        // as they were rather than reading "nothing stalled" as a recovery.
+        if progressionService != nil {
+            var names: [String: String] = [:]
+            for log in sessions.flatMap(\.exerciseLogs) where names[log.exerciseId] == nil {
+                names[log.exerciseId] = log.exerciseName
+            }
+            for (id, exercise) in exercises { names[id] = exercise.name }
+            let stalled = CoachSuggestion.stalledLifts(slots: slotSuggestions, names: names)
+            coachSuggestionStore.forgetRecovered(
+                planId: plan.id,
+                stillStalled: Set(stalled.map { $0.snoozeKey(planId: plan.id) }),
+                userId: userId
+            )
+            coachSuggestion = CoachSuggestion.evaluate(planId: plan.id, stalled: stalled) {
+                coachSuggestionStore.isSnoozed($0, userId: userId, now: referenceDate)
+            }
+        }
 
         // The block review is the stronger, more specific checkpoint; only
         // offer the time-based one when no block is waiting to be reviewed.
@@ -162,14 +195,7 @@ final class DashboardViewModel {
             plan: plan,
             cadenceWeeks: progress.isComplete ? nil : profile?.programRefreshWeeks,
             planSessionDates: sessions.filter { $0.planId == plan.id }.map(\.startedAt),
-            holdingLifts: progressionService.map {
-                Self.holdingLiftCount(
-                    plan: plan,
-                    sessions: sessions,
-                    progressionService: $0,
-                    exercises: exercises
-                )
-            } ?? 0,
+            holdingLifts: ProgramRefresh.holdingLiftCount(slotSuggestions.map(\.suggestion)),
             now: referenceDate,
             calendar: calendar
         )
@@ -210,31 +236,81 @@ final class DashboardViewModel {
         progressionService: ProgressionService,
         exercises: [String: Exercise]
     ) -> Int {
-        var logsByExercise: [String: [ExerciseLog]] = [:]
-        for session in sessions.filter({ $0.planId == plan.id }).sorted(by: { $0.startedAt > $1.startedAt }) {
-            for log in session.exerciseLogs {
-                guard logsByExercise[log.exerciseId, default: []].count < 5 else { continue }
-                logsByExercise[log.exerciseId, default: []].append(log)
-            }
-        }
+        ProgramRefresh.holdingLiftCount(
+            currentSuggestions(plan: plan, sessions: sessions, progressionService: progressionService, exercises: exercises)
+                .map(\.suggestion)
+        )
+    }
 
-        var seen: Set<String> = []
-        var suggestions: [ProgressionSuggestion] = []
+    /// The progression suggestion each plan slot would get today, in plan
+    /// order, judged only on the last five sessions that logged *that slot*.
+    /// A lift on two days (heavy 3-5, volume 10-12) has two prescriptions;
+    /// mixing its history would grade heavy-day sets against the volume
+    /// floor and report misses that never happened. A log belongs to a slot
+    /// by `plannedExerciseId` when it names one of this plan's slots, else
+    /// (older sessions, or a one-session AI edit that re-pointed the logs) by
+    /// the session's day plus the exercise. A mid-workout swap is a different
+    /// exercise in the slot, so it is not that slot's history.
+    static func currentSuggestions(
+        plan: WorkoutPlan,
+        sessions: [WorkoutSession],
+        progressionService: ProgressionService,
+        exercises: [String: Exercise]
+    ) -> [PlanSlotSuggestion] {
+        let planSlotIds = Set(plan.workouts.flatMap { $0.exerciseGroups.flatMap(\.exercises).map(\.id) })
+        let planSessions = sessions
+            .filter { $0.planId == plan.id }
+            .sorted { $0.startedAt > $1.startedAt }
+
+        var results: [PlanSlotSuggestion] = []
         for day in plan.workouts {
-            for group in day.exerciseGroups {
-                for planned in group.exercises where seen.insert(planned.exerciseId).inserted {
-                    guard let logs = logsByExercise[planned.exerciseId], !logs.isEmpty else { continue }
-                    if let suggestion = progressionService.suggest(
-                        for: planned,
-                        previousLogs: logs,
-                        exerciseInfo: exercises[planned.exerciseId]
-                    ) {
-                        suggestions.append(suggestion)
+            for planned in day.exerciseGroups.flatMap(\.exercises) {
+                var logs: [ExerciseLog] = []
+                for session in planSessions where logs.count < 5 {
+                    let match = session.exerciseLogs.first { log in
+                        guard log.exerciseId == planned.exerciseId else { return false }
+                        if let slot = log.plannedExerciseId, planSlotIds.contains(slot) {
+                            return slot == planned.id
+                        }
+                        return session.workoutTemplateId == day.id
                     }
+                    if let match { logs.append(match) }
                 }
+                guard !logs.isEmpty,
+                      let suggestion = progressionService.suggest(
+                          for: planned,
+                          previousLogs: logs,
+                          exerciseInfo: exercises[planned.exerciseId]
+                      ) else { continue }
+                results.append(PlanSlotSuggestion(dayId: day.id, dayName: day.name, planned: planned, suggestion: suggestion))
             }
         }
-        return ProgramRefresh.holdingLiftCount(suggestions)
+        return results
+    }
+
+    /// "Not now" on the coach card: snooze these lifts on this device for
+    /// `CoachSuggestion.snoozeDays`. A lift that recovers in the meantime
+    /// loses its snooze, so stalling again later is offered again.
+    func dismissCoachSuggestion(userId: String, now: Date = Date()) {
+        guard let coachSuggestion else { return }
+        coachSuggestionStore.snooze(coachSuggestion.snoozeKeys, userId: userId, now: now)
+        self.coachSuggestion = nil
+    }
+
+    /// The lifter saved the AI's plan edit from the coach card. Retire the
+    /// card and re-derive Up Next from the saved plan, exactly as
+    /// `applyRefreshedProgram` does: the AI hands back rewritten days, and an
+    /// adaptation of the old day doesn't apply to the new one.
+    func applyCoachSuggestion(plan: WorkoutPlan, userId: String, workoutService: any WorkoutServicing, now: Date = Date()) {
+        // Also snooze the edited slots: a new rep range would otherwise be
+        // judged at once on history logged under the old one.
+        if let coachSuggestion {
+            coachSuggestionStore.snooze(coachSuggestion.editedSnoozeKeys(in: plan), userId: userId, now: now)
+        }
+        dismissCoachSuggestion(userId: userId, now: now)
+        adaptedWorkout = nil
+        activePlanId = plan.id
+        todayWorkout = Self.nextWorkout(plan: plan, sessions: workoutService.recentSessions)
     }
 
     /// "Keep going" on the switch-it-up card: the program is working, so

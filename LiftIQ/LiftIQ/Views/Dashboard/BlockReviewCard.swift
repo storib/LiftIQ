@@ -87,6 +87,7 @@ struct BlockReviewCard: View {
             AIModifySheet(
                 plan: plan,
                 workout: nil,
+                source: .blockReview,
                 onApplyPlan: onPlanModified,
                 initialInstruction: suggestedInstruction
             )

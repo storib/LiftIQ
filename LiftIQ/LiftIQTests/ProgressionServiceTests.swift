@@ -85,6 +85,30 @@ final class ProgressionServiceTests: XCTestCase {
         XCTAssertEqual(held?.reason, .holdNearTarget(previousTopKg: 40, topReps: [12, 11, 10], repsToGo: 3))
     }
 
+    func testTwoLighterSessionsInARowFollowTheLifter() {
+        // 61 kg was owned three sessions ago, but the lifter has since chosen
+        // 52 kg twice. That is a decision, not a deload: hold at 52, not 61.
+        let heavy = makeLog(id: "log-3", sets: [(61, 9), (61, 8), (61, 8)])
+        let light1 = makeLog(id: "log-2", sets: [(52, 10), (52, 9), (52, 7)])
+        let light2 = makeLog(id: "log-1", sets: [(52, 11), (52, 9), (52, 7)])
+        let held = service.suggest(for: makePlanned(), previousLogs: [light2, light1, heavy], exerciseInfo: nil)
+        XCTAssertEqual(held?.suggestedWeight, 52)
+        XCTAssertEqual(held?.reason, .holdFloorMissed(previousTopKg: 52, topReps: [11, 9, 7], bestReps: 11))
+
+        // And an earned increase builds on what is being lifted now.
+        let maxed = makeLog(id: "log-1", sets: [(52, 12), (52, 10), (52, 9)])
+        let increase = service.suggest(for: makePlanned(), previousLogs: [maxed, light1, heavy], exerciseInfo: nil)
+        XCTAssertEqual(increase?.suggestedWeight, 54.5)
+    }
+
+    func testOneLightSessionAfterTwoAtTheFloorStillFloors() {
+        // Only the latest session is lighter: still treated as a deload.
+        let heavy = makeLog(id: "log-2", sets: [(61, 9), (61, 8)])
+        let light = makeLog(id: "log-1", sets: [(52, 10), (52, 9)])
+        let held = service.suggest(for: makePlanned(), previousLogs: [light, heavy, heavy], exerciseInfo: nil)
+        XCTAssertEqual(held?.suggestedWeight, 61)
+    }
+
     func testThreeFloorMissesAtSameWeightSuggestsBackOff() {
         let fail = { (id: String) in self.makeLog(id: id, sets: [(60, 6), (60, 6), (60, 5)]) }
         let logs = [fail("log-1"), fail("log-2"), fail("log-3")]

@@ -27,10 +27,11 @@ final class AppDependencies {
         self.workoutService = WorkoutService(planRepository: planRepo, sessionRepository: sessionRepo, prRepository: prRepo, healthKitService: healthKitService)
         self.exerciseService = ExerciseService(repository: exerciseRepo)
         self.progressService = ProgressService(progressRepository: progressRepo, prRepository: prRepo)
-        self.aiService = AIService()
+        let betaEvents = BetaEventLogger(writer: BetaEventRepository())
+        self.betaEvents = betaEvents
+        self.aiService = AIService(betaEvents: betaEvents)
         self.progressionService = ProgressionService()
         self.memoryService = MemoryService(profileStore: authService)
-        self.betaEvents = BetaEventLogger(writer: BetaEventRepository())
         self.liveActivityController = WorkoutLiveActivityController()
     }
 }

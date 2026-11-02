@@ -157,7 +157,15 @@ final class ProgramRefreshTests: XCTestCase {
             suggestedRepsMax: 8,
             reason: .holdNearTarget(previousTopKg: 100, topReps: [7, 6], repsToGo: 1)
         )
-        XCTAssertEqual(ProgramRefresh.holdingLiftCount([stalled, holding, stalled]), 2)
+        let otherStalled = ProgressionSuggestion(
+            exerciseId: "row",
+            suggestedWeight: 55,
+            suggestedRepsMin: 8,
+            suggestedRepsMax: 10,
+            reason: .stall(stuckKg: 60, sessions: 4)
+        )
+        XCTAssertEqual(ProgramRefresh.holdingLiftCount([stalled, holding, otherStalled]), 2)
+        XCTAssertEqual(ProgramRefresh.holdingLiftCount([stalled, stalled]), 1, "one lift stalled on two days is one lift")
         XCTAssertEqual(ProgramRefresh.holdingLiftCount([holding]), 0)
     }
 }

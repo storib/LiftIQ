@@ -127,10 +127,18 @@ final class ProgressionService {
 
         // A deload or an off week shouldn't drag the suggestion below what the
         // lifter recently handled: floor it at the best recent top-set weight
-        // where the rep floor was met.
-        let bestRecentTop = previousLogs
+        // where the rep floor was met. But one light session is a deload; two
+        // lighter sessions in a row is a choice, and a floor that ignores it
+        // keeps suggesting a weight the lifter has stopped using (beta
+        // telemetry: bench suggested at 135 lb for weeks while every session
+        // was logged at 115).
+        let provenRecentTop = previousLogs
             .compactMap { provenTopWeight(in: $0, repsMin: repsMin) }
             .max() ?? 0
+        let choseLighter = previousLogs.count >= 2 && previousLogs.prefix(2).allSatisfy {
+            (topWorkingWeight(in: $0) ?? 0) < provenRecentTop - 0.001
+        }
+        let bestRecentTop = choseLighter ? 0 : provenRecentTop
 
         if bestReps >= repsMax && allAboveFloor {
             return ProgressionSuggestion(
@@ -186,9 +194,14 @@ final class ProgressionService {
     /// proof the weight is owned.
     private func provenTopWeight(in log: ExerciseLog, repsMin: Int) -> Double? {
         let sets = log.sets.filter { $0.setType == .working && $0.weightKg > 0 }
-        guard let top = sets.map(\.weightKg).max() else { return nil }
+        guard let top = topWorkingWeight(in: log) else { return nil }
         let topSets = sets.filter { $0.weightKg >= top - 0.001 }
         return topSets.contains { $0.reps >= repsMin } ? top : nil
+    }
+
+    /// Heaviest loaded working set of a session, proven or not.
+    private func topWorkingWeight(in log: ExerciseLog) -> Double? {
+        log.sets.filter { $0.setType == .working && $0.weightKg > 0 }.map(\.weightKg).max()
     }
 
     /// ~10% reduction rounded down to a loadable increment, always at least

@@ -176,6 +176,7 @@ struct WorkoutExecutionView: View {
                 AIModifySheet(
                     plan: viewModel.planForAIModification,
                     workout: template,
+                    source: .workoutExecution,
                     appliesToLiveSession: true,
                     onApplyWorkout: { modified in
                         Task {

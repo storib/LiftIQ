@@ -187,7 +187,8 @@ final class AdaptWorkoutViewModel {
         do {
             let modification = try await aiService.modifyWorkout(
                 scope: .workout, instruction: instruction, plan: nil,
-                workout: partial.template, profile: equipmentProfile
+                workout: partial.template, profile: equipmentProfile,
+                source: .adaptDifferentGym
             )
             guard let aiWorkout = modification.workout else { throw AIServiceError.invalidResponse }
             let missing = Set(setup.equipment)

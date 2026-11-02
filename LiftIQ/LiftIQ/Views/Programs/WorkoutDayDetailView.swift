@@ -151,6 +151,7 @@ struct WorkoutDayDetailView: View {
             AIModifySheet(
                 plan: parentPlan,
                 workout: workout,
+                source: .dayDetail,
                 onApplyWorkout: { modified in
                     workout = modified
                     isTemporarilyModified = true

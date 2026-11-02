@@ -8,6 +8,18 @@ enum AIModificationScope: String {
     case workout
 }
 
+/// Which screen asked for an AI modification. Logged with the beta events so
+/// "never tried it" and "tried it and it failed" can be told apart.
+enum AIModifySource: String {
+    case workoutExecution
+    case planDetail
+    case dayDetail
+    case blockReview
+    case programRefresh
+    case coachSuggestion
+    case adaptDifferentGym
+}
+
 /// Result of a modifyWorkout call: exactly one of plan/workout is set,
 /// matching the requested scope.
 struct AIWorkoutModification {
@@ -20,8 +32,13 @@ struct AIWorkoutModification {
 @Observable
 final class AIService {
     private let functions = Functions.functions()
+    private let betaEvents: any BetaEventLogging
     var isGenerating = false
     var error: String?
+
+    init(betaEvents: any BetaEventLogging = NoopBetaEventLogger()) {
+        self.betaEvents = betaEvents
+    }
 
     func generateWorkoutPlan(profile: UserProfile, templateType: TemplateType) async throws -> WorkoutPlan {
         isGenerating = true
@@ -55,11 +72,61 @@ final class AIService {
         instruction: String,
         plan: WorkoutPlan?,
         workout: WorkoutTemplate?,
-        profile: UserProfile
+        profile: UserProfile,
+        source: AIModifySource
     ) async throws -> AIWorkoutModification {
         isGenerating = true
         defer { isGenerating = false }
 
+        // Only the instruction's length is logged, never its text.
+        let eventProps: [String: any Sendable] = [
+            "source": source.rawValue,
+            "scope": scope.rawValue,
+            "instructionChars": instruction.count
+        ]
+        betaEvents.log("ai_modify_submitted", eventProps)
+        let startedAt = Date()
+        do {
+            let modification = try await requestModification(
+                scope: scope, instruction: instruction, plan: plan, workout: workout, profile: profile
+            )
+            var props = eventProps
+            props["outcome"] = "success"
+            props["seconds"] = Int(Date().timeIntervalSince(startedAt))
+            betaEvents.log("ai_modify_result", props)
+            return modification
+        } catch {
+            var props = eventProps
+            props["outcome"] = "error"
+            props["error"] = Self.errorCode(error)
+            props["seconds"] = Int(Date().timeIntervalSince(startedAt))
+            betaEvents.log("ai_modify_result", props)
+            throw error
+        }
+    }
+
+    /// Short, content-free classification of a failure for beta events:
+    /// a Functions error code ("FIRFunctionsErrorDomain#13" = internal), a
+    /// decode failure, or the response guard.
+    nonisolated static func errorCode(_ error: Error) -> String {
+        switch error {
+        case AIServiceError.invalidResponse:
+            return "invalidResponse"
+        case is DecodingError:
+            return "decoding"
+        default:
+            let ns = error as NSError
+            return String("\(ns.domain)#\(ns.code)".prefix(64))
+        }
+    }
+
+    private func requestModification(
+        scope: AIModificationScope,
+        instruction: String,
+        plan: WorkoutPlan?,
+        workout: WorkoutTemplate?,
+        profile: UserProfile
+    ) async throws -> AIWorkoutModification {
         var data: [String: Any] = [
             "scope": scope.rawValue,
             "instruction": instruction,

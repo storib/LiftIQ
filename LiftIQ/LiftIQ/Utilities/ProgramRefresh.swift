@@ -76,8 +76,9 @@ struct ProgramRefresh: Equatable {
 
     /// How many of the plan's lifts are currently stalled, from suggestions
     /// already computed elsewhere. Kept here so the card's copy and this
-    /// count can never drift apart.
+    /// count can never drift apart. Suggestions are per plan slot, so a lift
+    /// stalled on two days is still one lift.
     static func holdingLiftCount(_ suggestions: [ProgressionSuggestion]) -> Int {
-        suggestions.count { $0.isStalled }
+        Set(suggestions.filter(\.isStalled).map(\.exerciseId)).count
     }
 }

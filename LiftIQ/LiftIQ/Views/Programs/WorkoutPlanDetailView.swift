@@ -74,6 +74,7 @@ struct WorkoutPlanDetailView: View {
             AIModifySheet(
                 plan: plan,
                 workout: nil,
+                source: .planDetail,
                 onApplyPlan: { updated in plan = updated }
             )
             .environment(dependencies)

@@ -298,6 +298,24 @@ struct DashboardView: View {
                             dependencies.betaEvents.log("program_refresh_action", ["action": action])
                         }
                     )
+                } else if let suggestion = viewModel.coachSuggestion,
+                          let plan = dependencies.workoutService.activePlan,
+                          let userId = dependencies.authService.currentUserId {
+                    CoachSuggestionCard(
+                        suggestion: suggestion,
+                        plan: plan,
+                        onPlanModified: { modified in
+                            dependencies.betaEvents.log("coach_suggestion_action", ["action": "applied", "lifts": suggestion.lifts.count])
+                            viewModel.applyCoachSuggestion(plan: modified, userId: userId, workoutService: dependencies.workoutService)
+                        },
+                        onDismiss: {
+                            dependencies.betaEvents.log("coach_suggestion_action", ["action": "dismiss", "lifts": suggestion.lifts.count])
+                            viewModel.dismissCoachSuggestion(userId: userId)
+                        },
+                        onAction: { action in
+                            dependencies.betaEvents.log("coach_suggestion_action", ["action": action, "lifts": suggestion.lifts.count])
+                        }
+                    )
                 }
 
                 // Next recommended workout — advances as plan days complete

@@ -11,6 +11,8 @@ struct AIModifySheet: View {
     let plan: WorkoutPlan?
     /// Day to modify; enables the "Just this workout" scope.
     let workout: WorkoutTemplate?
+    /// Which screen opened the sheet (beta events only).
+    let source: AIModifySource
     /// Presented from a running workout: plan-scope edits also merge into the
     /// live session, so the scope copy must say so.
     var appliesToLiveSession = false
@@ -20,6 +22,9 @@ struct AIModifySheet: View {
     var onApplyPlan: ((WorkoutPlan) -> Void)? = nil
     /// Pre-filled request (e.g. from the block review); editable.
     var initialInstruction: String = ""
+    /// Send `initialInstruction` as soon as the sheet opens (after consent),
+    /// so the lifter lands on a ready proposal instead of a text box.
+    var autoSubmit = false
 
     @State private var instruction = ""
     @State private var scope: AIModificationScope = .workout
@@ -28,6 +33,8 @@ struct AIModifySheet: View {
     @State private var isApplying = false
     @State private var errorMessage: String?
     @State private var showingConsent = false
+    @State private var hasAppeared = false
+    @State private var didApply = false
 
     private var scopeChoices: [AIModificationScope] {
         var choices: [AIModificationScope] = []
@@ -54,15 +61,36 @@ struct AIModifySheet: View {
             }
             .interactiveDismissDisabled(isSubmitting || isApplying)
             .onAppear {
+                guard !hasAppeared else { return }
+                hasAppeared = true
                 if let first = scopeChoices.first { scope = first }
                 if instruction.isEmpty { instruction = initialInstruction }
+                dependencies.betaEvents.log("ai_modify_opened", [
+                    "source": source.rawValue,
+                    "prefilled": !initialInstruction.isEmpty,
+                    "autoSubmit": autoSubmit
+                ])
                 showingConsent = !AIConsentManager.hasConsented
+                if !showingConsent { submitIfAutomatic() }
+            }
+            .onDisappear {
+                // One closing event covers Cancel, swipe-down and apply, so
+                // an abandoned sheet is visible in the data too.
+                dependencies.betaEvents.log("ai_modify_closed", [
+                    "source": source.rawValue,
+                    "stage": closingStage,
+                    "applied": didApply
+                ])
             }
             .sheet(isPresented: $showingConsent) {
                 AIConsentSheet(
-                    onAccept: { showingConsent = false },
+                    onAccept: {
+                        showingConsent = false
+                        submitIfAutomatic()
+                    },
                     onDecline: {
                         showingConsent = false
+                        dependencies.betaEvents.log("ai_modify_consent_declined", ["source": source.rawValue])
                         dismiss()
                     }
                 )
@@ -170,6 +198,10 @@ struct AIModifySheet: View {
             .disabled(isApplying)
 
             Button("Discard", role: .destructive) {
+                dependencies.betaEvents.log("ai_modify_discarded", [
+                    "source": source.rawValue,
+                    "scope": result.workout != nil ? AIModificationScope.workout.rawValue : AIModificationScope.plan.rawValue
+                ])
                 self.result = nil
             }
             .frame(maxWidth: .infinity)
@@ -199,6 +231,20 @@ struct AIModifySheet: View {
 
     // MARK: - Actions
 
+    private var closingStage: String {
+        if didApply { return "applied" }
+        if result != nil { return "review" }
+        if isSubmitting { return "submitting" }
+        if errorMessage != nil { return "error" }
+        return "request"
+    }
+
+    private func submitIfAutomatic() {
+        guard autoSubmit, result == nil, !isSubmitting,
+              !instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        submit()
+    }
+
     private func submit() {
         guard let profile = dependencies.authService.currentUser?.profile else {
             errorMessage = "Profile not loaded yet — try again in a moment."
@@ -213,7 +259,8 @@ struct AIModifySheet: View {
                     instruction: instruction.trimmingCharacters(in: .whitespacesAndNewlines),
                     plan: plan,
                     workout: scope == .workout ? workout : nil,
-                    profile: profile
+                    profile: profile,
+                    source: source
                 )
             } catch {
                 errorMessage = error.localizedDescription
@@ -226,6 +273,7 @@ struct AIModifySheet: View {
         errorMessage = nil
         if let modifiedWorkout = result.workout {
             onApplyWorkout?(modifiedWorkout)
+            logApplied(scope: .workout)
             dismiss()
             return
         }
@@ -235,11 +283,20 @@ struct AIModifySheet: View {
             do {
                 try await dependencies.workoutService.savePlan(modifiedPlan)
                 onApplyPlan?(modifiedPlan)
+                logApplied(scope: .plan)
                 dismiss()
             } catch {
                 errorMessage = "Couldn't save the plan: \(error.localizedDescription)"
             }
             isApplying = false
         }
+    }
+
+    private func logApplied(scope: AIModificationScope) {
+        didApply = true
+        dependencies.betaEvents.log("ai_modify_applied", [
+            "source": source.rawValue,
+            "scope": scope.rawValue
+        ])
     }
 }

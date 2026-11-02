@@ -90,6 +90,7 @@ struct ProgramRefreshCard: View {
             AIModifySheet(
                 plan: plan,
                 workout: nil,
+                source: .programRefresh,
                 onApplyPlan: onPlanModified,
                 initialInstruction: suggestedInstruction
             )
